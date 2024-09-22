@@ -1,0 +1,93 @@
+from tapshell.tapdata_cli.help_decorator import help_decorate
+from auto_test.tapdata.data_pipeline.nodes.source import Source
+from auto_test.tapdata.data_pipeline.base_node import node_config_sync
+from auto_test.tapdata.data_pipeline.job import JobType
+
+
+@help_decorate("sink is end of a pipeline", "sink = Sink($Datasource, $table)")
+class Sink(Source):
+    def __init__(self, connection, table=None, mode=None):
+        if mode is None:
+            if table is not None:
+                mode = JobType.sync
+            else:
+                mode = JobType.migrate
+        super().__init__(connection, table, mode=mode)
+        self.update_node_config({
+            "syncIndex": False,
+            "enableSaveDeleteData": False,
+            "shardCollection": False,
+            "hashSplit": False,
+            "maxSplit": 32
+        })
+
+        if self.mode == JobType.sync:
+            self.config_type = node_config_sync
+            _ = self._getTableId(table)  # to set self.primary_key, don't delete this line
+            self.setting.update({
+                "tableName": table,
+            })
+
+    def keepData(self):
+        self.setting.update({
+            "existDataProcessMode": "keepData"
+        })
+    def keep_data(self):
+        self.setting.update({
+            "existDataProcessMode": "keepData"
+        })
+
+    def cleanData(self):
+        self.setting.update({
+            "existDataProcessMode": "removeData"
+        })
+    def clean_data(self):
+        self.setting.update({
+            "existDataProcessMode": "removeData"
+        })
+    def clean_table(self):
+        self.setting.update({
+            "existDataProcessMode": "dropTable"
+        })
+
+    def set_cdc_threads(self, t=1):
+        if t > 1:
+            self.setting.update({
+                "cdcConcurrent": True
+            })
+        else:
+            self.setting.update({
+                "cdcConcurrent": False
+            })
+
+
+        self.setting.update({
+            "cdcConcurrentWriteNum": t,
+        })
+        return self
+    def set_init_thread(self, t):
+        if t > 1:
+            self.setting.update({
+                "initialConcurrent": True
+            })
+        else:
+            self.setting.update({
+                "initialConcurrent": False
+            })
+        self.setting.update({
+            "initialConcurrentWriteNum": t,
+        })
+        return self
+
+    def set_write_batch(self, batch=500):
+        self.setting.update({
+            "writeBatchSize": batch
+        })
+        return self
+
+    def set_write_wait(self, t=500):
+        self.setting.update({
+            "writeBatchWaitMs": t
+        })
+        return self
+

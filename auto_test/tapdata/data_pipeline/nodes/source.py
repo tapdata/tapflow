@@ -1,0 +1,115 @@
+from tapshell.tapdata_cli.help_decorator import help_decorate
+
+from auto_test.tapdata.data_pipeline.base_node import BaseNode, node_config, node_config_sync
+
+
+@help_decorate("source is start of a pipeline", "source = Source($Datasource, $table)")
+class Source(BaseNode):
+    def __getattr__(self, name):
+        return Source(self.connection, table=name, mode="sync")
+
+    def __init__(self, connection, table=None, table_re=None, mode=None):
+        if mode is None:
+            if table is not None:
+                mode = "sync"
+            else:
+                mode = "migrate"
+        super().__init__(connection, table, table_re, mode=mode)
+        self.update_node_config({})
+        if self.mode == "migrate":
+            self.config_type = node_config
+            if table is not None:
+                self.setting.update({
+                    "tableNames": self.table,
+                    "migrateTableSelectType": "custom"
+                })
+            else:
+                if table_re is not None:
+                    self.setting.update({
+                        "tableExpression": table_re,
+                        "migrateTableSelectType": "expression"
+                    })
+                else:
+                    self.setting.update({
+                        "tableExpression": ".*",
+                        "migrateTableSelectType": "expression"
+                    })
+
+        else:
+            self.config_type = node_config_sync
+            _ = self._getTableId(table)  # to set self.primary_key, don't delete this line
+            self.setting.update({
+                "tableName": table,
+            })
+        if str(self.databaseType).lower() == "csv":
+            self.update_node_config({
+                "dataStartLine": 2,
+                "fileEncoding": "UTF-8",
+                "headerLine": 1,
+                "includeRegString": "*.csv",
+                "justString": False,
+                "lineEnd": "0x",
+                "lineEndType": "\\n",
+                "modelName": table,
+                "offStandard": False,
+                "quoteChar": '\\"',
+                "recursive": True,
+                "separator": "0x",
+                "separatorType": ",",
+                "enableSaveDeleteData": False,
+                "fileNameExpression": "tap.csv",
+                "writeFilePath": "./",
+            })
+
+    def enableDDL(self):
+        self.setting.update({
+            "enableDDL": True,
+            "ddlConfiguration": "SYNCHRONIZATION"
+        })
+        return self
+
+    def enablePreImage(self):
+        self.update_node_config({
+            "enableFillingModifiedData": False,
+            "preImage": True,
+            "skipDeletedEventsOnFilling": True,
+        })
+        return self
+
+    def disable_filling_modified_data(self):
+        self.update_node_config({
+            "enableFillingModifiedData": False,
+            "noCursorTimeout": False
+        })
+        return self
+
+    def disableDDL(self):
+        self.setting.update({
+            "enableDDL": False
+        })
+        return self
+
+    def increase_read_size(self, size: int):
+        self.setting.update({
+            "increaseReadSize": size
+        })
+        return self
+
+    def initial_read_size(self, size: int):
+        self.setting.update({
+            "readBatchSize": size
+        })
+        return self
+
+    def initial_hash_read_size(self, size: int):
+        self.update_node_config({
+            "hashSplit": True,
+            "maxSplit": size,
+        })
+        return self
+
+    def initial_read_threads(self, size: int):
+        self.update_node_config({
+            "batchReadThreadSize": size
+        })
+        return self

@@ -1,0 +1,5 @@
+!ci.config.yaml
+!config.yaml
+!oss.config.yaml
+*config.yaml
+/benchmarksql/run/my_result.*

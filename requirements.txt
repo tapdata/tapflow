@@ -1,0 +1,4 @@
+requests
+pyyaml
+websockets
+bson
