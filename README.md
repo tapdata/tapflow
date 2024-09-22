@@ -22,29 +22,29 @@ sk: secret key
 ### 查看基本连接与表信息
 1. 列出所有数据源
 `show dbs`
-![](./images/show_db.png)
+![](./docs/images/show_db.png)
 
 2. 切换到某个数据源, 并列出表
 `use $db` 后, `show tables`
-![](./images/show_table.png)
+![](./docs/images/show_table.png)
 
 3. 探索表结构与表数据
 `desc $table` 查看表结构, `peek $table` 预览表数据
-![](./images/desc_table.png)
+![](./docs/images/desc_table.png)
 
 ### 创建数据源
 1. 创建 MongoDB 数据源
 ```
 m = DataSource("mongodb", name="mdb");
 m.uri("127.0.0.1:27017").db("source").username("root").password("Gotapd8!").type("source").props("authSource=admin");
-m.save()
+m.save();
 ```
 
 2. 创建 MySQL 数据源
 ```
 m = DataSource("mysql", name="sql");
-m.host("127.0.0.1:3306").db("source").username("root").password("Gotapd8!");
-m.save()
+m.host("127.0.0.1").port(3306).db("source").username("root").password("Gotapd8!");
+m.save();
 ```
 
 ### 配置与运行建模任务

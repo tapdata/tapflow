@@ -26,6 +26,7 @@ if [[ ! -d ".venv" ]]; then
     pip3 install -r requirements.txt
     source .venv/bin/active
 fi
+source .venv/bin/active
 
 mkdir -p .cli
 
