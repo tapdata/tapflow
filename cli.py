@@ -12,24 +12,19 @@ from IPython.core.magic import Magics, magics_class, line_magic
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 from platform import python_version
 
-sys.path.append("tapshell")
+from lib.utils.log import logger
+from cli.help_decorator import help_decorate, show_help
 
-from tapshell.tapdata_cli.log import logger
-from tapshell.tapdata_cli.help_decorator import help_decorate, show_help
+from lib.utils.ws import gen_ws_uri_with_id
+from lib.connections.connection import get_table_fields
+from lib.login import login_with_access_code
+from lib.system.ext_storage import set_default_external_storage_id
+from lib.request import req
+from lib.global_vars import client_cache, system_server_conf
 
-from auto_test.tapdata.utils.ws import gen_ws_uri_with_id
-from auto_test.tapdata.connections.connection import get_table_fields
-from auto_test.tapdata.login import login_with_access_code
-from auto_test.tapdata.system.ext_storage import set_default_external_storage_id
-from auto_test.init.global_vars import req, client_cache
-from auto_test.init.global_vars import system_server_conf
-
-from auto_test.tapdata.login import login_with_access_code, login_with_ak_sk
-from auto_test.tapdata.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
+from lib.login import login_with_access_code, login_with_ak_sk
+from lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
                                          show_connections, show_connectors, show_dbs, op_object_command_class, show_agents)
-
-from auto_test.init.env import *
-
 
 if not python_version().startswith("3"):
     print("python version must be 3.x, please install python3 before using tapdata cli")
@@ -543,7 +538,7 @@ def main():
     ip.register_magics(show_command)
     ip.register_magics(op_object_command)
     ip.register_magics(ApiCommand)
-    ini_config = "config.ini"
+    ini_config = "etc/config.ini"
     if os.path.exists(ini_config):
         import configparser
         config = configparser.ConfigParser()

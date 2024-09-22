@@ -1,11 +1,11 @@
 # TapFlow 命令行客户端使用文档
 
 ## 安装
-1. 自行安装 Python3, pip3, and ipython3 
+1. 自行安装 python3, pip3, and ipython3 
 2. 运行 `pip3 install -r requirements.txt`, 安装依赖
 
 ## 配置
-1. 编辑 config.ini, 填写地址与鉴权信息, 其中:
+1. 编辑 etc/config.ini, 填写地址与鉴权信息, 其中:
 
 如果访问的是企业版, 请填写两个信息:
 server: 企业版地址, 例如: 192.168.106.1:13030
@@ -17,7 +17,6 @@ sk: secret key
 
 ## 运行
 1. 在完成安装后, 运行命令 `bash cli.sh` 即可打开命令行客户端
-
 
 ## 命令行模式使用手册
 ### 查看基本连接与表信息
@@ -72,4 +71,4 @@ order.start()
 
 ## 类库模式使用说明
 1. 引入依赖库
-`from auto_test.init.env import *`
+`from tapcli.lib import *`
