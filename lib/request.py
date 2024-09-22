@@ -93,6 +93,10 @@ class RequestSession(requests.Session):
         request.params = params
         return request
 
+    def response_hook(self, r, *args, **kwargs):
+        print(f"Response status code: {r.status_code}")
+        return r
+
     def __init__(self, server: str):
         self.server = server
         if "https" in server:
@@ -101,8 +105,41 @@ class RequestSession(requests.Session):
             self.base_url = f"http://{server}/api"
         self.params = {}
         super(RequestSession, self).__init__()
+        self.hooks['response'] = [self.response_hook]
         self.mode = "op"
 
+    def get(self, url, **kwargs):
+        try:
+            return super().get(url, **kwargs)
+        except Exception as e:
+            if "Connection reset by peer" in str(e):
+                logger.warn("{}", "Connection reset by peer")
+                raise Exception("Connection reset by peer")
+
+    def post(self, url, **kwargs):
+        try:
+            return super().post(url, **kwargs)
+        except Exception as e:
+            if "Connection reset by peer" in str(e):
+                logger.warn("{}", "Connection reset by peer")
+                raise Exception("Connection reset by peer")
+
+    def put(self, url, **kwargs):
+        try:
+            return super.put(url, **kwargs)
+        except Exception as e:
+            if "Connection reset by peer" in str(e):
+                logger.warn("{}", "Connection reset by peer")
+                raise Exception("Connection reset by peer")
+            pass
+    def delete(self, url, **kwargs):
+        try:
+            return super.delete(url, **kwargs)
+        except Exception as e:
+            if "Connection reset by peer" in str(e):
+                logger.warn("{}", "Connection reset by peer")
+                raise Exception("Connection reset by peer")
+            pass
 
     def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
         if self.mode == "cloud":

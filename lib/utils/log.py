@@ -35,6 +35,12 @@ class Logger:
         self.fname_fd = None
         self.fname_no_color_fd = None
 
+    def set_log_file(self, filename):
+        filename_no_color_fd = filename+".no_color"
+        self.fname_fd = open(filename, mode='a+')
+        self.fname_no_color_fd = open(filename_no_color_fd, mode='a+')
+
+
     def _header(self, logger_header=False):
         if logger_header:
             return "\033[1;34m" + self.name + "" + "\033[0m" + \
@@ -85,11 +91,13 @@ class Logger:
                 self.max_len = 180
             if l < self.max_len:
                 tail = " " * (self.max_len - l)
-            self.fname_fd.write(self._header(logger_header) + msg + tail + "\n")
-            self.fname_fd.flush()
+            if self.fname_fd is not None:
+                self.fname_fd.write(self._header(logger_header) + msg + tail + "\n")
+                self.fname_fd.flush()
         except Exception as e:
-            self.fname_fd.write(str(e) + "\n")
-            self.fname_fd.flush()
+            if self.fname_fd is not None:
+                self.fname_fd.write(str(e) + "\n")
+                self.fname_fd.flush()
         finally:
             if locked:
                 try:
@@ -121,8 +129,9 @@ class Logger:
                 if len(extra_msg) > 0:
                     msg += " " + str(extra_msg)
                     msg_no_color += " " + str(extra_msg)
-            self.fname_no_color_fd.write(msg_no_color + "\n")
-            self.fname_no_color_fd.flush()
+            if self.fname_no_color_fd is not None:
+                self.fname_no_color_fd.write(msg_no_color + "\n")
+                self.fname_no_color_fd.flush()
             return msg
         except Exception as e:
             return str(args)
