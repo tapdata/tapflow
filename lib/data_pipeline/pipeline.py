@@ -372,11 +372,6 @@ class Pipeline:
     def processor(self, script=""):
         return self.js(script)
 
-    def agg(self, name="agg", method="", key="", groupKeys=[], pk=[], ttl=3600):
-        f = Agg(name, method, key, groupKeys, pk, ttl)
-
-        return self._common_stage(f)
-
     def get(self):
         job = Job(name=self.name, id=self.id)
         if job.id is not None:

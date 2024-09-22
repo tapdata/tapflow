@@ -9,7 +9,7 @@ from cli.help_decorator import help_decorate, show_help
 
 from lib.connections.connection import get_table_fields
 from lib.request import req
-from lib.global_vars import client_cache, system_server_conf
+from lib.cache import client_cache, system_server_conf
 
 from lib.login import login_with_access_code, login_with_ak_sk
 from lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
@@ -37,7 +37,7 @@ class global_help(Magics):
     def h(self, t=None):
         if not t:
             for k, v in help_args.items():
-                logger.log("{}: {}", k, _l[v], "info", "debug")
+                logger.log("{}: {}", k, v, "info", "debug")
             return
         try:
             show_help(t)

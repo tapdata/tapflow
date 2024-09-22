@@ -3,7 +3,7 @@ import urllib
 import uuid
 
 from lib.request import req
-from lib.utils import logger
+from lib.utils.log import logger
 
 
 any_table_verify_body = {

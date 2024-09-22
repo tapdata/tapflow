@@ -1,6 +1,5 @@
 import uuid
 
-
 class BaseObj:
     def __init__(self):
         self.source = None

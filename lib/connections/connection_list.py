@@ -1,9 +1,6 @@
 import json
 
-import requests
-from lib.login import Credentials
 from lib.request import req
-
 
 class ConnectionList:
     def __init__(self):

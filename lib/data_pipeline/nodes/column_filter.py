@@ -1,4 +1,3 @@
-
 import uuid
 
 from lib.data_pipeline.nodes.filter import Filter

@@ -94,6 +94,7 @@ class RequestSession(requests.Session):
         return request
 
     def __init__(self, server: str):
+        self.server = server
         if "https" in server:
             self.base_url = f"{server}"
         else:

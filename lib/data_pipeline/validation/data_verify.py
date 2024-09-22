@@ -5,7 +5,7 @@ import urllib
 
 from lib.utils import log as logger
 from lib.request import req
-from lib.global_vars import req, system_server_conf
+from lib.cache import system_server_conf
 
 
 def get_table_pk(connection_id, table_name):

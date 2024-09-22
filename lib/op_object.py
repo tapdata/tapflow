@@ -6,7 +6,7 @@ from cli.help_decorator import pad
 from lib.data_pipeline.data_source import DataSource
 from lib.data_services.api import Api
 from lib.data_pipeline.job import Job
-from lib.global_vars import client_cache
+from lib.cache import client_cache
 from lib.request import req
 
 # object that can be operated by command
@@ -357,7 +357,7 @@ def show_apis(quiet=False):
                 pad(data[i]["tableName"], 20),
                 pad(data[i]["basePath"], 20),
                 pad(data[i]["status"], 10),
-                "http://" + server + "#/apiDocAndTest?id=" + data[i]["basePath"] + "_v1",
+                "http://" + req.server + "#/apiDocAndTest?id=" + data[i]["basePath"] + "_v1",
                 "notice", "info", "info", "info" if data[i]["status"] == "active" else "warn", "notice"
             )
 
@@ -378,8 +378,8 @@ class QuickDataSourceMigrateJob:
     def syncTo(self, target, table=None, prefix="", suffix=""):
         if table is None:
             table = ["_"]
-        from auto_test.tapdata.data_pipeline.pipeline import Pipeline
-        from auto_test.tapdata.data_pipeline.nodes.source import Source
+        from lib.data_pipeline.pipeline import Pipeline
+        from lib.data_pipeline.nodes.source import Source
         p = Pipeline(self.__db__ + "_sync_to_" + target.__db__)
         source = Source(self.__db__, table=table)
         p.readFrom(source).writeTo(target.__db__, prefix=prefix, suffix=suffix)
@@ -419,7 +419,6 @@ class QuickDataSourceMigrateJob:
         if ds is not None:
             if ds.delete():
                 pass
-                #logger.finfo("delete datasource {} success", self.__db__)
             else:
                 logger.fwarn("delete datasource {} fail, maybe some job is still use it", self.__db__)
             return

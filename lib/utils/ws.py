@@ -5,7 +5,6 @@ from lib.login import Credentials
 
 
 def gen_ws_uuid():
-
     def replace_function(c):
         r = random.randint(0, 15)  # Generate a random number between 0 and 15
         v = r if c == 'x' else (r & 0x3) | 0x8

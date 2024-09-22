@@ -10,7 +10,7 @@ from lib.data_pipeline.job import JobType
 from lib.op_object import QuickDataSourceMigrateJob
 from lib.op_object import get_index_type, match_line
 from lib.connections.connection import Connection, show_connections, show_tables
-from lib.global_vars import client_cache
+from lib.cache import client_cache
 from lib.request import req
 
 

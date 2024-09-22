@@ -2,12 +2,10 @@ import requests
 
 from lib.request import set_req
 from lib.utils.log import logger
+from lib.cache import system_server_conf
 
 def login_with_access_code(server, access_code):
-    from lib import global_vars
     req = set_req(server)
-
-    from lib.global_vars import system_server_conf
     api = "http://" + server + "/api"
     res = req.post("/users/generatetoken", json={"accesscode": access_code})
     if res.status_code != 200:
@@ -43,8 +41,6 @@ def login_with_access_code(server, access_code):
         "auth_param": "?access_token=" + token
     }
     system_server_conf.update(conf)
-    global_vars.req = req
-    #logger.notice("please type {} get global help", "h")
     return True
 
 def login_with_ak_sk(ak, sk):
@@ -53,6 +49,9 @@ def login_with_ak_sk(ak, sk):
     req = set_req(server)
     req.set_ak_sk(ak, sk)
     return True
+
+def login_with_username(username, password):
+    pass
 
 
 class Credentials:
@@ -66,7 +65,7 @@ class Credentials:
     __auth_param = None
 
     def __init__(self):
-        from lib.global_vars import system_server_conf
+        from lib.cache import system_server_conf
         # use user_id to judge login or not, and only set the value once when login.
         if self.__user_id is None:
             self.__ws_uri = system_server_conf.get("ws_uri")

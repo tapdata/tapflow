@@ -3,7 +3,7 @@ import time
 from enum import Enum
 
 from lib.request import req
-from lib.global_vars import client_cache, system_server_conf
+from lib.cache import client_cache, system_server_conf
 
 from cli.help_decorator import help_decorate, pad
 from lib.utils import log as logger
@@ -80,7 +80,7 @@ class Job:
                 self._get()
                 return
             else:
-                from auto_test.tapdata.op_object import get_obj
+                from lib.op_object import get_obj
                 obj = get_obj("job", id)
                 self.id = obj.id
                 self._get()

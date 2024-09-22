@@ -7,10 +7,13 @@ import websockets
 from cli.help_decorator import help_decorate
 from lib.utils.log import logger
 
-from lib.global_vars import global_lock, client_cache, system_server_conf
+from lib.cache import client_cache, system_server_conf
 from lib.op_object import show_tables, get_index_type, match_line, show_connections
 from lib.utils.ws import gen_ws_uri_with_id
 from lib.request import req
+
+global_lock = threading.Lock()
+global_load_schema_q = {}
 
 @help_decorate("Enum, used to describe a connection readable or writeable")
 class ConnectionType:
@@ -171,7 +174,6 @@ class Connection:
 
     def load_schema(self, quiet=True):
         # global global_load_schema_q
-        from auto_test.init.global_vars import global_load_schema_q
         global_lock.acquire(timeout=60)
         if self.id not in global_load_schema_q:
             global_load_schema_q[self.id] = threading.Lock()

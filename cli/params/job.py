@@ -9,7 +9,7 @@ rules interpretation:
     default - default value
 """
 import json
-from tapshell.tapdata_cli.check import ConfigCheck
+from cli.check import ConfigCheck
 
 
 type = "type"
@@ -311,11 +311,3 @@ node_config_sync = {
     "sink": NODE_TARGET_SYNC,
     "merge": MERGE_NODE,
 }
-
-
-if __name__ == '__main__':
-    config = {
-        "type": "initial_sync",
-    }
-    resp = ConfigCheck(config, MIGRATE).checked_config
-    print(json.dumps(resp, indent=4))

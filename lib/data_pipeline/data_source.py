@@ -10,7 +10,7 @@ from cli.help_decorator import help_decorate
 from cli.request import DataSourceApi
 from cli.params.datasource import pdk_config, DATASOURCE_CONFIG
 
-from lib.global_vars import client_cache
+from lib.cache import client_cache
 from lib.system.ext_storage import get_default_external_storage_id
 
 
