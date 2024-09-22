@@ -1,13 +1,5 @@
-import sys
-
-sys.path.append("tapshell")
-
-import argparse
 import json
-import shlex
 import sys
-import traceback
-import yaml
 from IPython.core.magic import Magics, magics_class, line_magic
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 from platform import python_version
@@ -15,10 +7,7 @@ from platform import python_version
 from lib.utils.log import logger
 from cli.help_decorator import help_decorate, show_help
 
-from lib.utils.ws import gen_ws_uri_with_id
 from lib.connections.connection import get_table_fields
-from lib.login import login_with_access_code
-from lib.system.ext_storage import set_default_external_storage_id
 from lib.request import req
 from lib.global_vars import client_cache, system_server_conf
 
@@ -35,20 +24,10 @@ import os
 os.environ['PYTHONSTARTUP'] = '>>>'
 os.environ["PROJECT_PATH"] = os.sep.join([os.path.dirname(os.path.abspath(__file__)), ".."])
 
-# from tapshell.tapdata_cli.config_parse import config  # need remove
-
-# server = config["backend.server"]
-# access_code = config["backend.access_code"]
-
-
 help_args = {
     "command": "command_help",
     "lib": "lib_help",
 }
-
-
-# some static utils, simple and no direct relation with this tool
-
 
 @magics_class
 class global_help(Magics):
@@ -351,12 +330,6 @@ class show_command(Magics):
             eval("show_dbs('" + line + "')")
 
     @line_magic
-    # load a python file, and exec it
-    @help_decorate("[System] load a script file, and exec it", "load script.py")
-    def load(self, line):
-        pass
-
-    @line_magic
     @help_decorate("[Datasource] switch datasource context", "use $object_name")
     def use(self, line):
         if line == "":
@@ -366,8 +339,7 @@ class show_command(Magics):
         connection_id = connection["id"]
         connection_name = connection["name"]
         client_cache["connection"] = connection_id
-
-        #logger.info("datasource switch to: {}", connection_name)
+        logger.info("datasource switch to: {}", connection_name)
 
     @line_magic
     @help_decorate("[Table] peek 5 table content for preview", "peek $table_name")
@@ -483,58 +455,11 @@ def desc_table(line, quiet=True):
     if not quiet:
         print(json.dumps(display_fields, indent=2))
 
-def login_with_password(server, username, password):
-    pass
-
-
-@magics_class
-# system magics_class
-class system_command(Magics):
-    @line_magic
-    @help_decorate("[System] login system", "login -s server_address -u username -p password `OR` login -a access_code")
-    def login(self, line):
-        if not line:
-            logger.warn("args can not be empty for login")
-            return
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-s", "--server", type=str)
-        parser.add_argument("-u", "--username", type=str)
-        parser.add_argument("-p", "--password", type=str)
-        parser.add_argument("-a", "--access_code", type=str)
-        args = parser.parse_args(shlex.split(line))
-        if not args.server:
-            args.server = "127.0.0.1:3030"
-        if args.access_code:
-            login_with_access_code(args.server, args.access_code)
-            return
-        login_with_password(args.server.args.username, args.password)
-
-    @line_magic
-    @help_decorate("[System] logout system", "logout")
-    def logout(self, line):
-        system_server_conf["access_code"] = ""
-        system_server_conf["token"] = ""
-        system_server_conf["cookies"] = {}
-        #logger.info(_l["logout_success"])
-
-    @line_magic
-    @help_decorate("[System] change system lang", "lang zh")
-    def lang(self, l="en"):
-        global _lang, _l
-        if not l:
-            return
-        if i18n.get(l) is None:
-            logger.warn("lang {} not support, will use lang {}", l, _lang, "warn", "notice")
-            return
-        _lang = l
-        _l = i18n[_lang]
-
 
 def main():
     # ipython settings
     ip = TerminalInteractiveShell.instance()
     ip.register_magics(global_help)
-    ip.register_magics(system_command)
     ip.register_magics(show_command)
     ip.register_magics(op_object_command)
     ip.register_magics(ApiCommand)
@@ -559,10 +484,6 @@ def main():
         sys.exit(-1)
     show_connections(quiet=True)
     show_connectors(quiet=True)
-
-
-def init(custom_server, custom_access_code):
-    pass
 
 
 if __name__ == "__main__":

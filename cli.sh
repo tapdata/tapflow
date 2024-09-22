@@ -23,10 +23,10 @@ warn() {
 
 if [[ ! -d ".venv" ]]; then
     python3 -m venv .venv
+    source .venv/bin/activate
     pip3 install -r requirements.txt
-    source .venv/bin/active
 fi
-source .venv/bin/active
+source .venv/bin/activate
 
 mkdir -p .cli
 
