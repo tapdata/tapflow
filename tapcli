@@ -1,8 +1,9 @@
 #!/bin/bash
 basepath=$(cd `dirname $0`; pwd)
-if [[ ! -d $basepath/cli || -d $basepath/etc || ! -f $basepath/cli ]]; then
+if [[ ! -d "$basepath/cli" || ! -d "$basepath/etc" || ! -d "$basepath/lib" ]]; then
     basepath="$VIRTUAL_ENV/lib/python3.11/site-packages/"
 fi
+echo $basepath
 
 # 设置环境变量, 兼容 macos 和 linux
 export LC_ALL="en_US.utf8" 2>/dev/null

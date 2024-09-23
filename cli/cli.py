@@ -25,6 +25,7 @@ from lib.data_pipeline.nodes.sink import Sink
 from lib.data_pipeline.pipeline import Pipeline, MView
 
 from lib.login import login_with_access_code, login_with_ak_sk
+from lib.op_object import *
 from lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
                            show_connections, show_connectors, op_object_command_class, show_agents, show_dbs, show_jobs)
 
@@ -310,6 +311,9 @@ class show_command(Magics):
         if not line:
             pass
         try:
+            if "dbs" == line:
+                globals().update(eval("show_dbs()"))
+                return
             eval("show_" + line + "(quiet=False)")
         except Exception as e:
             eval("show_dbs('" + line + "')")
@@ -468,7 +472,7 @@ def main():
                 login_with_access_code(server, access_token)
     else:
         sys.exit(-1)
-    show_connections(quiet=True)
+    globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
 
 if __name__ == "__main__":

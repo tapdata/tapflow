@@ -9,6 +9,68 @@ from lib.data_pipeline.job import Job
 from lib.cache import client_cache
 from lib.request import req
 
+# a quick datasource migrate job create direct use db name
+# you can use A.syncTo(B) create a migrate job very fast
+# QuickDataSourceMigrateJon is called by show_connections() via exec() dynamically, they must be in the same file.
+class QuickDataSourceMigrateJob:
+    def __init__(self):
+        self.__db__ = ""
+        self.__p__ = None
+
+    def __getattr__(self, key):
+        if key in dir(self):
+            return getattr(self, key)
+        return self.__db__ + "." + key
+
+    def syncTo(self, target, table=None, prefix="", suffix=""):
+        if table is None:
+            table = ["_"]
+        from lib.data_pipeline.pipeline import Pipeline
+        from lib.data_pipeline.nodes.source import Source
+        p = Pipeline(self.__db__ + "_sync_to_" + target.__db__)
+        source = Source(self.__db__, table=table)
+        p.readFrom(source).writeTo(target.__db__, prefix=prefix, suffix=suffix)
+        self.__p__ = p
+        return self.__p__
+
+    def start(self):
+        if self.__p__ is None:
+            #logger.fwarn("no sync job create, can not start...")
+            return self.__db__ + "." + "start"
+        self.__p__.start()
+        return self.__p__
+
+    def status(self):
+        if self.__p__ is None:
+            logger.fwarn("no sync job create, can not status...")
+            return self.__db__ + "." + "status"
+        self.__p__.status()
+        return self.__p__
+
+    def monitor(self):
+        if self.__p__ is None:
+            logger.fwarn("no sync job create, can not monitor...")
+            return self.__db__ + "." + "monitor"
+        self.__p__.monitor()
+        return self.__p__
+
+    def stop(self):
+        if self.__p__ is None:
+            logger.fwarn("no sync job create, can not stop...")
+            return self.__db__ + "." + "stop"
+        self.__p__.stop()
+        return self.__p__
+
+    def delete(self):
+        ds = get_obj("datasource", self.__db__)
+        if ds is not None:
+            if ds.delete():
+                pass
+            else:
+                logger.fwarn("delete datasource {} fail, maybe some job is still use it", self.__db__)
+            return
+        logger.fwarn("datasource {} not found", self.__db__)
+
 # object that can be operated by command
 op_object_command_class = {
     "job": {
@@ -231,6 +293,7 @@ def show_connections(f=None, quiet=False):
             pad("name", 35),
             "debug", "debug", "debug", "debug"
         )
+    local_vars = {}
     for i in range(len(data)):
         try:
             if "name" not in data[i]:
@@ -258,6 +321,7 @@ def show_connections(f=None, quiet=False):
                 pad(name, 35),
                 "debug", "info" if status == "ready" else "warn", "notice", "debug"
             )
+    return globals()
 
 
 # show all connectors
@@ -361,66 +425,4 @@ def show_apis(quiet=False):
                 "notice", "info", "info", "info" if data[i]["status"] == "active" else "warn", "notice"
             )
 
-
-# a quick datasource migrate job create direct use db name
-# you can use A.syncTo(B) create a migrate job very fast
-# QuickDataSourceMigrateJon is called by show_connections() via exec() dynamically, they must be in the same file.
-class QuickDataSourceMigrateJob:
-    def __init__(self):
-        self.__db__ = ""
-        self.__p__ = None
-
-    def __getattr__(self, key):
-        if key in dir(self):
-            return getattr(self, key)
-        return self.__db__ + "." + key
-
-    def syncTo(self, target, table=None, prefix="", suffix=""):
-        if table is None:
-            table = ["_"]
-        from lib.data_pipeline.pipeline import Pipeline
-        from lib.data_pipeline.nodes.source import Source
-        p = Pipeline(self.__db__ + "_sync_to_" + target.__db__)
-        source = Source(self.__db__, table=table)
-        p.readFrom(source).writeTo(target.__db__, prefix=prefix, suffix=suffix)
-        self.__p__ = p
-        return self.__p__
-
-    def start(self):
-        if self.__p__ is None:
-            #logger.fwarn("no sync job create, can not start...")
-            return self.__db__ + "." + "start"
-        self.__p__.start()
-        return self.__p__
-
-    def status(self):
-        if self.__p__ is None:
-            logger.fwarn("no sync job create, can not status...")
-            return self.__db__ + "." + "status"
-        self.__p__.status()
-        return self.__p__
-
-    def monitor(self):
-        if self.__p__ is None:
-            logger.fwarn("no sync job create, can not monitor...")
-            return self.__db__ + "." + "monitor"
-        self.__p__.monitor()
-        return self.__p__
-
-    def stop(self):
-        if self.__p__ is None:
-            logger.fwarn("no sync job create, can not stop...")
-            return self.__db__ + "." + "stop"
-        self.__p__.stop()
-        return self.__p__
-
-    def delete(self):
-        ds = get_obj("datasource", self.__db__)
-        if ds is not None:
-            if ds.delete():
-                pass
-            else:
-                logger.fwarn("delete datasource {} fail, maybe some job is still use it", self.__db__)
-            return
-        logger.fwarn("datasource {} not found", self.__db__)
 
