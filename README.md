@@ -36,7 +36,7 @@ sk: secret key
 1. 创建 MongoDB 数据源
 ```
 m = DataSource("mongodb", name="mdb");
-m.uri("127.0.0.1:27017").db("source").username("root").password("Gotapd8!").type("source").props("authSource=admin");
+m.host("127.0.0.1:27017").db("source").username("root").password("Gotapd8!").type("source").props("authSource=admin");
 m.save();
 ```
 

@@ -5,7 +5,7 @@ import datetime
 from typing import Iterable, Tuple, Sequence
 
 from cli.help_decorator import help_decorate
-from cli.request import InspectApi
+from lib.request import InspectApi
 from lib.utils.log import logger
 from cli.params.job import job_config
 

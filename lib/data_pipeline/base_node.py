@@ -3,7 +3,7 @@ import json
 
 from cli.help_decorator import help_decorate
 from cli.params.job import node_config, node_config_sync
-from lib.utils import log as logger
+from lib.utils.log import logger
 from cli.check import ConfigCheck
 
 from lib.data_pipeline.job import JobType

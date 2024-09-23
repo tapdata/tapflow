@@ -6,8 +6,8 @@ from lib.request import req
 from lib.cache import client_cache, system_server_conf
 
 from cli.help_decorator import help_decorate, pad
-from lib.utils import log as logger
-from cli.request import TaskApi
+from lib.utils.log import logger
+from lib.request import TaskApi
 from cli.graph import Node, Graph
 
 

@@ -3,7 +3,7 @@ import uuid
 import time
 import urllib
 
-from lib.utils import log as logger
+from lib.utils.log import logger
 from lib.request import req
 from lib.cache import system_server_conf
 

@@ -1,13 +1,12 @@
-
 import copy
 import json
 import time
 import traceback
 
-from lib.utils import log as logger
+from lib.utils.log import logger
 from cli.check import ConfigCheck
 from cli.help_decorator import help_decorate
-from cli.request import DataSourceApi
+from lib.request import DataSourceApi
 from cli.params.datasource import pdk_config, DATASOURCE_CONFIG
 
 from lib.cache import client_cache
@@ -36,7 +35,7 @@ class DataSource:
         # name is not provide
         name = connector if connector != "" and name is None else name
         # if name is already exists
-        from auto_test.tapdata.op_object import get_obj
+        from lib.op_object import get_obj
         obj = get_obj("datasource", name)
         if obj is not None:
             self.id = obj.id
@@ -197,12 +196,13 @@ class DataSource:
             data = DataSourceApi().patch(url_after="/"+data.get("id"), data=data)
         else:
             data = DataSourceApi().post(data)
+
         from lib.op_object import show_connections
         show_connections(quiet=True)
         if data["code"] == "ok":
             self.id = data["data"]["id"]
             self.setting = DataSource.get(self.id)
-            logger.finfo("save {} Connection success, will load schame", self.id)
+            logger.finfo("save {} Connection success, will load schema", self.id)
             self.validate(quiet=False, load_schema=True)
             return True
         else:

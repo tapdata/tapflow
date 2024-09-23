@@ -3,7 +3,7 @@ import requests
 from lib.utils.log import logger
 
 from lib.data_pipeline.base_obj import BaseObj
-from lib.global_vars import system_server_conf
+from lib.cache import system_server_conf
 from lib.request import req
 
 

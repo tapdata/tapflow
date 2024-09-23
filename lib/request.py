@@ -94,7 +94,6 @@ class RequestSession(requests.Session):
         return request
 
     def response_hook(self, r, *args, **kwargs):
-        print(f"Response status code: {r.status_code}")
         return r
 
     def __init__(self, server: str):
@@ -158,7 +157,7 @@ class RequestSession(requests.Session):
         self.mode = "cloud"
 
 
-req = RequestSession("http://127.0.0.1:3030")
+req = RequestSession("127.0.0.1:3030")
 def set_req(server):
     global req
     if req is None:
