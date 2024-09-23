@@ -312,7 +312,7 @@ class show_command(Magics):
             pass
         try:
             if "dbs" == line:
-                globals().update(eval("show_dbs()"))
+                globals().update(eval("show_dbs(quiet=False)"))
                 return
             eval("show_" + line + "(quiet=False)")
         except Exception as e:
