@@ -1,0 +1,64 @@
+#!/bin/bash
+basepath=$(cd `dirname $0`; pwd)
+if [[ ! -d $basepath/cli || -d $basepath/etc || ! -f $basepath/cli ]]; then
+    basepath="$VIRTUAL_ENV/lib/python3.11/site-packages/"
+fi
+
+# 设置环境变量, 兼容 macos 和 linux
+export LC_ALL="en_US.utf8" 2>/dev/null
+error() {
+    echo -e `date`"\033[31m $1 \033[0m"
+    exit 1
+}
+
+info() {
+    echo -e `date`"\033[36m $1 \033[0m"
+}
+
+notice() {
+    echo -e `date`"\033[32m $1 \033[0m"
+}
+
+warn() {
+    echo -e `date`"\033[33m $1 \033[0m"
+}
+
+if [[ ! -d ".venv" ]]; then
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip3 install -r requirements.txt
+fi
+source .venv/bin/activate
+
+mkdir -p .cli
+
+which ipython3 &> /dev/null
+if [[ $? -ne 0 ]]; then
+    error "NO ipython3 find, please run pip3 install -r requirements.txt before use tapcli"
+fi
+
+server=`cat etc/config.ini |grep "server"|awk -F ' ' '{print $3}'`
+ak=`cat etc/config.ini |grep "ak"|grep -v \#`
+if [[ $? -eq 0 ]]; then
+    info "connecting remote server: https://cloud.tapdata.net ..."
+else
+    info "connecting remote server: $server ..."
+fi
+
+info "Welcome to TapData Live Data Platform, Enjoy Your Data Trip !"
+
+cat <<EOF > .cli/ipython_config.py
+c = get_config()  #noqa
+from IPython.terminal.prompts import Prompts, Token
+
+class NoPrompt(Prompts):
+    def in_prompt_tokens(self, cli=None):
+        return [(Token.Prompt, 'TapCli > ')]
+
+    def out_prompt_tokens(self):
+        return [(Token.OutPrompt, 'TapCli > ')]
+
+c.TerminalInteractiveShell.prompts_class = NoPrompt
+EOF
+
+ipython3 --no-banner --profile-dir=.cli --profile=ipython_config -i $basepath/cli/cli.py

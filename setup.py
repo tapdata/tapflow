@@ -7,11 +7,7 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=required,
-    entry_points={
-        'console_scripts': [
-            'tapcli=cli.cli:main',
-        ],
-    },
+    scripts=['tapcli'],
     include_package_data=True,
     package_data={
         '': ['*.md', '*.txt', '*.sh', "*.py", "*.ini"],

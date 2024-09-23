@@ -471,12 +471,5 @@ def main():
     show_connections(quiet=True)
     show_connectors(quiet=True)
 
-import subprocess
-import os
-def start_cli():
-    basepath = os.path.dirname(os.path.abspath(__file__))
-    command = "bash cli.sh"
-
-
 if __name__ == "__main__":
     main()
