@@ -2,7 +2,7 @@ import uuid
 import json
 
 from lib.help_decorator import help_decorate
-from lib.params import node_config, node_config_sync
+from lib.params.job import node_config, node_config_sync
 from lib.utils.log import logger
 from lib.check import ConfigCheck
 
