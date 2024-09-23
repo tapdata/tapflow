@@ -4,10 +4,10 @@ import time
 import traceback
 
 from lib.utils.log import logger
-from cli.check import ConfigCheck
-from cli.help_decorator import help_decorate
+from lib.check import ConfigCheck
+from lib.help_decorator import help_decorate
 from lib.request import DataSourceApi
-from cli.params.datasource import pdk_config, DATASOURCE_CONFIG
+from lib.params.datasource import pdk_config, DATASOURCE_CONFIG
 
 from lib.cache import client_cache
 from lib.system.ext_storage import get_default_external_storage_id

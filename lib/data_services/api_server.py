@@ -3,7 +3,7 @@ import uuid
 from lib.request import req
 from lib.cache import client_cache
 from lib.utils.log import logger
-from cli.help_decorator import pad
+from lib.help_decorator import pad
 
 
 def show_apiserver(quite=False):

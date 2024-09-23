@@ -4,10 +4,10 @@ import copy
 import datetime
 from typing import Iterable, Tuple, Sequence
 
-from cli.help_decorator import help_decorate
+from lib.help_decorator import help_decorate
 from lib.request import InspectApi
 from lib.utils.log import logger
-from cli.params.job import job_config
+from lib.params import job_config
 
 from lib.op_object import show_jobs
 from lib.data_pipeline.job import JobType, JobStatus, Job

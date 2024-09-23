@@ -1,28 +1,35 @@
 import json
-import sys
+import os, sys
+
+# 获取当前脚本文件所在的目录
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 获取 lib 目录的路径
+lib_path = os.path.join(current_dir, '..')
+
+# 将 lib 目录加入到 Python 搜索路径中
+sys.path.append(lib_path)
+
 from IPython.core.magic import Magics, magics_class, line_magic
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 from platform import python_version
 
 from lib.utils.log import logger
-from cli.help_decorator import help_decorate, show_help
 
 from lib.connections.connection import get_table_fields
 from lib.request import req
-from lib.cache import client_cache, system_server_conf
+from lib.cache import client_cache
+from lib.data_pipeline.data_source import DataSource
+from lib.data_pipeline.nodes.source import Source
+from lib.data_pipeline.nodes.sink import Sink
 
 from lib.login import login_with_access_code, login_with_ak_sk
 from lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
-                                         show_connections, show_connectors, show_dbs, op_object_command_class, show_agents)
-from lib.op_object import DataSource
-from lib.data_pipeline.pipeline import Pipeline, MView
-from lib.data_pipeline.nodes.source import Source
-from lib.data_pipeline.nodes.sink import Sink
+                           show_connections, show_connectors, op_object_command_class, show_agents, show_dbs)
 
 if not python_version().startswith("3"):
     print("python version must be 3.x, please install python3 before using tapdata cli")
     sys.exit(-1)
-import os
 
 
 os.environ['PYTHONSTARTUP'] = '>>>'
@@ -32,23 +39,6 @@ help_args = {
     "command": "command_help",
     "lib": "lib_help",
 }
-
-@magics_class
-class global_help(Magics):
-    @line_magic
-    @help_decorate("show global help", "h command")
-    # h line_magic
-    def h(self, t=None):
-        if not t:
-            for k, v in help_args.items():
-                logger.log("{}: {}", k, v, "info", "debug")
-            return
-        try:
-            show_help(t)
-        except Exception as e:
-            logger.warn("no help commands for {} found, please use below command for help, e is: {}", t, e)
-            self.h()
-
 
 @magics_class
 # global command for object
@@ -94,47 +84,38 @@ class op_object_command(Magics):
             getattr(obj, op)(*args, **kwargs)
 
     @line_magic
-    @help_decorate("[Job] stop a running job", "stop job $job_name")
     def stop(self, line):
         return self.__common_op("stop", line)
 
     @line_magic
-    @help_decorate("[Job,Datasource,Api] display a object status", "status datasource $datasource_name")
     def status(self, line):
         return self.__common_op("status", line)
 
     @line_magic
-    @help_decorate("[Job] keep monitor a object status", "monitor job $job_name t=30")
     def monitor(self, line):
         return self.__common_op("monitor", line)
 
     @line_magic
-    @help_decorate("[Job] start a job", "start job $job_name")
     def start(self, line):
         return self.__common_op("start", line)
 
     @line_magic
-    @help_decorate("[Job,Datasource,Api] delete a object", "delete object $object_name")
     def delete(self, line):
         return self.__common_op("delete", line)
 
     @line_magic
-    @help_decorate("[Datasource] validate a datasource, and load it's schema", "validate datasource $datasource_id")
     def validate(self, line):
         return self.__common_op("validate", line)
 
     @line_magic
-    @help_decorate("[Job] display job logs", "logs job $job_name limit=100 tail=True")
     def logs(self, line):
         return self.__common_op("logs", line)
 
     @line_magic
-    @help_decorate("[Job] display a job stats", "stats job $job_name")
     def stats(self, line):
         return self.__common_op("stats", line)
 
     @line_magic
-    @help_decorate("[Job,Datasource,Api,Table] desc a object", "desc object $object_name")
     def desc(self, line):
         if line == "":
             logger.warn("no desc datasource found")
@@ -324,7 +305,6 @@ class ApiCommand(Magics):
 @magics_class
 class show_command(Magics):
     @line_magic
-    @help_decorate("[Job,Datasource,Api,Table] show objects", "show objects")
     def show(self, line):
         if not line:
             pass
@@ -334,19 +314,21 @@ class show_command(Magics):
             eval("show_dbs('" + line + "')")
 
     @line_magic
-    @help_decorate("[Datasource] switch datasource context", "use $object_name")
     def use(self, line):
         if line == "":
             logger.warn("no use datasource found")
             return
         connection = get_signature_v("datasource", line)
+        if connection is None:
+            logger.warn("connection {} not found", line)
+            return
+
         connection_id = connection["id"]
         connection_name = connection["name"]
         client_cache["connection"] = connection_id
         logger.info("datasource switch to: {}", connection_name)
 
     @line_magic
-    @help_decorate("[Table] peek 5 table content for preview", "peek $table_name")
     def peek(self, line):
         if line == "":
             logger.warn("no peek datasource found")
@@ -391,6 +373,8 @@ class show_command(Magics):
         }
         res = req.post("/proxy/call", json=body).json()
         try:
+            count = res["data"].get("tableInfo", {}).get("numOfRows", 0)
+            logger.info("table {} has {} records", table_name, count)
             sample_data = res["data"]["sampleData"]
             x = 0
             for i in sample_data:
@@ -402,7 +386,6 @@ class show_command(Magics):
             pass
 
     @line_magic
-    @help_decorate("[Table] count table rows", "count $table_name")
     def count(self, line):
         if line == "":
             logger.warn("no count datasource found")
@@ -430,7 +413,6 @@ class show_command(Magics):
         table_name = table["original_name"]
 
 
-@help_decorate("display table struct", "table signature")
 def desc_table(line, quiet=True):
     connection_id = client_cache.get("connection")
     db = connection_id
@@ -463,7 +445,6 @@ def desc_table(line, quiet=True):
 def main():
     # ipython settings
     ip = TerminalInteractiveShell.instance()
-    ip.register_magics(global_help)
     ip.register_magics(show_command)
     ip.register_magics(op_object_command)
     ip.register_magics(ApiCommand)

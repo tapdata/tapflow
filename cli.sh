@@ -45,4 +45,4 @@ fi
 
 info "Welcome to TapData Live Data Platform, Enjoy Your Data Trip !"
 cp etc/ipython_config.py .cli/ipython_config.py
-ipython3 --no-banner --profile-dir=$basepath/.cli --profile=ipython_config -i $basepath/cli.py
+ipython3 --no-banner --profile-dir=$basepath/.cli --profile=ipython_config -i $basepath/cli/cli.py

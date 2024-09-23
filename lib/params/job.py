@@ -8,9 +8,6 @@ rules interpretation:
     desc    - describe the value
     default - default value
 """
-import json
-from cli.check import ConfigCheck
-
 
 type = "type"
 require = "require"

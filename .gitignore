@@ -3,3 +3,5 @@
 __pycache__
 .cli
 .idea
+build
+tapcli.egg-info/

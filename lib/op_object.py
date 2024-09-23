@@ -1,7 +1,7 @@
 import json
 
 from lib.utils.log import logger
-from cli.help_decorator import pad
+from lib.help_decorator import pad
 
 from lib.data_pipeline.data_source import DataSource
 from lib.data_services.api import Api

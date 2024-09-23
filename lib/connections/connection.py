@@ -4,7 +4,7 @@ import time
 import asyncio
 import websockets
 
-from cli.help_decorator import help_decorate
+from lib.help_decorator import help_decorate
 from lib.utils.log import logger
 
 from lib.cache import client_cache, system_server_conf

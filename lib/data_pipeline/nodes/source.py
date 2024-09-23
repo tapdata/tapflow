@@ -1,4 +1,4 @@
-from cli.help_decorator import help_decorate
+from lib.help_decorator import help_decorate
 
 from lib.data_pipeline.base_node import BaseNode, node_config, node_config_sync
 

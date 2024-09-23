@@ -1,4 +1,4 @@
-from cli.help_decorator import help_decorate
+from lib.help_decorator import help_decorate
 from lib.data_pipeline.nodes.source import Source
 from lib.data_pipeline.base_node import node_config_sync
 from lib.data_pipeline.job import JobType
