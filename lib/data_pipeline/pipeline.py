@@ -7,7 +7,7 @@ from typing import Iterable, Tuple, Sequence
 from lib.help_decorator import help_decorate
 from lib.request import InspectApi
 from lib.utils.log import logger
-from lib.params import job_config
+from lib.params.job import job_config
 
 from lib.op_object import show_jobs
 from lib.data_pipeline.job import JobType, JobStatus, Job

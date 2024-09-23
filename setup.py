@@ -9,7 +9,7 @@ setup(
     install_requires=required,
     entry_points={
         'console_scripts': [
-            'tapcli=cli:main',
+            'tapcli=cli.cli:main',
         ],
     },
     include_package_data=True,
