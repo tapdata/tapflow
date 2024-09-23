@@ -25,7 +25,7 @@ from lib.data_pipeline.nodes.sink import Sink
 
 from lib.login import login_with_access_code, login_with_ak_sk
 from lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
-                           show_connections, show_connectors, op_object_command_class, show_agents, show_dbs)
+                           show_connections, show_connectors, op_object_command_class, show_agents, show_dbs, show_jobs)
 
 if not python_version().startswith("3"):
     print("python version must be 3.x, please install python3 before using tapdata cli")
