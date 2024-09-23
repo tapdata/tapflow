@@ -22,6 +22,7 @@ from lib.cache import client_cache
 from lib.data_pipeline.data_source import DataSource
 from lib.data_pipeline.nodes.source import Source
 from lib.data_pipeline.nodes.sink import Sink
+from lib.data_pipeline.pipeline import Pipeline, MView
 
 from lib.login import login_with_access_code, login_with_ak_sk
 from lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
