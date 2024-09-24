@@ -364,6 +364,17 @@ class show_command(Magics):
         if client_cache["tables"].get(connection_id) is None:
             show_tables(source=connection_id, quiet=True)
         table = client_cache["tables"][connection_id][index_type][table]
+        connection = get_signature_v("datasource", connection_id)
+        capabilities = connection.get("capabilities", [])
+        support_peek = False
+        for capability in capabilities:
+            if capability.get("id") == "query_by_advance_filter_function":
+                support_peek = True
+                break
+
+        if not support_peek:
+            logger.warn("datasource {} not support peek", line)
+            return
 
         table_id = table["id"]
         table_name = table["original_name"]

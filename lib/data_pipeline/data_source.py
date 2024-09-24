@@ -195,6 +195,7 @@ class DataSource:
         if data.get("id") is not None:
             data = DataSourceApi().patch(url_after="/"+data.get("id"), data=data)
         else:
+            logger.info("datasource {} creating, please wait...", self.setting.get("name"))
             data = DataSourceApi().post(data)
 
         from lib.op_object import show_connections
@@ -202,7 +203,7 @@ class DataSource:
         if data["code"] == "ok":
             self.id = data["data"]["id"]
             self.setting = DataSource.get(self.id)
-            logger.finfo("save {} Connection success, will load schema", self.id)
+            logger.info("save datasource {} success, will load schema, please wait...", self.setting.get("name"))
             self.validate(quiet=False, load_schema=True)
             return True
         else:
