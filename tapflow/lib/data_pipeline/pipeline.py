@@ -47,8 +47,12 @@ class VerifyMode:
     pk = "jointField"
     hash = "hash"
 
-
-
+def is_tapcli():
+    try:
+        get_ipython
+        return True
+    except NameError:
+        return False
 
 @help_decorate("use to define a stream pipeline", "p = new Pipeline($name).readFrom($source).writeTo($sink)")
 class Pipeline:
@@ -118,7 +122,8 @@ class Pipeline:
 
         if type == list:
             parent_p.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
-
+        if is_tapcli():
+            logger.info("Flow updated: new table {} added as child table", source)
         return self
 
     def enable_join_value_change(self):
@@ -146,6 +151,8 @@ class Pipeline:
         source.mode = self.mode
         self.sources.append(source)
         self.lines.append(source)
+        if is_tapcli():
+            print("Flow updated: source added")
         return self._clone(source)
 
     def write_to(self, sink):
@@ -179,6 +186,8 @@ class Pipeline:
         self.dag.edge(self, sink)
         self.sinks.append({"sink": sink})
         self.lines.append(sink)
+        if is_tapcli():
+            print("Flow updated: sink added")
         return self._clone(sink)
 
     def _common_stage(self, f):
@@ -212,6 +221,8 @@ class Pipeline:
             return self
         f = Filter(query, filterType)
         self.lines.append(f)
+        if is_tapcli():
+            print("Flow updated: filter added")
         return self._common_stage(f)
 
     def rowFilter(self, expression, rowFilterType=RowFilterType.retain):
@@ -222,6 +233,8 @@ class Pipeline:
     def renameField(self, config={}):
         f = FieldRename(config)
         self.lines.append(f)
+        if is_tapcli():
+            print("Flow updated: fields rename node added")
         return self._common_stage(f)
 
     def rename_fields(self, config={}):
@@ -254,6 +267,8 @@ class Pipeline:
             return self
         f = ColumnFilter(query, filterType)
         self.lines.append(f)
+        if is_tapcli():
+            print("Flow updated: column filter added")
         return self._common_stage(f)
 
     def filter_columns(self, query=[], filterType=FilterType.keep):
@@ -318,6 +333,8 @@ class Pipeline:
                 script = js_script
             f = Js(script, declareScript, language=language)
         self.lines.append(f)
+        if is_tapcli():
+            print("Flow updated: custom function added")
         return self._common_stage(f)
 
     def flat_unwind(self, path=None, index_name="_index", array_elem="BASIC", joiner="_", keep_null=True):
