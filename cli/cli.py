@@ -22,7 +22,7 @@ from lib.cache import client_cache
 from lib.data_pipeline.data_source import DataSource
 from lib.data_pipeline.nodes.source import Source
 from lib.data_pipeline.nodes.sink import Sink
-from lib.data_pipeline.pipeline import Pipeline, MView
+from lib.data_pipeline.pipeline import Pipeline, MView, Flow
 
 from lib.login import login_with_access_code, login_with_ak_sk
 from lib.op_object import *
@@ -335,38 +335,44 @@ class show_command(Magics):
 
     @line_magic
     def h(self, line):
+        self.help(line)
+
+    @line_magic
+    def help(self, line):
         def h_command():
             logger.notice("{}", "- show datasource/table")
-            logger.info("    1. {}: show datasource list", "show dbs")
-            logger.info("    2. {}: switch to datasource", "use $db_name")
-            logger.info("    3. {}: after use $db_name, used to show tables", "show tables")
-            logger.info("    4. {}: describe table schema", "desc $table_name")
-            logger.info("    5. {}: peek some records from table", "peek $table_name")
+            logger.info("    1. {}: show datasource list", pad("show dbs", 20))
+            logger.info("    2. {}: switch to datasource", pad("use $db_name", 20))
+            logger.info("    3. {}: after use $db_name, used to show tables", pad("show tables", 20))
+            logger.info("    4. {}: describe table schema", pad("desc $table_name", 20))
+            logger.info("    5. {}: peek some records from table", pad("peek $table_name", 20))
             logger.notice("{}", "- jobs command")
-            logger.info("    1. {}: show all jobs", "show jobs")
-            logger.info("    2. {}: start a job", "start $job_name")
-            logger.info("    3. {}: stop a job", "stop $job_name")
-            logger.info("    4. {}: status a job", "status $job_name")
-            logger.info("    5. {}: show metrics", "stats $job_name")
-            logger.info("    6. {}: delete a job", "delete $job_name")
+            logger.info("    1. {}: show all jobs", pad("show jobs", 20))
+            logger.info("    2. {}: start a job", pad("start $job_name", 20))
+            logger.info("    3. {}: stop a job", pad("stop $job_name", 20))
+            logger.info("    4. {}: status a job", pad("status $job_name", 20))
+            logger.info("    5. {}: show metrics", pad("stats $job_name", 20))
+            logger.info("    6. {}: delete a job", pad("delete $job_name", 20))
             logger.notice("{}", "- create a datasource")
             logger.info("    1. {}", "x = DataSource('mysql', 'my-mysql').host('localhost').port(3306).username('root').password('<PASSWORD>')")
             logger.info("    2. {}", "x.save()")
-            logger.notice("{}", "- create a simple job")
-            logger.info("    1. {}", "x = MView('name')")
-            logger.info("    2. {}", "x.read_from($ds.$source_table).write_from($ds.$sink_table)")
-            logger.info("    3. {}", "x.start()")
-            logger.notice("{}", "- add nodes in a job")
-            logger.info("    1. {}", "x = MView('name')")
+            logger.notice("{}", "- create a simple flow")
+            logger.info("    1. {}", "x = Flow('name')")
+            logger.info("    2. {}", "x.read_from($ds.$source_table)")
+            logger.notice("{}", "- add nodes in a flow")
+            logger.info("    1. {}", "x = Flow('name')")
             logger.info("    2. {}: x.filter('id > 2 and sex=male')", "filter records")
             logger.info("    3. {}: x.filter_columns(['id', 'name'], 'keep'])", "filter columns")
             logger.info("    4. {}: x.rename_fields(dict: $old_name -> $new_name)", "rename fields")
             logger.info("    5. {}: x.func($func), support js/python code", "add func")
-            logger.info("    6. {}", "x.start()")
-            logger.notice("{}", "- create a lookup job")
-            logger.info("    1. {}", "x = MView('name')")
+            logger.notice("{}", "- create a lookup flow")
+            logger.info("    1. {}", "x = Flow('name')")
             logger.info("    2. {}", "table = x.read_from($ds.$source_table)")
             logger.info("    3. {}", "table.lookup($ds.$table1, path='user', type=dict, relation=[['user_id', 'user_id']], filter='user_id > 1', fields=['user_id', 'user_name'])")
+            logger.notice("{}", "- store flow to database")
+            logger.info("    1. {}", "x = Flow('name')")
+            logger.info("    2. {}", "x.read_from($ds.$source_table)")
+            logger.info("    3. {}", "x.write_to($ds.$sink_table)")
             logger.info("    4. {}", "x.start()")
 
         def h_datasource():

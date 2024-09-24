@@ -792,3 +792,7 @@ class Pipeline:
 class MView(Pipeline):
     def __init__(self, name=None, id=None):
         super().__init__(name=name, mode=mview, id=id)
+
+class Flow(Pipeline):
+    def __init__(self, name=None, id=None):
+        super().__init__(name=name, mode=mview, id=id)
