@@ -1,6 +1,6 @@
 #!/bin/bash
 basepath=$(cd `dirname $0`; pwd)
-if [[ ! -d "$basepath/cli" || ! -d "$basepath/etc" || ! -d "$basepath/lib" ]]; then
+if [[ ! -d "$basepath/tapflow" ]]; then
     basepath="$VIRTUAL_ENV/lib/python3.11/site-packages/"
 fi
 
@@ -63,4 +63,4 @@ class NoPrompt(Prompts):
 c.TerminalInteractiveShell.prompts_class = NoPrompt
 EOF
 
-ipython3 --no-banner --profile-dir=.cli --profile=ipython_config -i $basepath/cli/cli.py
+ipython3 --no-banner --profile-dir=.cli --profile=ipython_config -i $basepath/tapflow/cli/cli.py
