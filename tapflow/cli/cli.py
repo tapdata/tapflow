@@ -13,7 +13,7 @@ from IPython.core.magic import Magics, magics_class, line_magic
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 from platform import python_version
 from tapflow.lib.utils.log import logger
-from lib.connections.connection import get_table_fields
+from tapflow.lib.connections.connection import get_table_fields
 from tapflow.lib.request import req
 from tapflow.lib.cache import client_cache
 from tapflow.lib.data_pipeline.data_source import DataSource
@@ -21,9 +21,9 @@ from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.sink import Sink
 from tapflow.lib.data_pipeline.pipeline import Pipeline, MView, Flow
 
-from lib.login import login_with_access_code, login_with_ak_sk
-from lib.op_object import *
-from lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
+from tapflow.lib.login import login_with_access_code, login_with_ak_sk
+from tapflow.lib.op_object import *
+from tapflow.lib.op_object import (get_obj, get_signature_v, get_index_type, match_line, show_apis, show_tables,
                            show_connections, show_connectors, op_object_command_class, show_agents, show_dbs, show_jobs)
 
 from tapflow.lib.connections.connection import get_table_fields

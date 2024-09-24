@@ -2,7 +2,7 @@
 
 ## 安装
 1. 自行安装 python3, pip3, and ipython3 
-2. 运行 `pip3 install -r requirements.txt`, 安装依赖
+2. 运行 `pip3 install .` 安装客户端
 
 ## 配置
 1. 编辑 etc/config.ini, 填写地址与鉴权信息, 其中:
@@ -16,10 +16,13 @@ ak: access key
 sk: secret key
 
 ## 运行
-1. 在完成安装后, 运行命令 `bash cli.sh` 即可打开命令行客户端
+1. 在完成安装后, 运行命令 `tapcli` 即可打开命令行客户端
 
 ## 命令行模式使用手册
 ### 查看基本连接与表信息
+0. 帮助
+`h`
+
 1. 列出所有数据源
 `show dbs`
 ![](./docs/images/show_db.png)
@@ -50,7 +53,7 @@ m.save();
 ### 配置与运行建模任务
 ```python
 source = Source("qa_mongodb_repl_42240")
-order = MView("left_join_demo").read_from(source.order).filter("order_time > 2024-01-02")
+order = Flow("left_join_demo").read_from(source.order).filter("order_time > 2024-01-02")
 def user_mapper(record):
     record["user_id"] = str(record["user_id"])
     return record
@@ -71,4 +74,4 @@ order.start()
 
 ## 类库模式使用说明
 1. 引入依赖库
-`from tapcli.lib import *`
+`from tapflow.lib import *`
