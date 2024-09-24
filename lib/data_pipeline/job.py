@@ -249,6 +249,7 @@ class Job:
                 self.job["validateConfig"] = self.validateConfig
         self.job.update(self.setting)
         res = req.post("/Task", json=self.job)
+        print(res.text)
         res = res.json()
         if res["code"] != "ok":
             logger.fwarn("save failed {}", res)

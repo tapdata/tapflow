@@ -27,34 +27,7 @@ class RequestSession(requests.Session):
         # 使用 Base64 编码返回结果
         return base64.b64encode(sign_data).decode(encoding)
 
-    def generate_get_signed_params(self, params: {}):
-        access_key = self.ak
-        access_key_secret = self.sk
-        params.update({
-            "ts": str(int(time.time() * 1000)),  # 当前时间戳（毫秒）
-            "nonce": str(uuid.uuid4()),  # 随机数
-            "signVersion": "1.0",
-            "accessKey": access_key
-        })
-
-        encoded_params = {}
-        for k, v in params.items():
-            encoded_params[urllib.parse.quote_plus(k)] = urllib.parse.quote_plus(str(v))
-
-        # 按键名排序
-        sorted_params = sorted(encoded_params.items())
-        string_to_sign = "GET:" + "&".join([f"{k}={v}" for k, v in sorted_params]) + ":"
-
-        string_to_sign = string_to_sign.replace("*", "%2A")
-        string_to_sign = string_to_sign.replace("%27", "%22")
-        string_to_sign = string_to_sign.replace("+", "%20")
-        string_to_sign = string_to_sign.replace("%7E", "~")
-
-
-        params['sign'] = self.sign(string_to_sign, access_key_secret)
-        return params
-
-    def generate_x_signed_params(self, request: requests.Request):
+    def generate_signed_params(self, request: requests.Request):
         import json
         params = request.params
         data = ""
@@ -75,21 +48,21 @@ class RequestSession(requests.Session):
 
         # 按键名排序
         sorted_params = sorted(encoded_params.items())
-        string_to_sign = str(request.method).upper() + ":" + "&".join([f"{k}={v}" for k, v in sorted_params]) + ":" + data
+        string_to_sign = str(request.method).upper() + ":" + "&".join([f"{k}={v}" for k, v in sorted_params]) + ":"
 
         string_to_sign = string_to_sign.replace("*", "%2A")
         string_to_sign = string_to_sign.replace("%27", "%22")
         string_to_sign = string_to_sign.replace("+", "%20")
         string_to_sign = string_to_sign.replace("%7E", "~")
 
-
+        string_to_sign += data
         params['sign'] = self.sign(string_to_sign, access_key_secret)
         return params
 
 
     def sign_request(self, request: requests.Request) -> requests.Request:
         request.url = self.base_url + request.url
-        params = self.generate_x_signed_params(request)
+        params = self.generate_signed_params(request)
         request.params = params
         return request
 
@@ -108,7 +81,7 @@ class RequestSession(requests.Session):
             if request.url == "/agent":
                 self.base_url = "https://cloud.tapdata.net/api/tcm"
             else:
-                self.base_url = "https://cloud.tapdata.net/console/v3/tm/api"
+                self.base_url = "https://cloud.tapdata.net/tm/api"
             request = self.sign_request(request)
         else:
             request.url = self.base_url + request.url
