@@ -138,6 +138,19 @@ class Job:
                 self.job = j
                 return
 
+    def _get_id_by_name(self):
+        param = {"filter": json.dumps({"where":{"name":{"like":self.name}}})}
+        res = req.get("/Task", params=param)
+        if res.status_code != 200:
+            return None
+        res = res.json()
+        for j in res["data"]["items"]:
+            if "name" not in j:
+                continue
+            if j["name"] == self.name:
+                return j["id"]
+        return None
+
     def _get(self):
         if self.id is not None:
             res = req.get("/Task/findTaskDetailById/" + self.id)
@@ -249,10 +262,21 @@ class Job:
                 self.job["validateConfig"] = self.validateConfig
         self.job.update(self.setting)
         res = req.post("/Task", json=self.job)
-        print(res.text)
         res = res.json()
         if res["code"] != "ok":
-            logger.fwarn("save failed {}", res)
+            if "Task.RepeatName" == res["code"]:
+                self.id = self._get_id_by_name()
+                if self.id is None:
+                    logger.warn("save task failed {}", res)
+                    return False
+                self.job["id"] = self.id
+                res = req.patch("/Task", json=self.job).json()
+                if res["code"] != "ok":
+                    logger.warn("patch task failed {}", res)
+                    return False
+            else:
+                logger.warn("save failed {}", res)
+                return False
         self.id = res["data"]["id"]
         job = res["data"]
         job.update(self.setting)
