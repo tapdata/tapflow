@@ -334,6 +334,48 @@ class show_command(Magics):
         logger.info("datasource switch to: {}", connection_name)
 
     @line_magic
+    def h(self, line):
+        def h_command():
+            logger.notice("{}", "- show datasource/table")
+            logger.info("    1. {}: show datasource list", "show dbs")
+            logger.info("    2. {}: switch to datasource", "use $db_name")
+            logger.info("    3. {}: after use $db_name, used to show tables", "show tables")
+            logger.info("    4. {}: describe table schema", "desc $table_name")
+            logger.info("    5. {}: peek some records from table", "peek $table_name")
+            logger.notice("{}", "- jobs command")
+            logger.info("    1. {}: show all jobs", "show jobs")
+            logger.info("    2. {}: start a job", "start $job_name")
+            logger.info("    3. {}: stop a job", "stop $job_name")
+            logger.info("    4. {}: status a job", "status $job_name")
+            logger.info("    5. {}: show metrics", "stats $job_name")
+            logger.info("    6. {}: delete a job", "delete $job_name")
+            logger.notice("{}", "- create a datasource")
+            logger.info("    1. {}", "x = DataSource('mysql', 'my-mysql').host('localhost').port(3306).username('root').password('<PASSWORD>')")
+            logger.info("    2. {}", "x.save()")
+            logger.notice("{}", "- create a simple job")
+            logger.info("    1. {}", "x = MView('name')")
+            logger.info("    2. {}", "x.read_from($ds.$source_table).write_from($ds.$sink_table)")
+            logger.info("    3. {}", "x.start()")
+            logger.notice("{}", "- add nodes in a job")
+            logger.info("    1. {}", "x = MView('name')")
+            logger.info("    2. {}: x.filter('id > 2 and sex=male')", "filter records")
+            logger.info("    3. {}: x.filter_columns(['id', 'name'], 'keep'])", "filter columns")
+            logger.info("    4. {}: x.rename_fields(dict: $old_name -> $new_name)", "rename fields")
+            logger.info("    5. {}: x.func($func), support js/python code", "add func")
+            logger.info("    6. {}", "x.start()")
+            logger.notice("{}", "- create a lookup job")
+            logger.info("    1. {}", "x = MView('name')")
+            logger.info("    2. {}", "table = x.read_from($ds.$source_table)")
+            logger.info("    3. {}", "table.lookup($ds.$table1, path='user', type=dict, relation=[['user_id', 'user_id']], filter='user_id > 1', fields=['user_id', 'user_name'])")
+            logger.info("    4. {}", "x.start()")
+
+        def h_datasource():
+            pass
+        if line == "":
+            h_command()
+
+
+    @line_magic
     def peek(self, line):
         if line == "":
             logger.warn("no peek datasource found")
@@ -457,6 +499,28 @@ def desc_table(line, quiet=True):
     if not quiet:
         print(json.dumps(display_fields, indent=2))
 
+def create_sample_config():
+    if not os.path.exists("etc"):
+        os.mkdir("etc")
+    with open("etc/config.ini", "w") as f:
+        f.write('''
+[backend]
+# If you are using TapFlow Cloud, please provide the access key and secret key(ak & sk).
+# You may obtain the keys by log onto TapFlow Cloud, and click "User Center" on the top right, then copy & paste the access key and secret key pair.
+# You can sign up for a new account from: https://cloud.tapdata.io if you don't have one
+ak = bNH2fpso1gWlkuNlcApnaanZGQI7bR8G
+sk = 50YOjCEoxYL21wvFE1pWGISb2dXOy8NV
+
+# If you are using TapFlow Enterprise, please specify the server URL & access token.
+server = 127.0.0.1:13030
+access_code = 3324cfdf-7d3e-4792-bd32-571638d4562f
+''')
+
+def show_register():
+    print("\n")
+    logger.warn("{}", "no valid config file found, you can config etc/config.ini from sample file")
+    with open("etc/config.json", "r") as f:
+        print(f.read())
 
 def main():
     # ipython settings
@@ -481,8 +545,13 @@ def main():
         else:
             if server and access_token:
                 login_with_access_code(server, access_token)
+            else:
+                show_register()
+                os._exit(-1)
     else:
-        sys.exit(-1)
+        create_sample_config()
+        show_register()
+        os._exit(-1)
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
 

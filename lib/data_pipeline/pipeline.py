@@ -224,6 +224,9 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
 
+    def rename_fields(self, config={}):
+        return self.renameField(config)
+
     def typeAdjust(self, converts, table):
         """
         :params converts: List[tuple, (field, field_type)]
@@ -252,6 +255,9 @@ class Pipeline:
         f = ColumnFilter(query, filterType)
         self.lines.append(f)
         return self._common_stage(f)
+
+    def filter_columns(self, query=[], filterType=FilterType.keep):
+        return self.filterColumn(query, filterType)
 
     def typeMap(self, field, t):
         return self
