@@ -528,6 +528,20 @@ class Pipeline:
         config["sync_type"] = "cdc"
         self.config(config)
 
+    def save(self):
+        if self.job is not None:
+            self.job.config(self.dag.setting)
+            self.job.save()
+            return self
+
+        job = Job(name=self.name, pipeline=self)
+        job.validateConfig = self.validateConfig
+        self.job = job
+        self.config({})
+        job.config(self.dag.setting)
+        job.save()
+        return self
+
     @help_decorate("start this pipeline as a running job", args="p.start()")
     def start(self):
         if self.job is not None:
