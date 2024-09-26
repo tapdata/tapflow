@@ -93,7 +93,7 @@ class Pipeline:
             return self._lookup_path_cache[parent_path]
         return self
 
-    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, mapper=None):
+    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, rename=None, mapper=None):
         if isinstance(source, str):
             if "." in source:
                 db, table = source.split(".")
@@ -114,6 +114,8 @@ class Pipeline:
             child_p = child_p.filter(filter)
         if fields is not None:
             child_p = child_p.filterColumn(fields)
+        if rename is not None:
+            child_p = child_p.rename_fields(rename)
         if mapper is not None:
             child_p = child_p.func(script=mapper)
 
