@@ -33,6 +33,8 @@ from tapflow.lib.data_pipeline.validation.data_verify import DataVerify
 from tapflow.lib.connections.connection import get_table_fields
 from tapflow.lib.data_pipeline.nodes.type_modification import TypeAdjust
 
+_flows = {}
+
 
 # show all jobs
 def show_pipelines(quiet=False):
@@ -84,6 +86,8 @@ class Pipeline:
         self.type_adjust = []
         self._lookup_cache = {}
         self._lookup_path_cache = {}
+        self.command = []
+        self._parent_cache = {}
 
     def _get_lookup_parent(self, path):
         if path == "" or "." not in path:
@@ -126,6 +130,7 @@ class Pipeline:
             parent_p.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
         if is_tapcli():
             logger.info("Flow updated: new table {} added as child table", source)
+        self.command.append(["lookup", source.table, path, type, relation, filter, fields, rename, mapper])
         return self
 
     def enable_join_value_change(self):
@@ -155,6 +160,7 @@ class Pipeline:
         self.lines.append(source)
         if is_tapcli():
             print("Flow updated: source added")
+        self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         return self._clone(source)
 
     def write_to(self, sink):
@@ -190,6 +196,7 @@ class Pipeline:
         self.lines.append(sink)
         if is_tapcli():
             print("Flow updated: sink added")
+        self.command.append(["write_to", sink.connection.c.get("name", "")+"."+sink.table_name])
         return self._clone(sink)
 
     def _common_stage(self, f):
@@ -225,6 +232,7 @@ class Pipeline:
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: filter added")
+        self.command.append(["filter", query])
         return self._common_stage(f)
 
     def rowFilter(self, expression, rowFilterType=RowFilterType.retain):
@@ -237,6 +245,7 @@ class Pipeline:
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: fields rename node added")
+        self.command.append(["rename_fields", config])
         return self._common_stage(f)
 
     def rename_fields(self, config={}):
@@ -271,6 +280,7 @@ class Pipeline:
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: column filter added")
+        self.command.append(["filter_columns", query])
         return self._common_stage(f)
 
     def filter_columns(self, query=[], filterType=FilterType.keep):
@@ -337,6 +347,7 @@ class Pipeline:
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: custom function added")
+        self.command.append(["js", script])
         return self._common_stage(f)
 
     def flat_unwind(self, path=None, index_name="_index", array_elem="BASIC", joiner="_", keep_null=True):
@@ -391,7 +402,19 @@ class Pipeline:
         else:
             pipeline.mergeNode.update(mergeNode)
         self.mergeNode.add(pipeline.mergeNode)
+        self._parent_cache[pipeline] = self
+        print(pipeline, self.mergeNode)
         return self._common_stage2(pipeline, self.mergeNode)
+
+    # 递归更新主从合并节点
+    def recursive_update_parent(self, pipeline):
+        if pipeline not in self._parent_cache:
+            return
+        parent = self._parent_cache[pipeline]
+        parent._common_stage2(pipeline, parent.mergeNode)
+        return self.recursive_update_parent(parent)
+
+
 
     @help_decorate("use a function(js text/python function) transform data", args="p.processor()")
     def processor(self, script=""):
@@ -516,6 +539,7 @@ class Pipeline:
         p.cache_sinks = self.cache_sinks
         p.mergeNode = self.mergeNode
         p.joinValueChange = self.joinValueChange
+        p.command = self.command
         return p
 
     def cache(self, ttl):
@@ -582,6 +606,12 @@ class Pipeline:
             print(job.logs(level=["debug", "error"]))
             return False
         return self
+
+    def show(self):
+        command = ""
+        for i in self.command:
+            command = command + "." + i[0] + "(" + ",".join(i[1:]) + ")"
+        return command
 
     @help_decorate("stop this pipeline job", args="p.stop()")
     def stop(self):
@@ -829,3 +859,5 @@ class MView(Pipeline):
 class Flow(Pipeline):
     def __init__(self, name=None, id=None):
         super().__init__(name=name, mode=mview, id=id)
+        global _flows
+        _flows[name] = self

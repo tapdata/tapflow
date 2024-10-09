@@ -372,7 +372,7 @@ class Job:
             logger.fwarn("save job fail")
             return False
         # 等推演, 10s
-        time.sleep(10)
+        time.sleep(3)
         res = req.put("/Task/batchStart", params={"taskIds": self.id}).json()
         if res["code"] != "ok":
             return False
@@ -565,8 +565,9 @@ class Job:
             print(__file__, e)
             pass
 
+        job_status = self.status(quiet=True)
         if not quiet:
-            logger.info("job current qps is: {}, total rows: {}, delay is: {}ms", job_stats.qps, job_stats.total, job_stats.replicate_lag)
+            logger.info("job current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.total, job_stats.replicate_lag)
 
         return job_stats
 

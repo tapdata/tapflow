@@ -64,11 +64,11 @@ class MergeNode(BaseObj):
             logger.fwarn("{}", "the node must be the instance of class MergeNode")
             return
         node.father = self
-        self.child.append(node)
+        if node not in self.child:
+            self.child.append(node)
 
 
 class Merge(MergeNode):
-
     def __init__(self,
                  node_id: str,
                  table_name: str,

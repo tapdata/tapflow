@@ -19,7 +19,7 @@ from tapflow.lib.cache import client_cache
 from tapflow.lib.data_pipeline.data_source import DataSource
 from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.sink import Sink
-from tapflow.lib.data_pipeline.pipeline import Pipeline, MView, Flow
+from tapflow.lib.data_pipeline.pipeline import Pipeline, MView, Flow, _flows
 
 from tapflow.lib.login import login_with_access_code, login_with_ak_sk
 from tapflow.lib.op_object import *
@@ -94,7 +94,7 @@ class op_object_command(Magics):
 
     @line_magic
     def status(self, line):
-        return self.__common_op("status", line)
+        return self.__common_op("stats", line)
 
     @line_magic
     def monitor(self, line):
@@ -313,6 +313,13 @@ class show_command(Magics):
     def show(self, line):
         if not line:
             pass
+        if line in _flows:
+            print(_flows[line].show())
+            return
+        for name, value in globals().items():
+            if name == line and isinstance(value, Flow):
+                print(value.show())
+                return
         try:
             if "dbs" == line:
                 globals().update(eval("show_dbs(quiet=False)"))

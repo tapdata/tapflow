@@ -50,7 +50,6 @@ def get_table_fields(t, whole=False, source=None, cache=True):
     table_id = table["id"]
     table_name = table["original_name"]
     res = req.get("/MetadataInstances/" + table_id)
-    print(req.base_url)
 
     data = res.json()["data"]
     fields = data["fields"]
