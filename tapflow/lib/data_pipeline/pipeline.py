@@ -128,7 +128,7 @@ class Pipeline:
         if type == list:
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
         if is_tapcli():
-            logger.info("Flow updated: new table {} added as child table", source)
+            logger.info("Flow updated: new table {} added as child table", source.table_name)
         self.command.append(["lookup", source.table, path, type, relation, filter, fields, rename, mapper])
         return self
 
@@ -409,7 +409,6 @@ class Pipeline:
         parent_p = self._get_lookup_parent(targetPath)
         parent_p.mergeNode.add(pipeline.mergeNode)
         self._parent_cache[pipeline] = parent_p
-        print(pipeline, self.mergeNode)
         return self._common_stage2(pipeline, self.mergeNode)
 
     # 递归更新主从合并节点
