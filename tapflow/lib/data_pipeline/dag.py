@@ -165,7 +165,10 @@ def gen_dag_stage(obj):
     if objType == TypeAdjust:
         return obj.to_dict()
 
-    if objType in [Filter, ColumnFilter] or obj.language == "js":
+    if objType == Filter:
+        return obj.to_dict()
+
+    if objType in [ColumnFilter] or obj.language == "js":
         processor_type = "js_processor"
         script = "function process(record){\n\n\t// Enter you code at here\n%s}" % obj.to_js()
         name = "JS"

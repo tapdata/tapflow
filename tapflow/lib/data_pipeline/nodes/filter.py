@@ -1,5 +1,6 @@
 from tapflow.lib.data_pipeline.base_obj import BaseObj
 from tapflow.lib.data_pipeline.base_node import FilterType
+import re
 
 
 class Filter(BaseObj):
@@ -7,8 +8,39 @@ class Filter(BaseObj):
         super().__init__()
         self.f = {filter_type: f}
 
+    def f_to_expression(self):
+        # 使用正则表达式匹配变量名，并为其添加前缀
+        # 先不匹配在引号里的内容
+        def replace_variable(match):
+            var = match.group(1)
+            # 不对操作符两侧的字符串做处理
+            if var not in ['==', '>', '<', '&&', '||', '>=', '<=', '!=']:
+                return f'record.{var}'
+            return var
+
+        # 匹配非引号内的变量名，排除操作符，避免替换掉字面量
+        return re.sub(r"(?<!['\"])(\b[a-zA-Z_][a-zA-Z0-9_]*\b)(?!['\"])", replace_variable, expression)
+
+    def to_dict(self):
+        action = "retain"
+        if self.f.keys()[0] != "keep":
+            action = "discard"
+
+        expression = self.f_to_expression()
+        return {
+            "action": action,
+            "expression": expression,
+            "concurrentNum": 1,
+            "type": "row_filter_processor",
+            "catalog": "processor",
+            "isTransformed": False,
+            "id": self.id,
+            "name": "Row Filter",
+            "elementType": "Node",
+            "disabled": False
+        }
+
     def _add_record_for_str(self, s):
-        import re
         s1 = ""
         m1 = re.finditer('\"([^\"]*)\"', s)
         f = 0

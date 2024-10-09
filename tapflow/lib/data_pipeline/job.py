@@ -182,11 +182,13 @@ class Job:
                 return True
         return False
 
-    def delete(self):
+    def delete(self, quiet=True):
         if self.id is None:
             return False
         if self.status() in [JobStatus.running, JobStatus.scheduled]:
             logger.fwarn("job status is {}, please stop it first before delete it", self.status())
+            if not quiet:
+                logger.warn("job status is {}, please stop it first before delete it", self.status())
             return
         res = req.delete("/Task/batchDelete", params={"taskIds": self.id})
         if res.status_code != 200:

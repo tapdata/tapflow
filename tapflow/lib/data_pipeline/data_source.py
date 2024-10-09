@@ -16,7 +16,6 @@ from tapflow.lib.system.ext_storage import get_default_external_storage_id
 @help_decorate("Data Source, you can see it as database",
                'ds = DataSource("mysql", "mysql-datasource").host("127.0.0.1").port(3306).username().password().db()')
 class DataSource:
-
     def __init__(self, connector="", name=None, type="source_and_target", id=None):
         """
         @param connector: pdkType
@@ -56,10 +55,14 @@ class DataSource:
         def _config_pdk_setting(value):
             if key == "db" and value:
                 self.pdk_setting.update({"database": value})
+                return self
             if key == "uri" and value:
                 self.pdk_setting.update({"isUri": True, key: value})
-            else:
-                self.pdk_setting.update({key: value})
+                return self
+            if key == "type" and value:
+                self.setting["connection_type"] = value
+                return self
+            self.pdk_setting.update({key: value})
             return self
 
         return _config_pdk_setting
