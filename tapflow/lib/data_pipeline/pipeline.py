@@ -283,6 +283,12 @@ class Pipeline:
         self.command.append(["filter_columns", query])
         return self._common_stage(f)
 
+    def include(self, *args):
+        return self.filter_columns(query=list(args), filterType=FilterType.keep)
+
+    def exclude(self, *args):
+        return self.filter_columns(query=list(args), filterType=FilterType.delete)
+
     def filter_columns(self, query=[], filterType=FilterType.keep):
         return self.filterColumn(query, filterType)
 
@@ -403,7 +409,6 @@ class Pipeline:
             pipeline.mergeNode.update(mergeNode)
         self.mergeNode.add(pipeline.mergeNode)
         self._parent_cache[pipeline] = self
-        print(pipeline, self.mergeNode)
         return self._common_stage2(pipeline, self.mergeNode)
 
     # 递归更新主从合并节点
@@ -413,8 +418,6 @@ class Pipeline:
         parent = self._parent_cache[pipeline]
         parent._common_stage2(pipeline, parent.mergeNode)
         return self.recursive_update_parent(parent)
-
-
 
     @help_decorate("use a function(js text/python function) transform data", args="p.processor()")
     def processor(self, script=""):
