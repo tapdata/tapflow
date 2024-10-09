@@ -112,7 +112,6 @@ class Pipeline:
             self._lookup_path_cache[path] = child_p
 
         child_p = self._lookup_cache[cache_key]
-        parent_p = self._get_lookup_parent(path)
 
         if filter is not None:
             child_p = child_p.filter(filter)
@@ -124,10 +123,10 @@ class Pipeline:
             child_p = child_p.func(script=mapper)
 
         if type == dict:
-            parent_p.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
+            self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
 
         if type == list:
-            parent_p.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
+            self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
         if is_tapcli():
             logger.info("Flow updated: new table {} added as child table", source)
         self.command.append(["lookup", source.table, path, type, relation, filter, fields, rename, mapper])
@@ -407,8 +406,10 @@ class Pipeline:
             pipeline.mergeNode = mergeNode
         else:
             pipeline.mergeNode.update(mergeNode)
-        self.mergeNode.add(pipeline.mergeNode)
-        self._parent_cache[pipeline] = self
+        parent_p = self._get_lookup_parent(targetPath)
+        parent_p.mergeNode.add(pipeline.mergeNode)
+        self._parent_cache[pipeline] = parent_p
+        print(pipeline, self.mergeNode)
         return self._common_stage2(pipeline, self.mergeNode)
 
     # 递归更新主从合并节点
