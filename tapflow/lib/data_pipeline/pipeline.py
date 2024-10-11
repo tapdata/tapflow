@@ -576,10 +576,15 @@ class Pipeline:
 
     def save(self):
         if self.job is not None:
+            self.job.pipeline = self
             self.job.config(self.dag.setting)
             self.job.dag = self.dag
             self.job.save()
             return self
+        else:
+            self.job.pipeline = self
+            self.job.config(self.dag.setting)
+            self.job.dag = self.dag
 
         job = Job(name=self.name, pipeline=self)
         job.validateConfig = self.validateConfig

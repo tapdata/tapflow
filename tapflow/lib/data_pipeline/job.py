@@ -611,23 +611,29 @@ class Job:
         return res.json()["data"]["items"]
 
     def find_final_target(self):
+        targets = []
         try:
             dag = self.dag.dag
             if dag is None:
                 return None
             edges = dag.get("edges", [])
+            nodes = dag.get("nodes", [])
         except Exception as e:
             return None
-        def target_is_source(target):
+        def target_is_final(target):
             for edge in edges:
                 if edge["source"] == target:
-                    return True
-            return False
+                    edge_target = edge["target"]
+                    for node in nodes:
+                        if node["id"] == edge_target and node["type"] == "table":
+                            return True
+                    return False
+            return True
         for edge in edges:
             target = edge.get("target")
-            if not target_is_source(target):
-                return target
-        return None
+            if target_is_final(target):
+                targets.append(target)
+        return targets
 
 
     def preview(self, quiet=True):
@@ -652,7 +658,7 @@ class Job:
         nodeResult = data.get("nodeResult", {})
         if not quiet:
             for k, v in nodeResult.items():
-                if k == final_target:
+                if k in final_target:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
 
         return nodeResult
