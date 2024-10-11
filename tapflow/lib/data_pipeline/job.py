@@ -73,6 +73,7 @@ class Job:
         self.id = None
         self.setting = {}
         self.job = {}
+        self.dag = None
         self.validateConfig = None
         if id is not None:
             if len(id) == 24:
@@ -260,8 +261,22 @@ class Job:
                 "crontabExpressionFlag": False
             }
 
-            if self.validateConfig is not None:
-                self.job["validateConfig"] = self.validateConfig
+        else:
+            self.job.update({
+                "editVersion": int(time.time() * 1000),
+                "name": self.name,
+                "dag": self.dag.dag,
+                "user_id": system_server_conf["user_id"],
+                "customId": system_server_conf["user_id"],
+                "createUser": system_server_conf["username"],
+                "syncPoints": self.dag.setting.get("syncPoints", []),
+                "dynamicAdjustMemoryUsage": False,
+                "crontabExpressionFlag": False
+            })
+
+        if self.validateConfig is not None:
+            self.job["validateConfig"] = self.validateConfig
+
         self.job.update(self.setting)
         res = req.post("/Task", json=self.job)
         res = res.json()
@@ -269,15 +284,15 @@ class Job:
             if "Task.RepeatName" == res["code"]:
                 self.id = self._get_id_by_name()
                 if self.id is None:
-                    logger.warn("save task failed {}", res)
+                    logger.fwarn("save task failed {}", res)
                     return False
                 self.job["id"] = self.id
                 res = req.patch("/Task", json=self.job).json()
                 if res["code"] != "ok":
-                    logger.warn("patch task failed {}", res)
+                    logger.fwarn("patch task failed {}", res)
                     return False
             else:
-                logger.warn("save failed {}", res)
+                logger.fwarn("save failed {}", res)
                 return False
         self.id = res["data"]["id"]
         job = res["data"]
@@ -594,6 +609,53 @@ class Job:
             for item in res.json()["data"]["items"]:
                 print(item)
         return res.json()["data"]["items"]
+
+    def find_final_target(self):
+        try:
+            dag = self.dag.dag
+            if dag is None:
+                return None
+            edges = dag.get("edges", [])
+        except Exception as e:
+            return None
+        def target_is_source(target):
+            for edge in edges:
+                if edge["source"] == target:
+                    return True
+            return False
+        for edge in edges:
+            target = edge.get("target")
+            if not target_is_source(target):
+                return target
+        return None
+
+
+    def preview(self, quiet=True):
+        self.save()
+        final_target = self.find_final_target()
+        start_time = time.time()
+        res = req.post("/proxy/call", json={
+            "className": "TaskPreviewService",
+            "method": "preview",
+            "args": [
+                json.dumps(self.job),
+                None,
+                1
+            ]
+        }).json()
+        if not quiet:
+            logger.info("preview view took {} ms", int((time.time() - start_time)*1000))
+        if "code" not in res or res["code"] != "ok":
+            return
+
+        data = res["data"]
+        nodeResult = data.get("nodeResult", {})
+        if not quiet:
+            for k, v in nodeResult.items():
+                if k == final_target:
+                    print(json.dumps(v.get("data", [{}])[0], indent=2))
+
+        return nodeResult
 
     def wait(self, print_log=False, t=600):
         start_time = time.time()

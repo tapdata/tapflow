@@ -577,6 +577,7 @@ class Pipeline:
     def save(self):
         if self.job is not None:
             self.job.config(self.dag.setting)
+            self.job.dag = self.dag
             self.job.save()
             return self
 
@@ -615,6 +616,14 @@ class Pipeline:
         for i in self.command:
             command = command + "." + i[0] + "(" + ",".join(i[1:]) + ")"
         return command
+
+    def preview(self):
+        self.save()
+        if self.job is None:
+            return
+        self.job.preview(quiet=False)
+        return self
+
 
     @help_decorate("stop this pipeline job", args="p.stop()")
     def stop(self):

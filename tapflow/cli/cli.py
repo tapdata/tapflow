@@ -329,6 +329,16 @@ class show_command(Magics):
             eval("show_dbs('" + line + "')")
 
     @line_magic
+    def preview(self, line):
+        if line in _flows:
+            print(_flows[line].preview())
+            return
+        for name, value in globals().items():
+            if name == line and isinstance(value, Flow):
+                print(value.preview())
+
+
+    @line_magic
     def use(self, line):
         if line == "":
             logger.warn("no use datasource found")
