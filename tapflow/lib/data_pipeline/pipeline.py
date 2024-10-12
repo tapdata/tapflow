@@ -343,6 +343,7 @@ class Pipeline:
             source_code = inspect.getsource(script)
             source_code = "def process(" + source_code.split("(", 2)[1]
             js_script = translates(source_code)[0]
+            js_script = "\n".join(js_script.split("\n")[1:-2])
             f = Js(js_script, False, language=language)
         else:
             if script.endswith(".js"):
