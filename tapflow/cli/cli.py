@@ -105,6 +105,10 @@ class op_object_command(Magics):
         return self.__common_op("start", line)
 
     @line_magic
+    def reset(self, line):
+        return self.__common_op("reset", line)
+
+    @line_magic
     def delete(self, line):
         return self.__common_op("delete", line)
 
@@ -336,7 +340,6 @@ class show_command(Magics):
         for name, value in globals().items():
             if name == line and isinstance(value, Flow):
                 print(value.preview())
-
 
     @line_magic
     def use(self, line):

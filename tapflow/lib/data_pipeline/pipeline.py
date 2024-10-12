@@ -355,6 +355,23 @@ class Pipeline:
         self.command.append(["js", script])
         return self._common_stage(f)
 
+    def add_fields(self, fields={}):
+        m = {
+            "String": "TapString",
+            "Date": "TapDate",
+            "DateTime": "TapDateTime",
+            "Double": "TapNumber",
+            "Float": "TapNumber",
+            "BigDecimal": "TapNumber",
+            "Long": "TapNumber",
+            "Map": "TapMap",
+            "Array": "TapArray"
+        }
+        declareScript = ""
+        for k, v in fields.items():
+            declareScript += "TapModelDeclare.addField(tapTable, '{}', '{}');".format(k, m.get(v, "TapString"))
+        return self.js(script="return record;", declareScript=declareScript)
+
     def flat_unwind(self, path=None, index_name="_index", array_elem="BASIC", joiner="_", keep_null=True):
         array_elem = str(array_elem).upper()
         if self.dag.jobType == JobType.migrate:

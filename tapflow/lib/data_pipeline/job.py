@@ -114,10 +114,13 @@ class Job:
             jobs.append(Job(id=i["id"]))
         return jobs
 
-    def reset(self):
+    def reset(self, quiet=True):
         res = req.patch("/Task/batchRenew", params={"taskIds": self.id}).json()
         if res["code"] == "ok":
+            if not quiet:
+                logger.info("{}", "Task reset success")
             return True
+        logger.warn("{}", "Task reset failed")
         return False
 
     def _get_by_name(self):
