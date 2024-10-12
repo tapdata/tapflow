@@ -21,7 +21,7 @@ class Source(BaseNode):
             if table is not None:
                 self.setting.update({
                     "tableNames": self.table,
-                    "migrateTableSelectType": "custom"
+                    "migrateTableSelectType": "custom",
                 })
             else:
                 if table_re is not None:
@@ -40,6 +40,7 @@ class Source(BaseNode):
             _ = self._getTableId(table)  # to set self.primary_key, don't delete this line
             self.setting.update({
                 "tableName": table,
+                "name": table,
             })
         if str(self.databaseType).lower() == "csv":
             self.update_node_config({

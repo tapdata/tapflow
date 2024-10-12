@@ -26,6 +26,7 @@ class Sink(Source):
             _ = self._getTableId(table)  # to set self.primary_key, don't delete this line
             self.setting.update({
                 "tableName": table,
+                "name": table,
             })
 
     def keepData(self):

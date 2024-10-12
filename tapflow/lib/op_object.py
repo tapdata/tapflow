@@ -326,7 +326,7 @@ def show_connections(f=None, quiet=False):
 
 # show all connectors
 def show_connectors(quiet=True):
-    res = req.get("/DatabaseTypes")
+    res = req.get("/DatabaseTypes/getDatabases", params={"filter": json.dumps({"where":{"tag":"All","authentication":"All"},"order":"name ASC"})})
     data = res.json()["data"]
     o=0
     for i in range(len(data)):
@@ -335,7 +335,8 @@ def show_connectors(quiet=True):
             "pdkHash": data[i]["pdkHash"],
             "pdkId": data[i]["pdkId"],
             "pdkType": "pdk",
-            "name": data[i]["name"]
+            "name": data[i]["name"],
+            "properties": data[i].get("properties", {}).get("connection", {}).get("properties", {}),
         }
         if not quiet:
             x = "Alpha"

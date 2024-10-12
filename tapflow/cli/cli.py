@@ -398,10 +398,33 @@ class show_command(Magics):
             logger.info("    3. {}", "x.write_to($ds.$sink_table)")
             logger.info("    4. {}", "x.start()")
 
-        def h_datasource():
-            pass
+        def h_datasource(l):
+            properties = client_cache["connectors"][l].get("properties", {})
+            requires = []
+            optionals = []
+            for k, v in properties.items():
+                if k == "OPTIONAL_FIELDS":
+                    continue
+                if v.get("required"):
+                    requires.append([k, v])
+                else:
+                    optionals.append([k, v])
+            if len(requires) > 0:
+                print("required config:")
+                for r in requires:
+                    desc = ": " + r[1].get("apiServerKey", "")
+                    logger.info("    {}" + desc, r[0])
+            if len(optionals) > 0:
+                print("optional config:")
+                for r in optionals:
+                    desc = ": " + r[1].get("apiServerKey", "")
+                    logger.info("    {}" + desc, r[0])
+
+
         if line == "":
             h_command()
+        if line.lower() in client_cache["connectors"]:
+            h_datasource(line.lower())
 
 
     @line_magic

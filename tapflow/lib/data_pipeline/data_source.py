@@ -3,6 +3,8 @@ import json
 import time
 import traceback
 
+from requests import delete
+
 from tapflow.lib.utils.log import logger
 from tapflow.lib.check import ConfigCheck
 from tapflow.lib.help_decorator import help_decorate
@@ -17,6 +19,20 @@ from tapflow.lib.system.ext_storage import get_default_external_storage_id
                'ds = DataSource("mysql", "mysql-datasource").host("127.0.0.1").port(3306).username().password().db()')
 class DataSource:
     def __init__(self, connector="", name=None, type="source_and_target", id=None):
+        config = None
+        if isinstance(connector, dict):
+            config = connector
+            connector = config.get("connector")
+            if connector is None:
+                return
+            if "name" in config:
+                name = config.get("name")
+                delete(config["name"])
+            if "type" in config:
+                type = config.get("type")
+                delete(config["type"])
+            delete(config["connector"])
+
         """
         @param connector: pdkType
         @param name: datasource name
@@ -47,11 +63,19 @@ class DataSource:
             "database_type": client_cache["connectors"][connector]["name"],
             "connection_type": self.connection_type
         }
+        if config is not None:
+            for key, value in config.items():
+                if key == "db" and value:
+                    self.pdk_setting.update({"database": value})
+                if key == "uri" and value:
+                    self.pdk_setting.update({"isUri": True, key: value})
+                if key == "type" and value:
+                    self.setting["connection_type"] = value
+                self.pdk_setting.update({key: value})
 
     def _set_pdk_setting(self, key):
         """closure function to update value into pdk_setting, only be called by __getattribute__
         """
-
         def _config_pdk_setting(value):
             if key == "db" and value:
                 self.pdk_setting.update({"database": value})
