@@ -23,7 +23,7 @@ class Filter(BaseObj):
 
     def to_dict(self):
         action = "retain"
-        if self.f.keys()[0] != "keep":
+        if list(self.f.keys())[0] != "keep":
             action = "discard"
 
         expression = self.f_to_expression()

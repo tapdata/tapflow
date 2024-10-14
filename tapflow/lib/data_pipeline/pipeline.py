@@ -2,6 +2,7 @@ import uuid
 import time
 import copy
 import datetime
+from dataclasses import Field
 from typing import Iterable, Tuple, Sequence
 
 from tapflow.lib.help_decorator import help_decorate
@@ -15,6 +16,7 @@ from tapflow.lib.data_pipeline.dag import Dag
 from tapflow.lib.op_object import QuickDataSourceMigrateJob
 from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.sink import Sink
+from tapflow.lib.data_pipeline.nodes.type_filter import TypeFilterNode
 from tapflow.lib.data_pipeline.nodes.merge import MergeNode, Merge
 from tapflow.lib.data_pipeline.base_node import FilterType, ConfigCheck
 from tapflow.lib.data_pipeline.nodes.filter import Filter
@@ -88,6 +90,9 @@ class Pipeline:
         self._lookup_path_cache = {}
         self.command = []
         self._parent_cache = {}
+        self._read_from_ed = False
+        self._write_to_ed = False
+        self._lookup_ed = False
 
     def _get_lookup_parent(self, path):
         if path == "" or "." not in path:
@@ -130,6 +135,7 @@ class Pipeline:
         if is_tapcli():
             logger.info("Flow updated: new table {} added as child table", source.table_name)
         self.command.append(["lookup", source.table, path, type, relation, filter, fields, rename, mapper])
+        self._lookup_ed = True
         return self
 
     def enable_join_value_change(self):
@@ -142,7 +148,10 @@ class Pipeline:
         return self.readFrom(source)
 
     @help_decorate("read data from source", args="p.readFrom($source)")
-    def readFrom(self, source):
+    def readFrom(self, source, setting={}):
+        if self._read_from_ed:
+            logger.warn("Read data from DB is already setted, please create a new Flow before reading data")
+            return self
         if isinstance(source, QuickDataSourceMigrateJob):
             source = source.__db__
             source = Source(source)
@@ -155,11 +164,13 @@ class Pipeline:
         if source.mode is not None:
             self.mode = source.mode
         source.mode = self.mode
+        source.setting.update(setting)
         self.sources.append(source)
         self.lines.append(source)
         if is_tapcli():
             print("Flow updated: source added")
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
+        self._read_from_ed = True
         return self._clone(source)
 
     def write_to(self, sink):
@@ -167,6 +178,10 @@ class Pipeline:
 
     @help_decorate("write data to sink", args="p.writeTo($sink, $relation)")
     def writeTo(self, sink, pk=None):
+        if self._write_to_ed:
+            logger.warn("Write data to DB is already setted, please create a new Flow before writing data")
+            return self
+
         if isinstance(sink, QuickDataSourceMigrateJob):
             sink = sink.__db__
             sink = Sink(sink)
@@ -196,6 +211,7 @@ class Pipeline:
         if is_tapcli():
             print("Flow updated: sink added")
         self.command.append(["write_to", sink.connection.c.get("name", "")+"."+sink.table_name])
+        self._write_to_ed = True
         return self._clone(sink)
 
     def _common_stage(self, f):
@@ -232,6 +248,14 @@ class Pipeline:
         if is_tapcli():
             print("Flow updated: filter added")
         self.command.append(["filter", query])
+        return self._common_stage(f)
+
+    def exclude_type(self, type_name):
+        f = TypeFilterNode(type_name)
+        self.lines.append(f)
+        if is_tapcli():
+            print("Flow updated: type filter added")
+        self.command.append(["exclude_type", type_name])
         return self._common_stage(f)
 
     def rowFilter(self, expression, rowFilterType=RowFilterType.retain):
@@ -355,6 +379,12 @@ class Pipeline:
             print("Flow updated: custom function added")
         self.command.append(["js", script])
         return self._common_stage(f)
+
+    def add_date_field(self, k):
+        return self.addTimeField(k)
+
+    def add_field(self, k, v=None, js=None):
+        return self.add_fields(k, v, js)
 
     def add_fields(self, k, v=None, js=None):
         fields = []

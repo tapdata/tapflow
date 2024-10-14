@@ -6,6 +6,7 @@ from tapflow.lib.data_pipeline.nodes.merge import Merge
 from tapflow.lib.data_pipeline.nodes.rename_table import RenameTable
 from tapflow.lib.data_pipeline.nodes.row_filter import RowFilter
 from tapflow.lib.data_pipeline.nodes.field_rename import FieldRename
+from tapflow.lib.data_pipeline.nodes.type_filter import TypeFilterNode
 from tapflow.lib.data_pipeline.nodes.union import UnionNode
 from tapflow.lib.data_pipeline.nodes.unwind import Unwind
 from tapflow.lib.data_pipeline.nodes.time_add import TimeAdd
@@ -166,6 +167,9 @@ def gen_dag_stage(obj):
         return obj.to_dict()
 
     if objType == Filter:
+        return obj.to_dict()
+
+    if objType == TypeFilterNode:
         return obj.to_dict()
 
     if objType in [ColumnFilter] or obj.language == "js":
