@@ -20,18 +20,12 @@ from tapflow.lib.system.ext_storage import get_default_external_storage_id
 class DataSource:
     def __init__(self, connector="", name=None, type="source_and_target", id=None):
         config = None
-        if isinstance(connector, dict):
-            config = connector
-            connector = config.get("connector")
-            if connector is None:
-                return
-            if "name" in config:
-                name = config.get("name")
-                delete(config["name"])
-            if "type" in config:
-                type = config.get("type")
-                delete(config["type"])
-            delete(config["connector"])
+        if isinstance(type, dict) or isinstance(id, dict):
+            if isinstance(type, dict):
+                config = type
+                type = "source_and_target"
+            if isinstance(id, dict):
+                config = id
 
         """
         @param connector: pdkType
@@ -53,6 +47,12 @@ class DataSource:
         from tapflow.lib.op_object import get_obj
         obj = get_obj("datasource", name)
         if obj is not None:
+            exists_database_type = obj.setting.get("database_type")
+            if exists_database_type.lower() != connector.lower():
+                logger.warn("database {} exists but type {} is different with {}, will not create datasource", name, exists_database_type, connector)
+                return
+            else:
+                logger.info("database {} exists, will update it's config", name)
             self.id = obj.id
             self.setting = obj.setting
             return

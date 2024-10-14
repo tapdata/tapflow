@@ -356,7 +356,13 @@ class Pipeline:
         self.command.append(["js", script])
         return self._common_stage(f)
 
-    def add_fields(self, k, v, js=None):
+    def add_fields(self, k, v=None, js=None):
+        fields = []
+        if type(k) == list:
+            fields = k
+        else:
+            fields = [[k, v, js]]
+
         m = {
             "String": "TapString",
             "Date": "TapDate",
@@ -368,12 +374,20 @@ class Pipeline:
             "Map": "TapMap",
             "Array": "TapArray"
         }
-        declareScript = "TapModelDeclare.addField(tapTable, '{}', '{}');".format(k, m.get(v, "TapString"))
-        if js is None:
-            js_script = "return record;"
-        else:
-            js_script = "record['{}'] = {}".format(k, js)
+        declareScript = ""
+        js_script = ""
 
+        for f in fields:
+            f_key = f[0]
+            f_t = f[1]
+            f_js = None
+            if len(f) > 2:
+                f_js = f[2]
+
+            declareScript += "TapModelDeclare.addField(tapTable, '{}', '{}');\n".format(f_key, m.get(f_t, "TapString"))
+            if f_js is not None:
+                js_script += "record['{}'] = {};\n".format(f_key, f_js)
+        js_script += "return record;"
         return self.js(script=js_script, declareScript=declareScript)
 
     def flat_unwind(self, path=None, index_name="_index", array_elem="BASIC", joiner="_", keep_null=True):

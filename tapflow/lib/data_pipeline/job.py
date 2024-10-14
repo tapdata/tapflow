@@ -658,6 +658,7 @@ class Job:
             return
 
         data = res["data"]
+        print(data)
         nodeResult = data.get("nodeResult", {})
         if not quiet:
             for k, v in nodeResult.items():
