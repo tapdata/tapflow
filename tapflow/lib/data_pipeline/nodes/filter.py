@@ -19,6 +19,7 @@ class Filter(BaseObj):
             return var
 
         # 匹配非引号内的变量名，排除操作符，避免替换掉字面量
+        expression = list(self.f.values())[0]
         return re.sub(r"(?<!['\"])(\b[a-zA-Z_][a-zA-Z0-9_]*\b)(?!['\"])", replace_variable, expression)
 
     def to_dict(self):
@@ -26,10 +27,10 @@ class Filter(BaseObj):
         if list(self.f.keys())[0] != "keep":
             action = "discard"
 
-        expression = self.f_to_expression()
+        exp = self.f_to_expression()
         return {
             "action": action,
-            "expression": expression,
+            "expression": exp,
             "concurrentNum": 1,
             "type": "row_filter_processor",
             "catalog": "processor",
