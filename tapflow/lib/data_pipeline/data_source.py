@@ -40,6 +40,8 @@ class DataSource:
         if id is not None:
             self.id = id
             self.setting = self.get(connector_id=id)
+            if self.setting is not None:
+                self.pdk_setting = self.setting.get("config")
             return
         # name is not provide
         name = connector if connector != "" and name is None else name
@@ -55,14 +57,15 @@ class DataSource:
                 logger.info("database {} exists, will update it's config", name)
             self.id = obj.id
             self.setting = obj.setting
-            return
-        self.id = id
-        self.connection_type = type
-        self.setting = {
-            "name": name,
-            "database_type": client_cache["connectors"][connector]["name"],
-            "connection_type": self.connection_type
-        }
+            self.pdk_setting = obj.setting.get("config")
+        else:
+            self.id = id
+            self.connection_type = type
+            self.setting = {
+                "name": name,
+                "database_type": client_cache["connectors"][connector]["name"],
+                "connection_type": self.connection_type
+            }
         if config is not None:
             for key, value in config.items():
                 if key == "db" and value:

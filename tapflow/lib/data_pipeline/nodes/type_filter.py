@@ -8,7 +8,7 @@ class TypeFilterNode(BaseObj):
             self._filter_types = [ts]
         filter_types = []
         for i in range(len(self._filter_types)):
-            filter_types.append(str(self._filter_types[i]).upper())
+            filter_types.append(str(self._filter_types[i]))
         self._filter_types = filter_types
         super().__init__()
 

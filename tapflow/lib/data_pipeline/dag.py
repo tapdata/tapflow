@@ -80,7 +80,7 @@ class Dag:
             nodes = []
             for node in self.dag["nodes"]:
                 if node["type"] == "table":
-                    node["isFilter"] = True
+                    node["isFilter"] = False
                 nodes.append(node)
 
         self.dag["edges"].append({

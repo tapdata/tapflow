@@ -115,6 +115,11 @@ class Job:
         return jobs
 
     def reset(self, quiet=True):
+        status = self.status()
+        if status in ["running"]:
+            if not quiet:
+                logger.warn("Task status is {}, can not reset, please stop it first", status)
+                return False
         res = req.patch("/Task/batchRenew", params={"taskIds": self.id}).json()
         if res["code"] == "ok":
             if not quiet:

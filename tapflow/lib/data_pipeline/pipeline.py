@@ -102,7 +102,12 @@ class Pipeline:
             return self._lookup_path_cache[parent_path]
         return self
 
-    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, rename=None, mapper=None):
+    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, rename=None, mapper=None, func=None, js=None, pk=None):
+        if func is not None:
+            mapper = func
+        if js is not None:
+            mapper = js
+
         if isinstance(source, str):
             if "." in source:
                 db, table = source.split(".")
@@ -125,7 +130,7 @@ class Pipeline:
         if rename is not None:
             child_p = child_p.rename_fields(rename)
         if mapper is not None:
-            child_p = child_p.func(script=mapper)
+            child_p = child_p.func(script=mapper, pk=pk)
 
         if type == dict:
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
@@ -144,8 +149,8 @@ class Pipeline:
     def mode(self, value):
         self.dag.jobType = value
 
-    def read_from(self, source):
-        return self.readFrom(source)
+    def read_from(self, source, setting={}):
+        return self.readFrom(source, setting)
 
     @help_decorate("read data from source", args="p.readFrom($source)")
     def readFrom(self, source, setting={}):
@@ -171,7 +176,9 @@ class Pipeline:
             print("Flow updated: source added")
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         self._read_from_ed = True
-        return self._clone(source)
+        obj = self._clone(source)
+        self.__dict__ = obj.__dict__
+        return self
 
     def write_to(self, sink):
         return self.writeTo(sink)
@@ -216,7 +223,9 @@ class Pipeline:
 
     def _common_stage(self, f):
         self.dag.edge(self, f)
-        return self._clone(f)
+        obj = self._clone(f)
+        self.__dict__.update(obj.__dict__)
+        return self
 
     def _common_stage2(self, p, f):
         if isinstance(p.stage, MergeNode):
@@ -352,11 +361,23 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
 
-    def func(self, script="", declareScript="", language="js"):
-        return self.js(script, declareScript, language)
+    def func(self, script="", declareScript="", language="js", pk=None):
+        return self.js(script, declareScript, language, pk)
+
+    def py(self, script=""):
+        return self.func(script=script)
 
     @help_decorate("use a function(js text/python function) transform data", args="p.js()")
-    def js(self, script="", declareScript="", language="js"):
+    def js(self, script="", declareScript="", language="js", pk=None):
+        if pk is not None:
+            if declareScript != "" and not declareScript.endswith(";"):
+                declareScript += ";\n"
+            if type(pk) is str:
+                pks = [pk]
+            else:
+                pks = pk
+            for pkk in pks:
+                declareScript += "TapModelDeclare.setPk(tapTable, '{}');\n".format(pkk)
         if self.dag.jobType == JobType.migrate:
             logger.fwarn("{}", "migrate job not support js processor")
             return self

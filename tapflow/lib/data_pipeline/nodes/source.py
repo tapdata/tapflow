@@ -41,6 +41,7 @@ class Source(BaseNode):
             self.setting.update({
                 "tableName": table,
                 "name": table,
+                "isFilter": False,
             })
         if str(self.databaseType).lower() == "csv":
             self.update_node_config({
