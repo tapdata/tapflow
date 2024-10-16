@@ -177,6 +177,8 @@ class Pipeline:
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         self._read_from_ed = True
         obj = self._clone(source)
+        self.__dict__ = obj.__dict__
+        return self
 
     def write_to(self, sink):
         return self.writeTo(sink)
