@@ -1,19 +1,6 @@
 from tapflow.lib.data_pipeline.job import JobType, JobStatus
 from tapflow.lib.data_pipeline.nodes.source import Source
-from tapflow.lib.data_pipeline.nodes.sink import Sink
 from tapflow.lib.data_pipeline.nodes.filter import Filter
-from tapflow.lib.data_pipeline.nodes.merge import Merge
-from tapflow.lib.data_pipeline.nodes.rename_table import RenameTable
-from tapflow.lib.data_pipeline.nodes.row_filter import RowFilter
-from tapflow.lib.data_pipeline.nodes.field_rename import FieldRename
-from tapflow.lib.data_pipeline.nodes.type_filter import TypeFilterNode
-from tapflow.lib.data_pipeline.nodes.union import UnionNode
-from tapflow.lib.data_pipeline.nodes.unwind import Unwind
-from tapflow.lib.data_pipeline.nodes.time_add import TimeAdd
-from tapflow.lib.data_pipeline.nodes.time_adjust import TimeAdjust
-from tapflow.lib.data_pipeline.nodes.type_modification import TypeAdjust
-from tapflow.lib.data_pipeline.nodes.column_filter import ColumnFilter
-from tapflow.lib.data_pipeline.nodes.py import Py
 
 
 # used to describe a pipeline job
@@ -131,83 +118,4 @@ class Dag:
 
 # generate dag stage, used by dag object, stage is used to describe a dag in server
 def gen_dag_stage(obj):
-    objType = type(obj)
-
-    if objType == Source:
-        d = obj.to_dict()
-        return d
-
-    if objType == Sink:
-        return obj.to_dict()
-
-    if objType == Merge:
-        return obj.to_dict()
-
-    if objType == RenameTable:
-        return obj.to_dict()
-
-    if objType == RowFilter:
-        return obj.to_dict()
-
-    if objType == FieldRename:
-        return obj.to_dict()
-
-    if objType == UnionNode:
-        return obj.to_dict()
-
-    if objType == Unwind:
-        return obj.to_dict()
-
-    if objType == TimeAdjust:
-        return obj.to_dict()
-
-    if objType == TimeAdd:
-        return obj.to_dict()
-
-    if objType == TypeAdjust:
-        return obj.to_dict()
-
-    if objType == Filter:
-        return obj.to_dict()
-
-    if objType == TypeFilterNode:
-        return obj.to_dict()
-
-    if objType == Py:
-        return obj.to_dict()
-
-    if objType in [ColumnFilter] or obj.language == "js":
-        processor_type = "js_processor"
-        script = "function process(record){\n\n\t// Enter you code at here\n%s}" % obj.to_js()
-        name = "JS"
-    else:
-        processor_type = "python_processor"
-        script = "import json, random, time, datetime, uuid, types, yaml\nimport urllib, urllib2, requests\nimport math, hashlib, base64\ndef process(record, context):%s" % obj.to_js()
-        name = "Python"
-
-    if obj.func_header:
-        return {
-            "attrs": {
-                "accessNodeProcessId": "",
-                "connectionType": "source_and_target",
-                "position": [0, 0]
-            },
-            "id": obj.id,
-            "name": name,
-            "type": processor_type,
-            "declareScript": obj.to_declareScript(),
-            "script": script
-        }
-    else:
-        return {
-            "attrs": {
-                "accessNodeProcessId": "",
-                "connectionType": "source_and_target",
-                "position": [0, 0]
-            },
-            "id": obj.id,
-            "name": name,
-            "type": processor_type,
-            "script": obj.to_js(),
-            "declareScript": obj.to_declareScript(),
-        }
+    return obj.to_dict()

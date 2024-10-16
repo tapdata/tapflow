@@ -9,6 +9,7 @@ from tapflow.lib.help_decorator import help_decorate
 from tapflow.lib.utils.log import logger
 from tapflow.lib.request import TaskApi
 from tapflow.lib.graph import Node, Graph
+from tapflow.lib.cache import client_cache
 
 
 class JobStats:
@@ -75,30 +76,26 @@ class Job:
         self.job = {}
         self.dag = None
         self.validateConfig = None
-        if id is not None:
-            if len(id) == 24:
-                self.id = id
-                self._get()
-                return
-            else:
-                from tapflow.lib.op_object import get_obj
-                obj = get_obj("job", id)
-                self.id = obj.id
-                self._get()
-                return
-
-        self.name = name
-        self._get()
-        if dag is None and pipeline is None:
+        self.id = None
+        self.pipeline = pipeline
+        # 如果id是24位, 则认为是短id, 否则认为是长id, 短id直接获取, 长id通过op_object获取
+        # 如果name不为空, 则通过name获取id, dataflow -> job
+        if id is not None and len(id) == 24:
+            self.id = id
+        elif id is not None:
+            from tapflow.lib.op_object import get_obj
+            obj = get_obj("job", id)
+            self.id = obj.id
+        elif name is not None and client_cache["jobs"]["name_index"].get(name):
+            self.id = client_cache["jobs"]["name_index"][name]["id"]
+        if self.id is not None:
+            self._get()
             return
         if dag is not None:
             self.dag = dag
         else:
             self.dag = pipeline.dag
-
-        self.id = None
-        self.cost = 0
-        self.pipeline = pipeline
+        self.name = name
 
     @staticmethod
     def list():
@@ -161,18 +158,22 @@ class Job:
         return None
 
     def _get(self):
-        if self.id is not None:
-            res = req.get("/Task/findTaskDetailById/" + self.id)
-            if res.status_code != 200:
-                return None
-            res = res.json()
-            self.name = res["data"]["name"]
-            self._get_by_name()
+        pipeline_id = ''
+        if self.id is not None and client_cache["jobs"]["id_index"].get(self.id):
+            pipeline_id = self.id
+        else:
             return
-
-        if self.name is not None:
-            self._get_by_name()
-
+        
+        res = req.get(f"/Task/{pipeline_id}")
+        if res.status_code != 200:
+            return
+        data = res.json()["data"]
+        self.name = data["name"]
+        self.job = data
+        self.id = data["id"]
+        self.dag = data["dag"]
+        self.jobType = data["syncType"]
+    
     def stop(self, t=60, sync=True):
         if self.status() != JobStatus.running:
             return False
@@ -286,26 +287,26 @@ class Job:
             self.job["validateConfig"] = self.validateConfig
 
         self.job.update(self.setting)
-        res = req.post("/Task", json=self.job)
-        res = res.json()
-        if res["code"] != "ok":
-            if "Task.RepeatName" == res["code"]:
-                self.id = self._get_id_by_name()
-                if self.id is None:
-                    logger.fwarn("save task failed {}", res)
+        if self.id is None:
+            res = req.post("/Task", json=self.job)
+            res = res.json()
+            if res["code"] != "ok":
+                if "Task.RepeatName" == res["code"]:
+                    self.id = self._get_id_by_name()
+                    if self.id is None:
+                        logger.warn("save task failed {}", res)
+                        return False
+                    self.job["id"] = self.id
+                    res = req.patch("/Task", json=self.job).json()
+                    if res["code"] != "ok":
+                        logger.warn("patch task failed {}", res)
+                        return False
+                else:
+                    logger.warn("save failed {}", res)
                     return False
-                self.job["id"] = self.id
-                res = req.patch("/Task", json=self.job).json()
-                if res["code"] != "ok":
-                    logger.fwarn("patch task failed {}", res)
-                    return False
-            else:
-                logger.fwarn("save failed {}", res)
-                return False
-        self.id = res["data"]["id"]
-        job = res["data"]
+        job = self.job
         job.update(self.setting)
-        res = req.patch("/Task/confirm/" + self.id, json=job)
+        res = req.patch("/Task/", json=job)
         res = res.json()
         if res["code"] != "ok":
             logger.fwarn("start failed {}", res)

@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Sequence
+from typing import Iterable, List, Tuple, Sequence
 
 from tapflow.lib.utils.log import logger
 from tapflow.lib.data_pipeline.base_node import WriteMode
@@ -90,6 +90,41 @@ class Merge(MergeNode):
             join_value_change
         )
 
+    @classmethod
+    def to_instance(cls, node_dict: dict) -> "Merge":
+        """
+        to_dict方法的逆向操作
+        :param node_dict: API 返回的节点dict
+        :param table_name: 源表名
+        :return: 节点实例
+        """
+        father_node = None
+        if len(node_dict["mergeProperties"]) == 0:
+            return None
+        mergePropertie = node_dict["mergeProperties"][0]
+        father_node = cls(node_dict["id"], 
+                    mergePropertie["tableName"],
+                    [],
+                    mergeType=mergePropertie['mergeType'],
+                    targetPath=mergePropertie.get('targetPath', ''),
+                    isArray=mergePropertie['isArray'],
+                    arrayKeys=mergePropertie.get('arrayKeys', []),
+                    join_value_change=mergePropertie.get('enableUpdateJoinKeyValue', False)
+                )
+        father_node.id = node_dict["id"]
+        for child_dict in mergePropertie["children"]:
+            child_node = MergeNode(child_dict["id"],
+                                    child_dict["tableName"],
+                                    [],
+                                    mergeType=child_dict["mergeType"],
+                                    targetPath=child_dict.get('targetPath', ''),
+                                    isArray=child_dict['isArray'],
+                                    arrayKeys=child_dict.get('arrayKeys', []),
+                                    join_value_change=child_dict.get('enableUpdateJoinKeyValue', False)
+                                    )
+            father_node.add(child_node)
+        return father_node
+
     def to_dict(self, is_head=False):
         # if the node is head node
         if self.father is None or is_head:
@@ -101,13 +136,16 @@ class Merge(MergeNode):
                     "children": [i.to_dict() for i in self.child],
                     "id": self.node_id,
                     "isArray": self.isArray,
-                    "arrayKeys": self.arrayKeys,
+                    # "arrayKeys": self.arrayKeys,
                     "tableName": self.table_name,
                     "mergeType": "updateOrInsert",
                     "enableUpdateJoinKeyValue": self.join_value_change
                 }],
                 "id": self.id,
                 "elementType": "Node",
+                "mergeMode": "main_table_first",
+                "disable": False,
+                "isTransformed": False,
                 "catalog": "processor",
                 "attrs": {
                     "position": [0, 0]

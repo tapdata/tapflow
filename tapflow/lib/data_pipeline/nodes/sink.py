@@ -18,16 +18,33 @@ class Sink(Source):
             "enableSaveDeleteData": False,
             "shardCollection": False,
             "hashSplit": False,
-            "maxSplit": 32
+            "maxSplit": 32,
         })
 
         if self.mode == JobType.sync:
+            self.config_type = node_config_sync
             self.config_type = node_config_sync
             _ = self._getTableId(table)  # to set self.primary_key, don't delete this line
             self.setting.update({
                 "tableName": table,
                 "name": table,
             })
+
+    @classmethod
+    def to_instance(cls, node_dict: dict) -> "Sink":
+        """
+        to_dict方法的逆向操作
+        :param node_dict: API 返回的节点dict
+        :return: 节点实例
+        """
+        try:
+            return cls(
+                node_dict["attrs"]["connectionName"],
+                node_dict["tableName"],
+                mode=JobType.sync if node_dict["type"] == "table" else JobType.migrate
+            )
+        except KeyError as e:
+            raise ValueError(f"Invalid node_dict, {e}")
 
     def keepData(self):
         self.setting.update({

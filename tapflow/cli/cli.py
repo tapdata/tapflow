@@ -606,6 +606,7 @@ def main():
         os._exit(-1)
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
+    show_jobs(quiet=True)
 
 
 if __name__ == "__main__":

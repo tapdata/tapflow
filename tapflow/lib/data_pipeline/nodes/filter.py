@@ -4,9 +4,12 @@ import re
 
 
 class Filter(BaseObj):
-    def __init__(self, f, filter_type=FilterType.keep):
+    def __init__(self, f, filter_type=FilterType.keep, id=None, name=None):
         super().__init__()
         self.f = {filter_type: f}
+        if id is not None:
+            self.id = id
+        self.name = name
 
     def f_to_expression(self):
         # 使用正则表达式匹配变量名，并为其添加前缀
@@ -88,4 +91,9 @@ class Filter(BaseObj):
 
     def to_declareScript(self):
         return ""
-
+    
+    @classmethod
+    def to_instance(cls, node_dict):
+        return cls(node_dict["expression"],
+                   id=node_dict["id"],
+                   name=node_dict["name"])

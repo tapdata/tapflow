@@ -179,7 +179,7 @@ NODE_SOURCE = {
     "migrateTableSelectType": {require: True, type: str, default: "all", option: ["all", "custom", "expression"]},
     "name": {require: True, type: str},
     "enableDynamicTable": {require: False, type: bool, default: False},
-    "tableNames": {require: False, type: list},
+    # "tableNames": {require: False, type: list},
 }
 
 

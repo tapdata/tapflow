@@ -5,6 +5,10 @@ import datetime
 from dataclasses import Field
 from typing import Iterable, Tuple, Sequence
 
+from tapflow.lib.data_pipeline.nodes import get_node_instance
+from tapflow.lib.data_pipeline.nodes.field_add_del import FieldAddDel
+from tapflow.lib.data_pipeline.nodes.field_calculate import FieldCalculate
+from tapflow.lib.data_pipeline.nodes.python import Python
 from tapflow.lib.help_decorator import help_decorate
 from tapflow.lib.request import InspectApi
 from tapflow.lib.utils.log import logger
@@ -36,6 +40,7 @@ from tapflow.lib.data_pipeline.nodes.py import Py
 from tapflow.lib.data_pipeline.validation.data_verify import DataVerify
 from tapflow.lib.connections.connection import get_table_fields
 from tapflow.lib.data_pipeline.nodes.type_modification import TypeAdjust
+from tapflow.lib.cache import client_cache
 
 _flows = {}
 
@@ -511,11 +516,60 @@ class Pipeline:
     @help_decorate("use a function(js text/python function) transform data", args="p.processor()")
     def processor(self, script=""):
         return self.js(script)
+    
+    def _make_node(self, node_dict):
+        return get_node_instance(node_dict)
+    
+    def _set_default_stage(self):
+
+        def _find_node_by_id(node_id):
+            for node in self.dag.dag["nodes"]:
+                if node["id"] == node_id:
+                    return node
+            return None
+
+        # find node from last edge to first edge
+        for edge in self.dag.dag["edges"][::-1]:
+            target = edge["target"]
+            target_dict = _find_node_by_id(target)
+            self.stage = self._make_node(target_dict)
+            return
+            
+        # if not found, set stage to first node
+        if self.stage is None and len(self.dag.dag["nodes"]) > 0:
+            self.stage = self._make_node(self.dag.dag["nodes"][0])
+                
+    def set_stage(self, stage):
+        self.stage = stage
+
+    def _set_lines(self):
+        for node in self.dag.dag["nodes"]:
+            self.lines.append(self._make_node(node))
+
+    def _set_sources(self):
+        for node in self.dag.dag["nodes"]:
+            if node["type"] == "table":
+                self.sources.append(Sink(node["attrs"]["connectionName"], node["tableName"]))
+
+    def _set_merge_node(self):
+        if self.dag.jobType == JobType.migrate:
+            return None
+        for node in self.dag.dag["nodes"]:
+            if node["type"] == "merge_table_processor":
+                self.mergeNode = self._make_node(node)
 
     def get(self):
-        job = Job(name=self.name, id=self.id)
+        job = Job(name=self.name, id=self.id, pipeline=self)
         if job.id is not None:
             self.job = job
+            self.dag = Dag(name=self.name)
+            self.dag.dag = job.dag 
+            self.job.dag = self.dag
+            self.dag.jobType = self.job.jobType
+            self._set_default_stage()
+            self._set_lines()
+            self._set_sources()
+            self._set_merge_node()
 
     def _get_source_connection_id(self):
         ids = []
@@ -674,8 +728,10 @@ class Pipeline:
         job = Job(name=self.name, pipeline=self)
         job.validateConfig = self.validateConfig
         self.job = job
+        self.job.pipeline = self
+        self.job.config(self.dag.setting)
+        self.job.dag = self.dag
         self.config({})
-        job.config(self.dag.setting)
         job.save()
         return self
 
