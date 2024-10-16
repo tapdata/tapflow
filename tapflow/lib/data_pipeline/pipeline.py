@@ -109,7 +109,7 @@ class Pipeline:
             return self._lookup_path_cache[parent_path]
         return self
 
-    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, rename=None, mapper=None, func=None, js=None, pk=None):
+    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, rename=None, mapper=None, func=None, js=None, pk=None, query=None):
         if func is not None:
             mapper = func
         if js is not None:
@@ -124,7 +124,7 @@ class Pipeline:
         cache_key = "%s_%s_%s" % (source.table_name, path, type)
         if cache_key not in self._lookup_cache:
             child_p = Pipeline(mode=self.dag.jobType)
-            child_p.read_from(source)
+            child_p.read_from(source, query=query)
             self._lookup_cache[cache_key] = child_p
             self._lookup_path_cache[path] = child_p
 
@@ -156,11 +156,57 @@ class Pipeline:
     def mode(self, value):
         self.dag.jobType = value
 
-    def read_from(self, source, setting={}):
-        return self.readFrom(source, setting)
+    def read_from(self, source, setting={}, query=None, filter=None):
+        return self.readFrom(source, setting, query, filter)
+
+    def _filter_to_conditions(self, filter=None):
+        if filter is None:
+            return None
+
+        def parse_expression(expression):
+            import re
+            # 定义所有支持的操作符
+            operators = [">=", "<=", ">", "<", "==", "="]
+
+            # 转义操作符并构建正则表达式模式
+            pattern = "|".join([re.escape(op) for op in operators])
+
+            # 使用正则表达式分割输入的表达式
+            match = re.split(f"({pattern})", expression)
+
+            if len(match) == 3:
+                left = match[0].strip()  # 左边部分
+                operator = match[1].strip()  # 操作符
+                right = match[2].strip()  # 右边部分
+                return left, operator, right
+            else:
+                return None, None, None  # 返回 None 表示解析失败
+        conditions = []
+        m = {
+            ">": 1,
+            ">=": 2,
+            "<": 3,
+            "<=": 4,
+            "=": 5
+        }
+        filters = str(filter).split("and")
+        for f in filters:
+            k, op, v = parse_expression(f)
+            if k is None:
+                continue
+            conditions.append({
+                "fastQuery": False,
+                "form": "BEFORE",
+                "key": k,
+                "number": 1,
+                "operator": m.get(op, 5),
+                "value": v,
+                "unit": "DAY"
+            })
+        return conditions
 
     @help_decorate("read data from source", args="p.readFrom($source)")
-    def readFrom(self, source, setting={}):
+    def readFrom(self, source, setting={}, query=None, filter=None):
         if self._read_from_ed:
             logger.warn("Read data from DB is already setted, please create a new Flow before reading data")
             return self
@@ -177,6 +223,17 @@ class Pipeline:
             self.mode = source.mode
         source.mode = self.mode
         source.setting.update(setting)
+        if query is not None:
+            source.setting.update({"customCommand":{
+                "command": "executeQuery",
+                "params": {
+                    "sql": query
+                }
+            }, "enableCustomCommand": True})
+        if filter is not None:
+            conditions = self._filter_to_conditions(filter)
+            if conditions is not None:
+                source.setting.update({"conditions": conditions, "isFilter": True})
         self.sources.append(source)
         self.lines.append(source)
         if is_tapcli():

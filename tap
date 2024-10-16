@@ -30,6 +30,20 @@ if [[ ! -d ".venv" ]]; then
 fi
 source .venv/bin/activate
 
+file_value=""
+# 使用 getopts 解析 -f 参数
+while getopts "f:" opt; do
+  case $opt in
+    f)
+      file_value="$OPTARG"
+      python3 $file_value
+      exit 0
+      ;;
+    \?)
+      ;;
+  esac
+done
+
 mkdir -p .cli
 
 which ipython3 &> /dev/null

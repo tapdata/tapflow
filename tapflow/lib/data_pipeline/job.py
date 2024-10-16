@@ -174,8 +174,10 @@ class Job:
         self.dag = data["dag"]
         self.jobType = data["syncType"]
     
-    def stop(self, t=60, sync=True):
+    def stop(self, t=60, sync=True, quiet=True):
         if self.status() != JobStatus.running:
+            if not quiet:
+                logger.warn("Task status is {}, not running, can not stop it", self.status())
             return False
         if self.id is None:
             return False
@@ -183,13 +185,19 @@ class Job:
         s = time.time()
         while True:
             if time.time() - s > t:
+                if not quiet:
+                    logger.warn("{}", "Task stopped failed")
                 return False
             time.sleep(1)
             status = self.status()
             if status in [JobStatus.stop, JobStatus.wait_run, JobStatus.error]:
+                if not quiet:
+                    logger.info("{}", "Task stopped successfully")
                 return True
             if status == JobStatus.stopping and not sync:
                 return True
+        if not quiet:
+            logger.warn("{}", "Task stopped failed")
         return False
 
     def delete(self, quiet=True):
@@ -202,10 +210,16 @@ class Job:
             return
         res = req.delete("/Task/batchDelete", params={"taskIds": self.id})
         if res.status_code != 200:
+            if not quiet:
+                logger.warn("{}", "Task delete failed")
             return False
         res = res.json()
         if res["code"] != "ok":
+            if not quiet:
+                logger.warn("{}", "Task delete failed")
             return False
+        if not quiet:
+            logger.info("{}", "Task deleted successfully")
         return True
 
     def relations(self):
@@ -382,7 +396,7 @@ class Job:
                         logger.fwarn("discover schema failed for {} times, retrying, most 10 times", i)
         return True
 
-    def start(self):
+    def start(self, quiet=True):
         try:
             status = self.status()
         except (KeyError, TypeError) as e:
@@ -392,6 +406,8 @@ class Job:
                 return False
             status = self.status()
         if status in [JobStatus.running, JobStatus.scheduled, JobStatus.wait_run]:
+            if not quiet:
+                logger.warn("Task {} status is {}, need not start", self.name, status)
             return True
 
         if self.id is None:
@@ -401,8 +417,11 @@ class Job:
         time.sleep(3)
         res = req.put("/Task/batchStart", params={"taskIds": self.id}).json()
         if res["code"] != "ok":
+            if not quiet:
+                logger.warn("{}", "Task start failed")
             return False
-
+        if not quiet:
+            logger.info("{}", "Task start succeed")
         return True
 
     def config(self, config):
