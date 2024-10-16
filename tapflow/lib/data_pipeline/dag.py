@@ -13,6 +13,7 @@ from tapflow.lib.data_pipeline.nodes.time_add import TimeAdd
 from tapflow.lib.data_pipeline.nodes.time_adjust import TimeAdjust
 from tapflow.lib.data_pipeline.nodes.type_modification import TypeAdjust
 from tapflow.lib.data_pipeline.nodes.column_filter import ColumnFilter
+from tapflow.lib.data_pipeline.nodes.py import Py
 
 
 # used to describe a pipeline job
@@ -170,6 +171,9 @@ def gen_dag_stage(obj):
         return obj.to_dict()
 
     if objType == TypeFilterNode:
+        return obj.to_dict()
+
+    if objType == Py:
         return obj.to_dict()
 
     if objType in [ColumnFilter] or obj.language == "js":

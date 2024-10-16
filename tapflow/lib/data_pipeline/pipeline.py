@@ -31,6 +31,8 @@ from tapflow.lib.data_pipeline.nodes.rename_table import RenameTable
 from tapflow.lib.data_pipeline.nodes.time_adjust import TimeAdjust
 from tapflow.lib.data_pipeline.nodes.time_add import TimeAdd
 from tapflow.lib.data_pipeline.nodes.js import Js
+from tapflow.lib.data_pipeline.nodes.py import Py
+
 from tapflow.lib.data_pipeline.validation.data_verify import DataVerify
 from tapflow.lib.connections.connection import get_table_fields
 from tapflow.lib.data_pipeline.nodes.type_modification import TypeAdjust
@@ -366,8 +368,8 @@ class Pipeline:
     def func(self, script="", declareScript="", language="js", pk=None):
         return self.js(script, declareScript, language, pk)
 
-    def py(self, script=""):
-        return self.func(script=script)
+    def py(self, script="", declareScript="", pk=None):
+        return self.func(script=script, declareScript=declareScript, pk=pk)
 
     @help_decorate("use a function(js text/python function) transform data", args="p.js()")
     def js(self, script="", declareScript="", language="js", pk=None):
@@ -385,13 +387,12 @@ class Pipeline:
             return self
         import types
         if type(script) == types.FunctionType:
-            from metapensiero.pj.api import translates
             import inspect
             source_code = inspect.getsource(script)
-            source_code = "def process(" + source_code.split("(", 2)[1]
-            js_script = translates(source_code)[0]
-            js_script = "\n".join(js_script.split("\n")[1:-2])
-            f = Js(js_script, False, language=language)
+            codes = source_code.split("\n")[1:-1]
+            codes = "\n".join([i[4:] for i in codes])
+            print(codes)
+            f = Py(codes, declareScript)
         else:
             if script.endswith(".js"):
                 js_script = open(script, "r").read()
