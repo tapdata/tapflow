@@ -3,4 +3,3 @@ pyyaml
 websockets
 bson
 ipython
-javascripthon
