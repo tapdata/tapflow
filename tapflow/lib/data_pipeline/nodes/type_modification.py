@@ -14,7 +14,7 @@ class TypeAdjust(BaseObj):
     node_name = "类型修改"
     node_type = "field_mod_type_processor"
 
-    def __init__(self):
+    def __init__(self, id=None, name=None):
         self.fields = {}
         self.convert_field = {}
         self._convert_field = []
@@ -22,6 +22,9 @@ class TypeAdjust(BaseObj):
         self.pre_table_name = None
         self.pk_position = 0
         super().__init__()
+        if id is not None:
+            self.id = id
+        self.name = name or self.node_name
 
     def get(self, pre_connection_id, pre_table_name):
         # 获取table id
@@ -88,7 +91,7 @@ class TypeAdjust(BaseObj):
             self._convert(field, field_type)
         result = {
             "id": self.id,
-            "name": self.node_name,
+            "name": self.name,
             "type": self.node_type,
         }
         if len(self.convert_field) != 0:
@@ -96,4 +99,11 @@ class TypeAdjust(BaseObj):
                 "operations": list(self.convert_field.values()),
             })
         return result
-
+    
+    @classmethod
+    def to_instance(cls, node_dict):
+        t_node = cls(id=node_dict["id"],
+                   name=node_dict["name"])
+        for op in node_dict["operations"]:
+            t_node.convert(op["field"], op["operand"])
+        return t_node
