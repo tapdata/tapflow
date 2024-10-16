@@ -177,8 +177,6 @@ class Pipeline:
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         self._read_from_ed = True
         obj = self._clone(source)
-        self.__dict__ = obj.__dict__
-        return self
 
     def write_to(self, sink):
         return self.writeTo(sink)
@@ -219,7 +217,9 @@ class Pipeline:
             print("Flow updated: sink added")
         self.command.append(["write_to", sink.connection.c.get("name", "")+"."+sink.table_name])
         self._write_to_ed = True
-        return self._clone(sink)
+        obj = self._clone(sink)
+        self.__dict__ = obj.__dict__
+        return self
 
     def _common_stage(self, f):
         self.dag.edge(self, f)
@@ -667,10 +667,6 @@ class Pipeline:
             self.job.dag = self.dag
             self.job.save()
             return self
-        else:
-            self.job.pipeline = self
-            self.job.config(self.dag.setting)
-            self.job.dag = self.dag
 
         job = Job(name=self.name, pipeline=self)
         job.validateConfig = self.validateConfig
