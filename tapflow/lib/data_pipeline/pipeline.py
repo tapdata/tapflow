@@ -89,7 +89,6 @@ class Pipeline:
         self.lines = []
         self.sinks = []
         self.validateConfig = None
-        self.get()
         self.cache_sinks = {}
         self.joinValueChange = False
         self.type_adjust = []
@@ -100,6 +99,7 @@ class Pipeline:
         self._read_from_ed = False
         self._write_to_ed = False
         self._lookup_ed = False
+        self.get()
 
     def _get_lookup_parent(self, path):
         if path == "" or "." not in path:
@@ -138,7 +138,6 @@ class Pipeline:
             child_p = child_p.rename_fields(rename)
         if mapper is not None:
             child_p = child_p.func(script=mapper, pk=pk)
-
         if type == dict:
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
 
@@ -535,9 +534,9 @@ class Pipeline:
         if self.dag.jobType == JobType.migrate:
             logger.fwarn("{}", "migrate job not support merge")
             return
-        parent_id = self.lines[-1].id
-        parent_table_name = self.sources[-1].tableName
         if self.mergeNode is None:
+            parent_id = self.lines[-1].id
+            parent_table_name = self.sources[-1].tableName
             self.mergeNode = Merge(
                 parent_id, parent_table_name, association=[], mergeType=mergeType, targetPath=targetPath, join_value_change=self.joinValueChange
             )
@@ -577,19 +576,16 @@ class Pipeline:
     def _make_node(self, node_dict):
         return get_node_instance(node_dict)
     
+    def _find_node_by_id(self,node_id):
+        return self._node_map.get(node_id, None)
+    
     def _set_default_stage(self):
-
-        def _find_node_by_id(node_id):
-            for node in self.dag.dag["nodes"]:
-                if node["id"] == node_id:
-                    return node
-            return None
 
         # find node from last edge to first edge
         for edge in self.dag.dag["edges"][::-1]:
-            target = edge["target"]
-            target_dict = _find_node_by_id(target)
-            self.stage = self._make_node(target_dict)
+            source = edge["source"]
+            source_dict = self._find_node_by_id(source)
+            self.stage = self._make_node(source_dict)
             return
             
         # if not found, set stage to first node
@@ -608,12 +604,46 @@ class Pipeline:
             if node["type"] == "table":
                 self.sources.append(Sink(node["attrs"]["connectionName"], node["tableName"]))
 
+    def _set_lookup_cache(self, children: dict, parent_merge_node: Merge):
+        node = self._find_node_by_id(children["id"])
+        if node is None:
+            return
+        table_name = children["tableName"]
+        path = "" if not children.get("targetPath", "") else children["targetPath"]
+        type = dict if not children.get("isArray", False) else list
+        cache_key = "%s_%s_%s" % (table_name, path, type)
+        if cache_key not in self._lookup_cache:
+            child_p = Pipeline(mode=self.dag.jobType)
+            conn = f"{node['attrs']['connectionName']}.{node['tableName']}"
+            source = Source(conn, mode=self.dag.jobType)
+            child_p.read_from(source)
+            self._lookup_cache[cache_key] = child_p
+            self._lookup_path_cache[path] = child_p
+            child_p.mergeNode = Merge(
+                node["id"],
+                child_p.lines[-1].table,
+                association=[],
+                mergeType=children.get("mergeType", "updateWrite"),
+                targetPath=children.get("targetPath", ""),
+                isArray=children.get("isArray", False),
+                arrayKeys=children.get("arrayKeys", []),
+                join_value_change=self.joinValueChange,
+                id=node["id"]
+            )
+            parent_merge_node.add(child_p.mergeNode)
+
+        for child in children["children"]:
+            self._set_lookup_cache(child, parent_merge_node)
+
     def _set_merge_node(self):
         if self.dag.jobType == JobType.migrate:
             return None
         for node in self.dag.dag["nodes"]:
             if node["type"] == "merge_table_processor":
                 self.mergeNode = self._make_node(node)
+                for merge_property in node["mergeProperties"]:
+                    for child in merge_property["children"]:
+                        self._set_lookup_cache(child, self.mergeNode)
 
     def get(self):
         job = Job(name=self.name, id=self.id, pipeline=self)
@@ -623,6 +653,7 @@ class Pipeline:
             self.dag.dag = job.dag 
             self.job.dag = self.dag
             self.dag.jobType = self.job.jobType
+            self._node_map = {node["id"]: node for node in self.dag.dag["nodes"]}
             self._set_default_stage()
             self._set_lines()
             self._set_sources()

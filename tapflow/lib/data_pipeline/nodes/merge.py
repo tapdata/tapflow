@@ -17,6 +17,7 @@ class MergeNode(BaseObj):
                  isArray=False,
                  arrayKeys=[],
                  join_value_change=False,
+                 id=None,
                  ):
         self.node_id = node_id
         self.table_name = table_name
@@ -29,6 +30,7 @@ class MergeNode(BaseObj):
         self.arrayKeys=arrayKeys
         self.join_value_change = join_value_change
         super(MergeNode, self).__init__()
+        self.id = id
 
     def to_dict(self):
         return {
@@ -78,6 +80,7 @@ class Merge(MergeNode):
                  isArray=False,
                  arrayKeys=[],
                  join_value_change=False,
+                 id=None,
                  ):
         super(Merge, self).__init__(
             node_id,
@@ -87,7 +90,8 @@ class Merge(MergeNode):
             targetPath,
             isArray,
             arrayKeys,
-            join_value_change
+            join_value_change,
+            id=id
         )
 
     @classmethod
@@ -102,27 +106,17 @@ class Merge(MergeNode):
         if len(node_dict["mergeProperties"]) == 0:
             return None
         mergePropertie = node_dict["mergeProperties"][0]
-        father_node = cls(node_dict["id"], 
+        # make head node
+        father_node = cls(mergePropertie["id"],
                     mergePropertie["tableName"],
                     [],
                     mergeType=mergePropertie['mergeType'],
                     targetPath=mergePropertie.get('targetPath', ''),
                     isArray=mergePropertie['isArray'],
                     arrayKeys=mergePropertie.get('arrayKeys', []),
-                    join_value_change=mergePropertie.get('enableUpdateJoinKeyValue', False)
+                    join_value_change=mergePropertie.get('enableUpdateJoinKeyValue', False),
+                    id=node_dict["id"]
                 )
-        father_node.id = node_dict["id"]
-        for child_dict in mergePropertie["children"]:
-            child_node = MergeNode(child_dict["id"],
-                                    child_dict["tableName"],
-                                    [],
-                                    mergeType=child_dict["mergeType"],
-                                    targetPath=child_dict.get('targetPath', ''),
-                                    isArray=child_dict['isArray'],
-                                    arrayKeys=child_dict.get('arrayKeys', []),
-                                    join_value_change=child_dict.get('enableUpdateJoinKeyValue', False)
-                                    )
-            father_node.add(child_node)
         return father_node
 
     def to_dict(self, is_head=False):
