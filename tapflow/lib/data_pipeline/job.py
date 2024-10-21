@@ -320,6 +320,11 @@ class Job:
                     return False
         job = self.job
         job.update(self.setting)
+        res = req.patch("/Task", json=job)
+        if res.status_code != 200 or res.json().get("code") != "ok":
+            logger.fwarn("start failed {}", res)
+            logger.fdebug("res: ", res.json())
+            return False
         res = req.patch(f"/Task/confirm/{self.id}", json=job)
         res = res.json()
         if res["code"] != "ok":

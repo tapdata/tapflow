@@ -104,7 +104,7 @@ class Merge(MergeNode):
         :return: 节点实例
         """
         father_node = None
-        if len(node_dict["mergeProperties"]) == 0:
+        if node_dict.get("mergeProperties") is None:
             return None
         mergePropertie = node_dict["mergeProperties"][0]
         # make head node

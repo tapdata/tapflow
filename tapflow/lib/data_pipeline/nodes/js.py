@@ -39,7 +39,7 @@ class Js(BaseObj):
     
     @classmethod
     def to_instance(cls, node_dict):
-        return cls(node_dict["script"], 
+        return cls(node_dict.get("script", ""), 
                    node_dict.get("declareScript", ""), 
                    func_header=node_dict.get("func_header", True), 
                    language=node_dict.get("language", "js"),
