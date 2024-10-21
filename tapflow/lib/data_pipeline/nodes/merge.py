@@ -30,7 +30,8 @@ class MergeNode(BaseObj):
         self.arrayKeys=arrayKeys
         self.join_value_change = join_value_change
         super(MergeNode, self).__init__()
-        self.id = id
+        if id is not None:
+            self.id = id
 
     def to_dict(self):
         return {
@@ -135,7 +136,7 @@ class Merge(MergeNode):
                     "mergeType": "updateOrInsert",
                     "enableUpdateJoinKeyValue": self.join_value_change
                 }],
-                "id": self.id,
+                "id": self.id or self.node_id,
                 "elementType": "Node",
                 "mergeMode": "main_table_first",
                 "disable": False,

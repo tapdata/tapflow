@@ -581,13 +581,19 @@ class Pipeline:
     
     def _set_default_stage(self):
 
-        # find node from last edge to first edge
-        for edge in self.dag.dag["edges"][::-1]:
-            source = edge["source"]
-            source_dict = self._find_node_by_id(source)
-            self.stage = self._make_node(source_dict)
-            return
-            
+        # 查找没有子节点的目标节点
+        targets_with_no_children = set(edge['target'] for edge in self.dag.dag['edges'])
+        sources = set(edge['source'] for edge in self.dag.dag['edges'])
+        leaf_targets = targets_with_no_children - sources
+        if leaf_targets:
+            # 假设只有一个最后的目标
+            last_edge = next(edge for edge in self.dag.dag['edges'] if edge['target'] in leaf_targets)
+            last_source_id = last_edge['source']
+            last_node_dict = next((node for node in self.dag.dag['nodes'] if node['id'] == last_source_id), None)
+            if last_node_dict:
+                self.stage = self._make_node(last_node_dict)
+                return
+
         # if not found, set stage to first node
         if self.stage is None and len(self.dag.dag["nodes"]) > 0:
             self.stage = self._make_node(self.dag.dag["nodes"][0])
