@@ -57,7 +57,7 @@ class Dag:
             else:
                 self.dag["nodes"].append(_source)
 
-        if _sink is None or _source.get("type") == 'merge_table_processor':
+        if _sink is None or _sink.get("type") == 'merge_table_processor' or _source.get("type") == 'merge_table_processor':
             _sink = gen_dag_stage(sink)
             if _sink.get("type") == 'merge_table_processor':
                 self.replace_node(_sink)
