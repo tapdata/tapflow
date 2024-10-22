@@ -71,6 +71,7 @@ class Pipeline:
     def __init__(self, name=None, mode="migrate", id=None):
         if name is None:
             name = str(uuid.uuid4())
+        self._dag = {}
         self.dag = Dag(name="name")
         self.dag.config({"skipErrorEvent": {
             "errorMode": "Disable",
@@ -669,7 +670,7 @@ class Pipeline:
     def _set_merge_node(self):
         if self.dag.jobType == JobType.migrate:
             return None
-        for node in self.dag.dag["nodes"]:
+        for node in self._dag["nodes"]:
             if node["type"] == "merge_table_processor":
                 self.mergeNode = self._make_node(node)
                 if node.get("mergeProperties") is None:
@@ -677,13 +678,14 @@ class Pipeline:
                 for merge_property in node["mergeProperties"]:
                     for child in merge_property["children"]:
                         self._set_lookup_cache(child, self.mergeNode)
+        self.dag.update_node(self.mergeNode) 
 
     def get(self):
         job = Job(name=self.name, id=self.id, pipeline=self)
         if job.id is not None:
             self.job = job
-            self.dag = Dag(name=self.name)
-            self.dag.dag = job.dag 
+            self._dag = job.dag
+            self.dag = Dag.to_instance(job.dag, self.name)
             self.job.dag = self.dag
             self.dag.jobType = self.job.jobType
             self._node_map = {node["id"]: node for node in self.dag.dag["nodes"]}
