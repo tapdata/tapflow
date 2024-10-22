@@ -19,6 +19,7 @@ from tapflow.lib.cache import client_cache
 from tapflow.lib.data_pipeline.data_source import DataSource
 from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.sink import Sink
+from tapflow.lib.data_pipeline.nodes.union import UnionNode
 from tapflow.lib.data_pipeline.pipeline import Pipeline, MView, Flow, _flows
 
 from tapflow.lib.login import login_with_access_code, login_with_ak_sk

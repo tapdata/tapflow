@@ -99,6 +99,7 @@ class Pipeline:
         self._read_from_ed = False
         self._write_to_ed = False
         self._lookup_ed = False
+        self._union_node = None
         self.get()
 
     def _get_lookup_parent(self, path):
@@ -363,10 +364,32 @@ class Pipeline:
         return self._common_stage(f)
 
     def union(self, unionNode=None):
+        source = unionNode
         if unionNode is None:
             unionNode = UnionNode()
-        self.lines.append(unionNode)
-        return self._common_stage(unionNode)
+            self._union_node = unionNode
+
+        if isinstance(unionNode, UnionNode):
+            self._union_node = unionNode
+
+        if isinstance(source, QuickDataSourceMigrateJob) or isinstance(source, str):
+            if self._union_node is None:
+                self._union_node = UnionNode()
+            if isinstance(source, QuickDataSourceMigrateJob):
+                source = source.__db__
+                source = Source(source)
+            elif isinstance(source, str):
+                if "." in source:
+                    db, table = source.split(".")
+                    source = Source(db, table, mode=self.dag.jobType)
+                else:
+                    source = Source(source, mode=self.dag.jobType)
+            self.union(self._union_node)
+            self.read_from(source)
+            self.union(self._union_node)
+
+        self.lines.append(self._union_node)
+        return self._common_stage(self._union_node)
 
     @help_decorate("filter column", args='p.filterColumn(["id", "name"], FilterType.keep)')
     def filterColumn(self, query=[], filterType=FilterType.keep):
@@ -784,6 +807,7 @@ class Pipeline:
         p.mergeNode = self.mergeNode
         p.joinValueChange = self.joinValueChange
         p.command = self.command
+        p._union_node = self._union_node
         return p
 
     def cache(self, ttl):
