@@ -3,6 +3,7 @@ from tapflow.lib.data_pipeline.base_node import BaseNode
 from tapflow.lib.data_pipeline.job import JobType, JobStatus
 from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.filter import Filter
+from tapflow.lib.data_pipeline.nodes import get_node_instance
 
 
 # used to describe a pipeline job
@@ -154,6 +155,14 @@ class Dag:
             except Exception as e:
                 pass
 
+    @classmethod
+    def to_instance(cls, dag_dict, name):
+        dag = Dag(name=name)
+        for node in dag_dict["nodes"]:
+            dag.add_node(get_node_instance(node))
+        for edge in dag_dict["edges"]:
+            dag.add_edge(dag.get_node(edge["source"]), dag.get_node(edge["target"]))
+        return dag
 
 # generate dag stage, used by dag object, stage is used to describe a dag in server
 def gen_dag_stage(obj):
