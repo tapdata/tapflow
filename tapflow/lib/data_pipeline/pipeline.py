@@ -71,6 +71,7 @@ class Pipeline:
     def __init__(self, name=None, mode="migrate", id=None):
         if name is None:
             name = str(uuid.uuid4())
+        self._dag = {}
         self.dag = Dag(name="name")
         self.dag.config({"skipErrorEvent": {
             "errorMode": "Disable",
@@ -609,13 +610,15 @@ class Pipeline:
         sources = set(edge['source'] for edge in self.dag.dag['edges'])
         leaf_targets = targets_with_no_children - sources
         if leaf_targets:
-            # 假设只有一个最后的目标
+            # 如果 last_edge['target'] 是 Merge 节点，则将 self.stage 设置为该节点，否则设置为 last_edge['source']
             last_edge = next(edge for edge in self.dag.dag['edges'] if edge['target'] in leaf_targets)
-            last_source_id = last_edge['source']
-            last_node_dict = next((node for node in self.dag.dag['nodes'] if node['id'] == last_source_id), None)
-            if last_node_dict:
-                self.stage = self._make_node(last_node_dict)
-                return
+            target_node = next((node for node in self.dag.dag['nodes'] if node['id'] == last_edge['target']), None)
+            if target_node and target_node.get("type") == "merge_table_processor":
+                self.stage = self._make_node(target_node)
+            else:
+                source_node = next((node for node in self.dag.dag['nodes'] if node['id'] == last_edge['source']), None)
+                self.stage = self._make_node(source_node)
+            return
 
         # if not found, set stage to first node
         if self.stage is None and len(self.dag.dag["nodes"]) > 0:
@@ -667,19 +670,22 @@ class Pipeline:
     def _set_merge_node(self):
         if self.dag.jobType == JobType.migrate:
             return None
-        for node in self.dag.dag["nodes"]:
+        for node in self._dag["nodes"]:
             if node["type"] == "merge_table_processor":
                 self.mergeNode = self._make_node(node)
+                if node.get("mergeProperties") is None:
+                    continue
                 for merge_property in node["mergeProperties"]:
                     for child in merge_property["children"]:
                         self._set_lookup_cache(child, self.mergeNode)
+        self.dag.update_node(self.mergeNode) 
 
     def get(self):
         job = Job(name=self.name, id=self.id, pipeline=self)
         if job.id is not None:
             self.job = job
-            self.dag = Dag(name=self.name)
-            self.dag.dag = job.dag 
+            self._dag = job.dag
+            self.dag = Dag.to_instance(job.dag, self.name)
             self.job.dag = self.dag
             self.dag.jobType = self.job.jobType
             self._node_map = {node["id"]: node for node in self.dag.dag["nodes"]}
