@@ -21,7 +21,6 @@ class ColumnFilter(Filter):
         newRecord = {};
         for (i in keepFields) {
             newRecord[keepFields[i]] = record[keepFields[i]];
-        }
         return newRecord;
         ''' % (str(keep))
 
@@ -32,7 +31,6 @@ class ColumnFilter(Filter):
         delete(newRecord[deleteFields[i]]);
     }
     return newRecord;
-}
     ''' % (str(delete))
 
     def to_js(self):
