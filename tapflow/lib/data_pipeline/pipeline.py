@@ -678,7 +678,8 @@ class Pipeline:
                 for merge_property in node["mergeProperties"]:
                     for child in merge_property["children"]:
                         self._set_lookup_cache(child, self.mergeNode)
-        self.dag.update_node(self.mergeNode) 
+        if self.mergeNode is not None:
+            self.dag.update_node(self.mergeNode) 
 
     def get(self):
         job = Job(name=self.name, id=self.id, pipeline=self)
