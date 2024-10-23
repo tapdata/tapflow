@@ -373,7 +373,7 @@ class Pipeline:
         if isinstance(unionNode, UnionNode):
             self._union_node = unionNode
 
-        if isinstance(source, QuickDataSourceMigrateJob) or isinstance(source, str):
+        if isinstance(source, QuickDataSourceMigrateJob) or isinstance(source, str) or isinstance(source, Source):
             if self._union_node is None:
                 self._union_node = UnionNode()
             if isinstance(source, QuickDataSourceMigrateJob):
@@ -385,10 +385,11 @@ class Pipeline:
                     source = Source(db, table, mode=self.dag.jobType)
                 else:
                     source = Source(source, mode=self.dag.jobType)
+            elif isinstance(source, Source):
+                source = source
             self.union(self._union_node)
             self.read_from(source)
             self.union(self._union_node)
-
         self.lines.append(self._union_node)
         return self._common_stage(self._union_node)
 
