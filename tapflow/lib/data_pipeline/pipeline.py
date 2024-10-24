@@ -366,7 +366,7 @@ class Pipeline:
 
     def union(self, unionNode=None):
         source = unionNode
-        if unionNode is None:
+        if unionNode is None and self._union_node is None:
             unionNode = UnionNode()
             self._union_node = unionNode
 
