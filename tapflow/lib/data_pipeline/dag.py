@@ -1,6 +1,7 @@
 from typing import Any
 from tapflow.lib.data_pipeline.base_node import BaseNode
 from tapflow.lib.data_pipeline.job import JobType, JobStatus
+from tapflow.lib.data_pipeline.nodes.merge import MergeNode
 from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.filter import Filter
 from tapflow.lib.data_pipeline.nodes import get_node_instance
@@ -108,12 +109,18 @@ class Dag:
             return self.setting
         self.setting.update(config)
 
-    def replace_node(self, node):
-        for i in range(len(self.dag["nodes"])):
-            if self.dag["nodes"][i]["id"] == node["id"]:
-                self.dag["nodes"][i] = node
-                return
-        self.dag["nodes"].append(node)
+    def replace_node(self, old_node, new_node):
+        self.add_node(new_node)
+        for source_id in self.graph:
+            # if old_node is source, replace it with new_node
+            if source_id == old_node.id:
+                self.graph[new_node.id] = self.graph[source_id]
+                del self.graph[source_id]
+            # if old_node is target, replace it with new_node
+            for index, target_id in enumerate(self.graph[source_id]):
+                if target_id == old_node.id:
+                    self.graph[source_id][index] = new_node.id
+        self.delete_node(old_node.id)
 
     def edge(self, s, sink):
         """
@@ -126,32 +133,36 @@ class Dag:
         self.add_extra_nodes_and_edges(None, s, sink)
 
     def add_extra_nodes_and_edges(self, mergeNode, s, sink):
-
         # 1. add extra merge nodes
         # 2. add (s, sink).dag["nodes"] to self.dag["nodes"] if not exist
         extra_merge_node_id = []
         for k in (s, sink):
             try:
                 for node in k.dag.node_map.values():
-                    if node.get("type") == 'merge_table_processor':
-                        extra_merge_node_id.append(node["id"])
+                    if isinstance(node, MergeNode):
+                        extra_merge_node_id.append(node.id)
+                        continue
                     if self.node_map.get(node.id) is None:
                         self.add_node(node)
             except Exception as e:
                 pass
-
+        
         # 3. add (s, sink).dag["edges"] to self.dag["edges"] if not exist
         for k in (s, sink):
             try:
-                for source_id in k.dag.graph.keys():
-                    if source_id in extra_merge_node_id and mergeNode is not None:
-                        source_id = mergeNode.id
-                for target_id in k.dag.graph[source_id]:
-                    if target_id in extra_merge_node_id and mergeNode is not None:
-                        target_id = mergeNode.id
-                    # edge not exists
-                    if self.get_node(source_id) and target_id not in self.node_map[source_id] and source_id != target_id:
-                        self.add_edge(self.get_node(source_id), self.get_node(target_id))
+                for source, targets in k.dag.graph.items():
+                    if source in extra_merge_node_id and mergeNode is not None:
+                        s_id = mergeNode.id
+                    else:
+                        s_id = source
+                    for target in targets:
+                        if target in extra_merge_node_id and mergeNode is not None:
+                            t_id = mergeNode.id
+                        else:
+                            t_id = target
+                        # not exist edge and source != target
+                        if not (self.graph.get(s_id) and t_id in self.graph[s_id]) and s_id != t_id:
+                            self.add_edge(self.get_node(s_id), self.get_node(t_id))
             except Exception as e:
                 pass
 
