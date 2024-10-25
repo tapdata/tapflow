@@ -245,8 +245,8 @@ class Pipeline:
         self.__dict__ = obj.__dict__
         return self
 
-    def write_to(self, sink):
-        return self.writeTo(sink)
+    def write_to(self, *args, **kwargs):
+        return self.writeTo(*args, **kwargs)
 
     @help_decorate("write data to sink", args="p.writeTo($sink, $relation)")
     def writeTo(self, sink, pk=None):
@@ -296,15 +296,8 @@ class Pipeline:
 
     def _common_stage2(self, p, f):
         if isinstance(p.stage, MergeNode):
-            # delete the p.stage from p.dag
-            nodes = []
-            for i in self.dag.dag["nodes"]:
-                if i["id"] != p.stage.id:
-                    nodes.append(i)
-            self.dag.dag["nodes"] = nodes
-            for i in self.dag.dag["edges"]:
-                if i["target"] == p.stage.id:
-                    i["target"] = f.id
+            # replace p.stage with f in self.dag
+            self.dag.replace_node(p.stage, f)
             self.dag.edge(self, f)
             self.dag.add_extra_nodes_and_edges(self.mergeNode, p, f)
         else:
