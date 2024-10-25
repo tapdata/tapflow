@@ -111,11 +111,7 @@ class Pipeline:
             return self._lookup_path_cache[parent_path]
         return self
 
-    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, rename=None, mapper=None, func=None, js=None, pk=None, query=None):
-        if func is not None:
-            mapper = func
-        if js is not None:
-            mapper = js
+    def lookup(self, source, path="", type=dict, relation=None, query=None, **kwargs):
 
         if isinstance(source, str):
             if "." in source:
@@ -131,15 +127,8 @@ class Pipeline:
             self._lookup_path_cache[path] = child_p
 
         child_p = self._lookup_cache[cache_key]
+        child_p._pre_cumpute_node(kwargs)
 
-        if filter is not None:
-            child_p = child_p.filter(filter)
-        if fields is not None:
-            child_p = child_p.filterColumn(fields)
-        if rename is not None:
-            child_p = child_p.rename_fields(rename)
-        if mapper is not None:
-            child_p = child_p.func(script=mapper, pk=pk)
         if type == dict:
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
 
@@ -147,7 +136,7 @@ class Pipeline:
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
         if is_tapcli():
             logger.info("Flow updated: new table {} added as child table", source.table_name)
-        self.command.append(["lookup", source.table, path, type, relation, filter, fields, rename, mapper])
+        self.command.append(["lookup", source.table, path, type, relation, kwargs])
         self._lookup_ed = True
         return self
 
@@ -356,8 +345,28 @@ class Pipeline:
         f.get(connection_ids[0], table)
         self.lines.append(f)
         return self._common_stage(f)
+    
+    def _pre_cumpute_node(self, kwargs):
+        """
+        前置的计算节点
+        :param kwargs:
+        """
+        if kwargs.get("filter"):
+            self.filter(kwargs.get("filter"))
+        if kwargs.get("fields"):
+            self.filterColumn(kwargs.get("fields"))
+        if kwargs.get("rename"):
+            self.rename_fields(kwargs.get("rename"))
+        if kwargs.get("js"):
+            self.js(kwargs.get("js"))
+        if kwargs.get("py"):
+            self.py(kwargs.get("py"))
+        if kwargs.get("mapper"):
+            mapper = kwargs.get("func") if kwargs.get("func") else kwargs.get("js")
+            self.func(script=mapper, pk=kwargs.get("pk"))
 
-    def union(self, unionNode=None):
+    def union(self, unionNode=None, **kwargs):
+        self._pre_cumpute_node(kwargs)
         source = unionNode
         if unionNode is None and self._union_node is None:
             unionNode = UnionNode()

@@ -126,10 +126,8 @@ class Dag:
         """
         add edge by source and sink
         """
-        if hasattr(s, "stage"):
-            s = s.stage
 
-        self.add_edge(s, sink)
+        self.add_edge(s.stage, sink)
         self.add_extra_nodes_and_edges(None, s, sink)
 
     def add_extra_nodes_and_edges(self, mergeNode, s, sink):
