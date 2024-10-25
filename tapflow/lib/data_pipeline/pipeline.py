@@ -157,8 +157,8 @@ class Pipeline:
     def mode(self, value):
         self.dag.jobType = value
 
-    def read_from(self, source, setting={}, query=None, filter=None):
-        return self.readFrom(source, setting, query, filter)
+    def read_from(self, *args, **kwargs):
+        return self.readFrom(*args, **kwargs)
 
     def _filter_to_conditions(self, filter=None):
         if filter is None:
