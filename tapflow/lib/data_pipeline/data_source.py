@@ -190,6 +190,7 @@ class DataSource:
             param_config = pdk_config.get(database_type)[mode]
             res = ConfigCheck(self.pdk_setting, param_config, keep_extra=True).checked_config
             self.pdk_setting.update(res)
+            self.pdk_setting["__connectionType"] = self.setting["connection_type"]
         return self.pdk_setting
 
     @staticmethod
