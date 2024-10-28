@@ -38,7 +38,7 @@ MIGRATE = {
     "isOpenAutoDDL": {"type": bool, "require": True, "default": False},
     "increShareReadMode": {"type": str, "require": True, "default": "STREAMING"},
     "increSyncConcurrency": {"type": bool, "require": True, "default": False},
-    "existDataProcessMode": {"type": str, "require": True, "default": "dropTable"},
+    "existDataProcessMode": {"type": str, "require": True, "default": "keepData"},
     "writeStrategy": {"type": str, "require": True, "default": "updateOrInsert"},
     "sync_type": {"type": str, "require": True, "default": "initial_sync"},
     "increaseSyncInterval": {"type": int, "require": True, "default": 500},
@@ -210,7 +210,7 @@ NODE_TARGET = {
     "isTransformed": {require: True, type: bool, default: False},
     "cdcConcurrent": {require: True, type: bool, default: True},
     "cdcConcurrentWriteNum": {require: True, type: int, default: 8},
-    "existDataProcessMode": {require: True, type: str, default: "dropTable", option: ["dropTable", "removeData", "keepData"]},
+    "existDataProcessMode": {require: True, type: str, default: "keepData", option: ["dropTable", "removeData", "keepData"]},
     "isFilter": {require: False, type: bool, default: False},
 }
 
@@ -269,7 +269,7 @@ NODE_TARGET_SYNC = {
     "tableName": {require: True, type: str},
     "type": {require: True, type: str, default: "table"},
     "updateConditionFields": {require: True, type: list, default: ["_id"]},
-    "existDataProcessMode": {require: True, type: str, default: "dropTable", option: ["dropTable", "removeData", "keepData"]},
+    "existDataProcessMode": {require: True, type: str, default: "keepData", option: ["dropTable", "removeData", "keepData"]},
 }
 
 
