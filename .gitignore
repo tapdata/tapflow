@@ -7,3 +7,4 @@ build
 tapcli.egg-info/
 .DS_Store
 etc/config.ini
+dist/

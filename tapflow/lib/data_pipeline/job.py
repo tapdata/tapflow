@@ -617,7 +617,7 @@ class Job:
 
         job_status = self.status(quiet=True)
         if not quiet:
-            logger.info("job current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.total, job_stats.replicate_lag)
+            logger.info("job current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
 
         return job_stats
 
@@ -714,8 +714,7 @@ class Job:
                 "info", "info", "notice", "info", "debug", "info", "info", "info", "debug", "info", "info", "info",
             ]
             if print_log:
-                pass
-                # logger.finfo(*print_info, wrap=False, logger_header=True)
+                logger.finfo(*print_info, wrap=False, logger_header=True)
             if status in [JobStatus.running, JobStatus.edit, JobStatus.scheduled]:
                 continue
             break
