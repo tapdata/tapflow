@@ -21,6 +21,7 @@ class ColumnFilter(Filter):
         newRecord = {};
         for (i in keepFields) {
             newRecord[keepFields[i]] = record[keepFields[i]];
+        }
         return newRecord;
         ''' % (str(keep))
 
