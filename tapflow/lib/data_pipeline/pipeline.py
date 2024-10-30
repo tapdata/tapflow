@@ -95,6 +95,7 @@ class Pipeline:
         self.type_adjust = []
         self._lookup_cache = {}
         self._lookup_path_cache = {}
+        self.merge_node_childs = []
         self.command = []
         self._parent_cache = {}
         self._read_from_ed = False
@@ -120,6 +121,7 @@ class Pipeline:
             else:
                 source = Source(source, mode=self.dag.jobType)
         cache_key = "%s_%s_%s" % (source.table_name, path, type)
+        self.merge_node_childs.append(source)
         if cache_key not in self._lookup_cache:
             child_p = Pipeline(mode=self.dag.jobType)
             child_p.read_from(source, query=query)
@@ -232,6 +234,7 @@ class Pipeline:
             print("Flow updated: source added")
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         self._read_from_ed = True
+        self.merge_node_childs.append(source)
         obj = self._clone(source)
         self.__dict__ = obj.__dict__
         return self
@@ -588,29 +591,24 @@ class Pipeline:
         parent_p = self._get_lookup_parent(targetPath)
         if association is not None:
 
-            # 递归寻找pipeline.mergeNode的父节点
-            def _find_parent(target_fields, merge_node):
-                node = self.dag.get_node(merge_node.node_id)
-                if node is None:
-                    return None
-                display_fields = get_table_fields(node.table_name, source=node.connectionId)
-                if display_fields.get(target_fields) is not None:
-                    return merge_node
-                else:
-                    for child in merge_node.children:
-                        result = _find_parent(target_fields, child)
-                        if result is not None:
-                            return result
-                    return None
+            # 递归寻找pipeline.mergeNode的父mergeNode节点
+            def _find_parent(target_fields):
+                for node in self.merge_node_childs:
+                    display_fields = get_table_fields(node.table_name, source=node.connectionId)
+                    if display_fields.get(target_fields) is not None:
+                        return self.mergeNode.find_by_node_id(node.id)
+                return None
+
             confirmed = False
             for asso in association:
                 if isinstance(asso, Iterable) and not isinstance(asso, str):
                     target_fields = asso[1]
                 else:
                     raise Exception("association error, it can be like this: [('id', 'id')]")
-                result_mergeNode = _find_parent(target_fields, self.mergeNode)
+                result_mergeNode = _find_parent(target_fields)
                 # 如果找到父节点，则将pipeline.mergeNode添加到父节点, 否则添加到self.mergeNode的子节点
                 if result_mergeNode is not None:
+                    print(f"找到父节点: {result_mergeNode}")
                     result_mergeNode.add(pipeline.mergeNode)
                     confirmed = True
                     break
