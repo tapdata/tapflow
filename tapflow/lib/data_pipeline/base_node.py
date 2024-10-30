@@ -17,7 +17,8 @@ from tapflow.lib.request import req
 @help_decorate("Enum, used to describe write mode for a row")
 class WriteMode:
     updateOrInsert = "updateOrInsert"
-    appendWrite = "appendWrite"
+    updateWrite = "updateWrite"
+    updateIntoArray = "updateIntoArray"
 
 
 upsert = "updateOrInsert"
