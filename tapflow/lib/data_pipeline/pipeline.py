@@ -112,7 +112,7 @@ class Pipeline:
             return self._lookup_path_cache[parent_path]
         return self
 
-    def lookup(self, source, path="", type=dict, arrayKeys=[], relation=None, query=None, **kwargs):
+    def lookup(self, source, path="", type="object", arrayKeys=[], relation=None, query=None, **kwargs):
 
         if isinstance(source, str):
             if "." in source:
@@ -131,10 +131,10 @@ class Pipeline:
         child_p = self._lookup_cache[cache_key]
         child_p._pre_cumpute_node(kwargs)
 
-        if type == dict:
+        if type == "object":
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
 
-        if type == list:
+        if type == "array":
             if len(arrayKeys) == 0:
                 arrayKeys = source.primary_key
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=arrayKeys)

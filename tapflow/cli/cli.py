@@ -585,7 +585,7 @@ access_code = 3324cfdf-7d3e-4792-bd32-571638d4562f
 def show_register():
     print("\n")
     logger.warn("{}", "no valid config file found, you can config etc/config.ini from sample file")
-    with open("etc/config.int", "r") as f:
+    with open("etc/config.ini", "r") as f:
         print(f.read())
 
 def main():
