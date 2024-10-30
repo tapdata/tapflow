@@ -22,7 +22,7 @@ from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.sink import Sink
 from tapflow.lib.data_pipeline.nodes.type_filter import TypeFilterNode
 from tapflow.lib.data_pipeline.nodes.merge import MergeNode, Merge
-from tapflow.lib.data_pipeline.base_node import FilterType, ConfigCheck
+from tapflow.lib.data_pipeline.base_node import FilterType, ConfigCheck, WriteMode
 from tapflow.lib.data_pipeline.nodes.filter import Filter
 from tapflow.lib.data_pipeline.nodes.row_filter import RowFilterType, RowFilter
 from tapflow.lib.data_pipeline.nodes.field_rename import FieldRename
@@ -111,7 +111,7 @@ class Pipeline:
             return self._lookup_path_cache[parent_path]
         return self
 
-    def lookup(self, source, path="", type=dict, relation=None, query=None, **kwargs):
+    def lookup(self, source, path="", type=dict, arrayKeys=[], relation=None, query=None, **kwargs):
 
         if isinstance(source, str):
             if "." in source:
@@ -133,7 +133,9 @@ class Pipeline:
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
 
         if type == list:
-            self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
+            if len(arrayKeys) == 0:
+                arrayKeys = source.primary_key
+            self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=arrayKeys)
         if is_tapcli():
             logger.info("Flow updated: new table {} added as child table", source.table_name)
         self.command.append(["lookup", source.table, path, type, relation, kwargs])
@@ -584,8 +586,39 @@ class Pipeline:
         else:
             pipeline.mergeNode.update(mergeNode)
         parent_p = self._get_lookup_parent(targetPath)
-        parent_p.mergeNode.add(pipeline.mergeNode)
-        self._parent_cache[pipeline] = parent_p
+        if association is not None:
+
+            # 递归寻找pipeline.mergeNode的父节点
+            def _find_parent(target_fields, merge_node):
+                node = self.dag.get_node(merge_node.node_id)
+                if node is None:
+                    return None
+                display_fields = get_table_fields(node.table_name, source=node.connectionId)
+                if display_fields.get(target_fields) is not None:
+                    return merge_node
+                else:
+                    for child in merge_node.children:
+                        result = _find_parent(target_fields, child)
+                        if result is not None:
+                            return result
+                    return None
+            confirmed = False
+            for asso in association:
+                if isinstance(asso, Iterable) and not isinstance(asso, str):
+                    target_fields = asso[1]
+                else:
+                    raise Exception("association error, it can be like this: [('id', 'id')]")
+                result_mergeNode = _find_parent(target_fields, self.mergeNode)
+                # 如果找到父节点，则将pipeline.mergeNode添加到父节点, 否则添加到self.mergeNode的子节点
+                if result_mergeNode is not None:
+                    result_mergeNode.add(pipeline.mergeNode)
+                    confirmed = True
+                    break
+            if not confirmed:
+                self.mergeNode.add(pipeline.mergeNode)
+        else:
+            parent_p.mergeNode.add(pipeline.mergeNode)
+            self._parent_cache[pipeline] = parent_p
         return self._common_stage2(pipeline, self.mergeNode)
 
     # 递归更新主从合并节点
