@@ -119,6 +119,15 @@ class Merge(MergeNode):
                     id=node_dict["id"]
                 )
         return father_node
+    
+    def find_by_node_id(self, node_id):
+        if self.node_id == node_id:
+            return self
+        for child in self.child:
+            result = child.find_by_node_id(node_id)
+            if result is not None:
+                return result
+        return None
 
     def to_dict(self, is_head=False):
         # if the node is head node
