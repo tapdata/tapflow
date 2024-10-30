@@ -1,11 +1,27 @@
 #!/bin/bash
+
+# 获取当前脚本所在的目录
 basepath=$(cd `dirname $0`; pwd)
-if [[ ! -d "$basepath/tapflow" ]]; then
-    basepath="$VIRTUAL_ENV/lib/python3.11/site-packages/"
+
+# 检查是否在源代码环境中
+if [[ -d "$basepath/tapflow" ]]; then
+    # 源代码环境
+    source_path="$basepath/tapflow"
+    # 检查并创建虚拟环境
+    if [[ ! -d ".venv" ]]; then
+        python3 -m venv .venv
+        source .venv/bin/activate
+        pip3 install -r requirements.txt
+    fi
+    source .venv/bin/activate
+else
+    # 安装后的环境，动态获取安装路径
+    source_path=$(python3 -c "import os, tapflow; print(os.path.dirname(tapflow.__file__))")
 fi
 
 # 设置环境变量, 兼容 macos 和 linux
 export LC_ALL="en_US.utf8" 2>/dev/null
+
 error() {
     echo -e `date`"\033[31m $1 \033[0m"
     exit 1
@@ -22,13 +38,6 @@ notice() {
 warn() {
     echo -e `date`"\033[33m $1 \033[0m"
 }
-
-if [[ ! -d ".venv" ]]; then
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip3 install -r requirements.txt
-fi
-source .venv/bin/activate
 
 file_value=""
 # 使用 getopts 解析 -f 参数
@@ -77,4 +86,4 @@ class NoPrompt(Prompts):
 c.TerminalInteractiveShell.prompts_class = NoPrompt
 EOF
 
-ipython3 --no-banner --profile-dir=.cli --profile=ipython_config -i $basepath/tapflow/cli/cli.py
+ipython3 --no-banner --profile-dir=.cli --profile=ipython_config -i $source_path/cli/cli.py
