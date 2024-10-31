@@ -92,7 +92,6 @@ class Pipeline:
         self.validateConfig = None
         self.cache_sinks = {}
         self.joinValueChange = False
-        self.type_adjust = []
         self._lookup_cache = {}
         self._lookup_path_cache = {}
         self.merge_node_childs = []
@@ -337,7 +336,7 @@ class Pipeline:
     def rename_fields(self, config={}):
         return self.renameField(config)
 
-    def typeAdjust(self, converts, table):
+    def type_adjust(self, converts, table):
         """
         :params converts: List[tuple, (field, field_type)]
         """
@@ -371,6 +370,8 @@ class Pipeline:
             self.func(script=mapper, pk=kwargs.get("pk"))
         if kwargs.get("adjust_time"):
             self.adjust_time(**kwargs.get("adjust_time"))
+        if kwargs.get("type_adjust"):
+            self.type_adjust(**kwargs.get("type_adjust"))
 
     def union(self, unionNode=None, **kwargs):
         self._pre_cumpute_node(kwargs)
@@ -610,7 +611,6 @@ class Pipeline:
                 result_mergeNode = _find_parent(target_fields)
                 # 如果找到父节点，则将pipeline.mergeNode添加到父节点, 否则添加到self.mergeNode的子节点
                 if result_mergeNode is not None:
-                    print(f"找到父节点: {result_mergeNode}")
                     result_mergeNode.add(pipeline.mergeNode)
                     confirmed = True
                     break
