@@ -4,6 +4,7 @@ from tapflow.lib.data_pipeline.nodes.field_calculate import FieldCalculate
 from tapflow.lib.data_pipeline.nodes.field_rename import FieldRename
 from tapflow.lib.data_pipeline.nodes.sink import Sink
 from tapflow.lib.data_pipeline.nodes.merge import Merge
+from tapflow.lib.data_pipeline.nodes.time_adjust import TimeAdjust
 from tapflow.lib.data_pipeline.nodes.type_modification import TypeAdjust
 from tapflow.lib.data_pipeline.nodes.union import UnionNode
 from tapflow.lib.data_pipeline.nodes.filter import Filter
@@ -27,6 +28,7 @@ NODE_MAP = {
     "field_add_del_processor": FieldAddDel,
     "filter_processor": Filter,
     "unwind_processor": Unwind,
+    "date_processor": TimeAdjust,
 }
 
 
