@@ -369,6 +369,8 @@ class Pipeline:
         if kwargs.get("mapper"):
             mapper = kwargs.get("func") if kwargs.get("func") else kwargs.get("js")
             self.func(script=mapper, pk=kwargs.get("pk"))
+        if kwargs.get("adjust_time"):
+            self.adjust_time(**kwargs.get("adjust_time"))
 
     def union(self, unionNode=None, **kwargs):
         self._pre_cumpute_node(kwargs)
@@ -448,7 +450,7 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
 
-    def adjustTime(self, addHours=0, t=["now"]):
+    def adjust_time(self, addHours=0, t=["now"]):
         f = TimeAdjust(addHours, t=t)
         self.lines.append(f)
         return self._common_stage(f)
