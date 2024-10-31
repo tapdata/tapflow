@@ -592,8 +592,15 @@ class Pipeline:
         else:
             pipeline.mergeNode.update(mergeNode)
         parent_p = self._get_lookup_parent(targetPath)
-        if association is not None:
 
+        # 1. targetPath 优先级大于 association
+        # 2. 当不存在 targetPath 时，使用 association 关联，关联顺序为从merge_node_childs(父节点)开始
+        # 3. 当都不存在，则将pipeline.mergeNode添加到self.mergeNode的子节点 
+
+        if targetPath != "":
+            parent_p.mergeNode.add(pipeline.mergeNode)
+            self._parent_cache[pipeline] = parent_p
+        elif association is not None:
             # 递归寻找pipeline.mergeNode的父mergeNode节点
             def _find_parent(target_fields):
                 for node in self.merge_node_childs:
@@ -619,6 +626,7 @@ class Pipeline:
         else:
             parent_p.mergeNode.add(pipeline.mergeNode)
             self._parent_cache[pipeline] = parent_p
+
         return self._common_stage2(pipeline, self.mergeNode)
 
     # 递归更新主从合并节点
