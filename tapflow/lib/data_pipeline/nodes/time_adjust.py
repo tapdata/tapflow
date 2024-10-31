@@ -22,3 +22,13 @@ class TimeAdjust(BaseObj):
             "name": "Time Adjust",
             "type": "date_processor",
         }
+    
+    @classmethod
+    def to_instance(cls, node_dict: dict):
+        if node_dict.get("add"):
+            addHours = node_dict.get("hours")
+        else:
+            addHours = -node_dict.get("hours")
+        t_inst = cls(addHours=addHours, t=node_dict.get("t", ["now"]))
+        t_inst.id = node_dict.get("id")
+        return t_inst
