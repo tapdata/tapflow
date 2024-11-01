@@ -372,6 +372,10 @@ class Pipeline:
             self.adjust_time(**kwargs.get("adjust_time"))
         if kwargs.get("type_adjust"):
             self.type_adjust(**kwargs.get("type_adjust"))
+        if kwargs.get("include"):
+            self.include(*kwargs.get("include"))
+        if kwargs.get("exclude"):
+            self.exclude(*kwargs.get("exclude"))
 
     def union(self, unionNode=None, **kwargs):
         self._pre_cumpute_node(kwargs)
