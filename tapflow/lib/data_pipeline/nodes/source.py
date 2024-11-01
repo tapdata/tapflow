@@ -1,4 +1,5 @@
 from tapflow.lib.help_decorator import help_decorate
+from tapflow.lib.request import req
 
 from tapflow.lib.data_pipeline.base_node import BaseNode, node_config, node_config_sync
 
@@ -15,6 +16,22 @@ class Source(BaseNode):
             else:
                 mode = "migrate"
         super().__init__(connection, table, table_re, mode=mode)
+        try:
+            if mode == "sync":
+                res = req.post("/MetadataInstances/metadata/v3", json={
+                    self.connectionId: {
+                        "metaType": "table",
+                        "tableNames": [table]
+                    }
+                }).json()
+                meta = list(res["data"].items())[0][1][0]
+                self.setting.update({
+                    "previewQualifiedName": meta["qualifiedName"],
+                    "previewTapTable": meta["tapTable"]
+                })
+        except Exception as e:
+            pass
+
         self.update_node_config({})
         if self.mode == "migrate":
             self.config_type = node_config

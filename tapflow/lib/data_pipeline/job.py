@@ -2,6 +2,8 @@ import json
 import time
 from enum import Enum
 
+from requests import delete
+
 from tapflow.lib.request import req
 from tapflow.lib.cache import system_server_conf
 
@@ -299,6 +301,16 @@ class Job:
 
         if self.validateConfig is not None:
             self.job["validateConfig"] = self.validateConfig
+
+        try:
+            nodes = self.job["dag"]["nodes"]
+            for node in nodes:
+                if "previewQualifiedName" in node:
+                    del(node["previewQualifiedName"])
+                if "previewTapTable" in node:
+                    del(node["previewTapTable"])
+        except Exception as e:
+            pass
 
         self.job.update(self.setting)
         if self.id is None:
@@ -683,8 +695,8 @@ class Job:
             return
 
         data = res["data"]
-        print(data)
         nodeResult = data.get("nodeResult", {})
+        print(nodeResult)
         if not quiet:
             for k, v in nodeResult.items():
                 if k in final_target:
