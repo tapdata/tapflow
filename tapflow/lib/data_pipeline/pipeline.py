@@ -22,7 +22,7 @@ from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.sink import Sink
 from tapflow.lib.data_pipeline.nodes.type_filter import TypeFilterNode
 from tapflow.lib.data_pipeline.nodes.merge import MergeNode, Merge
-from tapflow.lib.data_pipeline.base_node import FilterType, ConfigCheck
+from tapflow.lib.data_pipeline.base_node import FilterType, ConfigCheck, WriteMode
 from tapflow.lib.data_pipeline.nodes.filter import Filter
 from tapflow.lib.data_pipeline.nodes.row_filter import RowFilterType, RowFilter
 from tapflow.lib.data_pipeline.nodes.field_rename import FieldRename
@@ -71,6 +71,7 @@ class Pipeline:
     def __init__(self, name=None, mode="migrate", id=None):
         if name is None:
             name = str(uuid.uuid4())
+        self._dag = {}
         self.dag = Dag(name="name")
         self.dag.config({"skipErrorEvent": {
             "errorMode": "Disable",
@@ -91,9 +92,9 @@ class Pipeline:
         self.validateConfig = None
         self.cache_sinks = {}
         self.joinValueChange = False
-        self.type_adjust = []
         self._lookup_cache = {}
         self._lookup_path_cache = {}
+        self.merge_node_childs = []
         self.command = []
         self._parent_cache = {}
         self._read_from_ed = False
@@ -110,11 +111,7 @@ class Pipeline:
             return self._lookup_path_cache[parent_path]
         return self
 
-    def lookup(self, source, path="", type=dict, relation=None, filter=None, fields=None, rename=None, mapper=None, func=None, js=None, pk=None, query=None):
-        if func is not None:
-            mapper = func
-        if js is not None:
-            mapper = js
+    def lookup(self, source, path="", type="object", arrayKeys=[], relation=None, query=None, **kwargs):
 
         if isinstance(source, str):
             if "." in source:
@@ -123,6 +120,7 @@ class Pipeline:
             else:
                 source = Source(source, mode=self.dag.jobType)
         cache_key = "%s_%s_%s" % (source.table_name, path, type)
+        self.merge_node_childs.append(source)
         if cache_key not in self._lookup_cache:
             child_p = Pipeline(mode=self.dag.jobType)
             child_p.read_from(source, query=query)
@@ -130,23 +128,18 @@ class Pipeline:
             self._lookup_path_cache[path] = child_p
 
         child_p = self._lookup_cache[cache_key]
+        child_p._pre_cumpute_node(kwargs)
 
-        if filter is not None:
-            child_p = child_p.filter(filter)
-        if fields is not None:
-            child_p = child_p.filterColumn(fields)
-        if rename is not None:
-            child_p = child_p.rename_fields(rename)
-        if mapper is not None:
-            child_p = child_p.func(script=mapper, pk=pk)
-        if type == dict:
+        if type == "object":
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
 
-        if type == list:
-            self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=source.primary_key)
+        if type == "array":
+            if len(arrayKeys) == 0:
+                arrayKeys = source.primary_key
+            self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=arrayKeys)
         if is_tapcli():
             logger.info("Flow updated: new table {} added as child table", source.table_name)
-        self.command.append(["lookup", source.table, path, type, relation, filter, fields, rename, mapper])
+        self.command.append(["lookup", source.table, path, type, relation, kwargs])
         self._lookup_ed = True
         return self
 
@@ -156,8 +149,8 @@ class Pipeline:
     def mode(self, value):
         self.dag.jobType = value
 
-    def read_from(self, source, setting={}, query=None, filter=None):
-        return self.readFrom(source, setting, query, filter)
+    def read_from(self, *args, **kwargs):
+        return self.readFrom(*args, **kwargs)
 
     def _filter_to_conditions(self, filter=None):
         if filter is None:
@@ -240,12 +233,13 @@ class Pipeline:
             print("Flow updated: source added")
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         self._read_from_ed = True
+        self.merge_node_childs.append(source)
         obj = self._clone(source)
         self.__dict__ = obj.__dict__
         return self
 
-    def write_to(self, sink):
-        return self.writeTo(sink)
+    def write_to(self, *args, **kwargs):
+        return self.writeTo(*args, **kwargs)
 
     @help_decorate("write data to sink", args="p.writeTo($sink, $relation)")
     def writeTo(self, sink, pk=None):
@@ -295,15 +289,8 @@ class Pipeline:
 
     def _common_stage2(self, p, f):
         if isinstance(p.stage, MergeNode):
-            # delete the p.stage from p.dag
-            nodes = []
-            for i in self.dag.dag["nodes"]:
-                if i["id"] != p.stage.id:
-                    nodes.append(i)
-            self.dag.dag["nodes"] = nodes
-            for i in self.dag.dag["edges"]:
-                if i["target"] == p.stage.id:
-                    i["target"] = f.id
+            # replace p.stage with f in self.dag
+            self.dag.replace_node(p.stage, f)
             self.dag.edge(self, f)
             self.dag.add_extra_nodes_and_edges(self.mergeNode, p, f)
         else:
@@ -349,7 +336,7 @@ class Pipeline:
     def rename_fields(self, config={}):
         return self.renameField(config)
 
-    def typeAdjust(self, converts, table):
+    def type_adjust(self, converts, table):
         """
         :params converts: List[tuple, (field, field_type)]
         """
@@ -362,17 +349,41 @@ class Pipeline:
         f.get(connection_ids[0], table)
         self.lines.append(f)
         return self._common_stage(f)
+    
+    def _pre_cumpute_node(self, kwargs):
+        """
+        前置的计算节点
+        :param kwargs:
+        """
+        if kwargs.get("filter"):
+            self.filter(kwargs.get("filter"))
+        if kwargs.get("fields"):
+            self.filterColumn(kwargs.get("fields"))
+        if kwargs.get("rename"):
+            self.rename_fields(kwargs.get("rename"))
+        if kwargs.get("js"):
+            self.js(kwargs.get("js"))
+        if kwargs.get("py"):
+            self.py(kwargs.get("py"))
+        if kwargs.get("mapper"):
+            mapper = kwargs.get("func") if kwargs.get("func") else kwargs.get("js")
+            self.func(script=mapper, pk=kwargs.get("pk"))
+        if kwargs.get("adjust_time"):
+            self.adjust_time(**kwargs.get("adjust_time"))
+        if kwargs.get("type_adjust"):
+            self.type_adjust(**kwargs.get("type_adjust"))
 
-    def union(self, unionNode=None):
+    def union(self, unionNode=None, **kwargs):
+        self._pre_cumpute_node(kwargs)
         source = unionNode
-        if unionNode is None:
+        if unionNode is None and self._union_node is None:
             unionNode = UnionNode()
             self._union_node = unionNode
 
         if isinstance(unionNode, UnionNode):
             self._union_node = unionNode
 
-        if isinstance(source, QuickDataSourceMigrateJob) or isinstance(source, str):
+        if isinstance(source, QuickDataSourceMigrateJob) or isinstance(source, str) or isinstance(source, Source):
             if self._union_node is None:
                 self._union_node = UnionNode()
             if isinstance(source, QuickDataSourceMigrateJob):
@@ -384,10 +395,11 @@ class Pipeline:
                     source = Source(db, table, mode=self.dag.jobType)
                 else:
                     source = Source(source, mode=self.dag.jobType)
+            elif isinstance(source, Source):
+                source = source
             self.union(self._union_node)
             self.read_from(source)
             self.union(self._union_node)
-
         self.lines.append(self._union_node)
         return self._common_stage(self._union_node)
 
@@ -439,7 +451,7 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
 
-    def adjustTime(self, addHours=0, t=["now"]):
+    def adjust_time(self, addHours=0, t=["now"]):
         f = TimeAdjust(addHours, t=t)
         self.lines.append(f)
         return self._common_stage(f)
@@ -580,8 +592,41 @@ class Pipeline:
         else:
             pipeline.mergeNode.update(mergeNode)
         parent_p = self._get_lookup_parent(targetPath)
-        parent_p.mergeNode.add(pipeline.mergeNode)
-        self._parent_cache[pipeline] = parent_p
+
+        # 1. targetPath 优先级大于 association
+        # 2. 当不存在 targetPath 时，使用 association 关联，关联顺序为从merge_node_childs(父节点)开始
+        # 3. 当都不存在，则将pipeline.mergeNode添加到self.mergeNode的子节点 
+
+        if targetPath != "":
+            parent_p.mergeNode.add(pipeline.mergeNode)
+            self._parent_cache[pipeline] = parent_p
+        elif association is not None:
+            # 递归寻找pipeline.mergeNode的父mergeNode节点
+            def _find_parent(target_fields):
+                for node in self.merge_node_childs:
+                    display_fields = get_table_fields(node.table_name, source=node.connectionId)
+                    if display_fields.get(target_fields) is not None:
+                        return self.mergeNode.find_by_node_id(node.id)
+                return None
+
+            confirmed = False
+            for asso in association:
+                if isinstance(asso, Iterable) and not isinstance(asso, str):
+                    target_fields = asso[1]
+                else:
+                    raise Exception("association error, it can be like this: [('id', 'id')]")
+                result_mergeNode = _find_parent(target_fields)
+                # 如果找到父节点，则将pipeline.mergeNode添加到父节点, 否则添加到self.mergeNode的子节点
+                if result_mergeNode is not None:
+                    result_mergeNode.add(pipeline.mergeNode)
+                    confirmed = True
+                    break
+            if not confirmed:
+                self.mergeNode.add(pipeline.mergeNode)
+        else:
+            parent_p.mergeNode.add(pipeline.mergeNode)
+            self._parent_cache[pipeline] = parent_p
+
         return self._common_stage2(pipeline, self.mergeNode)
 
     # 递归更新主从合并节点
@@ -609,13 +654,15 @@ class Pipeline:
         sources = set(edge['source'] for edge in self.dag.dag['edges'])
         leaf_targets = targets_with_no_children - sources
         if leaf_targets:
-            # 假设只有一个最后的目标
+            # 如果 last_edge['target'] 是 Merge 节点，则将 self.stage 设置为该节点，否则设置为 last_edge['source']
             last_edge = next(edge for edge in self.dag.dag['edges'] if edge['target'] in leaf_targets)
-            last_source_id = last_edge['source']
-            last_node_dict = next((node for node in self.dag.dag['nodes'] if node['id'] == last_source_id), None)
-            if last_node_dict:
-                self.stage = self._make_node(last_node_dict)
-                return
+            target_node = next((node for node in self.dag.dag['nodes'] if node['id'] == last_edge['target']), None)
+            if target_node and target_node.get("type") == "merge_table_processor":
+                self.stage = self._make_node(target_node)
+            else:
+                source_node = next((node for node in self.dag.dag['nodes'] if node['id'] == last_edge['source']), None)
+                self.stage = self._make_node(source_node)
+            return
 
         # if not found, set stage to first node
         if self.stage is None and len(self.dag.dag["nodes"]) > 0:
@@ -667,19 +714,23 @@ class Pipeline:
     def _set_merge_node(self):
         if self.dag.jobType == JobType.migrate:
             return None
-        for node in self.dag.dag["nodes"]:
+        for node in self._dag["nodes"]:
             if node["type"] == "merge_table_processor":
                 self.mergeNode = self._make_node(node)
+                if node.get("mergeProperties") is None:
+                    continue
                 for merge_property in node["mergeProperties"]:
                     for child in merge_property["children"]:
                         self._set_lookup_cache(child, self.mergeNode)
+        if self.mergeNode is not None:
+            self.dag.update_node(self.mergeNode) 
 
     def get(self):
         job = Job(name=self.name, id=self.id, pipeline=self)
         if job.id is not None:
             self.job = job
-            self.dag = Dag(name=self.name)
-            self.dag.dag = job.dag 
+            self._dag = job.dag
+            self.dag = Dag.to_instance(job.dag, self.name)
             self.job.dag = self.dag
             self.dag.jobType = self.job.jobType
             self._node_map = {node["id"]: node for node in self.dag.dag["nodes"]}

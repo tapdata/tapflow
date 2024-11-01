@@ -32,7 +32,6 @@ class ColumnFilter(Filter):
         delete(newRecord[deleteFields[i]]);
     }
     return newRecord;
-}
     ''' % (str(delete))
 
     def to_js(self):

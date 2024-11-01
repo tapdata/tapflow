@@ -427,28 +427,19 @@ class show_command(Magics):
         if line.lower() in client_cache["connectors"]:
             h_datasource(line.lower())
 
-
-    @line_magic
-    def peek(self, line):
-        if line == "":
-            logger.warn("no peek datasource found")
-            return
+    def _get_table(self, line):
+        connection_id = client_cache.get("connection")
+        if connection_id is None:
+            logger.warn("no datasource set, please use 'use $datasource_name' to set a valid datasource")
+            return None, None
         if client_cache.get("connections") is None:
             show_connections(quiet=True)
-        connection_id = client_cache.get("connection")
         table = line
         if "." in line:
             db = line.split(".")[0]
             table = line.split(".")[1]
             connection = get_signature_v("datasource", db)
             connection_id = connection["id"]
-        limit = 5
-        if " " in line:
-            try:
-                limit = int(line.split(" ")[1])
-            except Exception as e:
-                pass
-
         table_id = ""
         index_type = get_index_type(line)
         if index_type == "short_id_index":
@@ -460,6 +451,10 @@ class show_command(Magics):
             show_tables(source=connection_id, quiet=True)
         table = client_cache["tables"][connection_id][index_type][table]
         connection = get_signature_v("datasource", connection_id)
+        return table, connection
+    
+    def _peek(self, line, connection, table):
+        connection_id = client_cache.get("connection")
         capabilities = connection.get("capabilities", [])
         support_peek = False
         for capability in capabilities:
@@ -469,9 +464,7 @@ class show_command(Magics):
 
         if not support_peek:
             logger.warn("datasource {} not support peek", line)
-            return
-
-        table_id = table["id"]
+            return False
         table_name = table["original_name"]
 
         body = {
@@ -483,6 +476,34 @@ class show_command(Magics):
             ]
         }
         res = req.post("/proxy/call", json=body).json()
+        return res
+
+
+    @line_magic
+    def peek(self, line):
+        """
+        peek some records from table, support -n to specify the number of records to peek
+        """
+        connection_id = client_cache.get("connection")
+        if line == "":
+            logger.warn("no peek datasource found")
+            return
+        elif connection_id is None:
+            logger.warn("no datasource set, please use 'use $datasource_name' to set a valid datasource")
+            return
+        # parse line
+        try:
+            if "-n" in line:
+                line_split = line.split(" ")
+                limit = int(line_split[line_split.index("-n") + 1])
+                line = "".join(set(line_split) - set([str(limit), "-n"]))
+        except Exception as e:
+            limit = 5
+        table, connection = self._get_table(line)
+        table_name = table["original_name"]
+        res = self._peek(line, connection, table)
+        if res is False:
+            return
         try:
             count = res["data"].get("tableInfo", {}).get("numOfRows", 0)
             logger.info("table {} has {} records", table_name, count)
@@ -498,30 +519,22 @@ class show_command(Magics):
 
     @line_magic
     def count(self, line):
-        if line == "":
-            logger.warn("no count datasource found")
-            return
-        if client_cache.get("connections") is None:
-            show_connections(quiet=True)
         connection_id = client_cache.get("connection")
-        table = line
-        if "." in line:
-            db = line.split(".")[0]
-            table = line.split(".")[1]
-            connection = get_signature_v("datasource", db)
-            connection_id = connection["id"]
-        table_id = ""
-        index_type = get_index_type(line)
-        if index_type == "short_id_index":
-            line = match_line(client_cache["tables"]["id_index"], line)
-            index_type = "id_index"
-        if index_type == "id_index":
-            table_id = line
-        if client_cache["tables"].get(connection_id) is None:
-            show_tables(source=connection_id, quiet=True)
-        table = client_cache["tables"][connection_id][index_type][table]
-        table_id = table["id"]
-        table_name = table["original_name"]
+        if line == "":
+            logger.warn("no peek datasource found")
+            return
+        elif connection_id is None:
+            logger.warn("no datasource set, please use 'use $datasource_name' to set a valid datasource")
+            return
+        table, connection = self._get_table(line)
+        res = self._peek(line, connection, table)
+        if res is False:
+            return
+        try:
+            count = res["data"].get("tableInfo", {}).get("numOfRows", 0)
+            logger.info("table {} has {} records", table["original_name"], count)
+        except Exception as e:
+            pass
 
 
 def desc_table(line, quiet=True):
@@ -572,7 +585,7 @@ access_code = 3324cfdf-7d3e-4792-bd32-571638d4562f
 def show_register():
     print("\n")
     logger.warn("{}", "no valid config file found, you can config etc/config.ini from sample file")
-    with open("etc/config.json", "r") as f:
+    with open("etc/config.ini", "r") as f:
         print(f.read())
 
 def main():

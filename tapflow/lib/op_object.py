@@ -392,6 +392,10 @@ def show_jobs(quiet=False):
     client_cache["jobs"] = jobs
 
 
+def show_flows(*args, **kwargs):
+    show_jobs(*args, **kwargs)
+
+
 # show all apis
 def show_apis(quiet=False):
     res = req.get("/Modules", params={"order": "createAt DESC", "limit": 20, "skip": 0, "where": {}})

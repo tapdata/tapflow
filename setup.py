@@ -3,14 +3,14 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 
 setup(
-    name='tap',
-    version='0.1',
+    name='tapcli',
+    version='0.2.3',
     packages=find_packages(),
     install_requires=required,
     scripts=['tap'],
     include_package_data=True,
     package_data={
-        '': ['*.md', '*.txt', '*.sh', "*.py", "*.ini"],
+        '': ['*.md', '*.txt', '*.sh', "*.py"],
     },
     classifiers=[
         'Programming Language :: Python :: 3',

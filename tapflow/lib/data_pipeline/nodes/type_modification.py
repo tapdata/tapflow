@@ -47,7 +47,7 @@ class TypeAdjust(BaseObj):
             logger.error("table {} not found", pre_table_name)
             return False
         # 根据table id获取字段
-        res = requests.get(f"/discovery/storage/overview/{table_id}", params={
+        res = req.get(f"/discovery/storage/overview/{table_id}", params={
             "access_token": system_server_conf["token"]
         })
         if res.status_code != 200:
