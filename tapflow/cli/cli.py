@@ -87,6 +87,10 @@ class op_object_command(Magics):
             method_args = inspect.getfullargspec(getattr(obj, op)).args
             if "quiet" in method_args:
                 kwargs["quiet"] = False
+            if op == "delete":
+                confirm = input(f"Are you sure you want to delete {object_type if object_type != 'job' else 'flow'} {signature} (y/[n]): ")
+                if confirm != "y":
+                    return
             getattr(obj, op)(*args, **kwargs)
 
     @line_magic
