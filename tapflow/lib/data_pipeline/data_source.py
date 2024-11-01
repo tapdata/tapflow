@@ -18,18 +18,11 @@ from tapflow.lib.system.ext_storage import get_default_external_storage_id
 @help_decorate("Data Source, you can see it as database",
                'ds = DataSource("mysql", "mysql-datasource").host("127.0.0.1").port(3306).username().password().db()')
 class DataSource:
-    def __init__(self, connector="", name=None, type="source_and_target", id=None):
-        config = None
-        if isinstance(type, dict) or isinstance(id, dict):
-            if isinstance(type, dict):
-                config = type
-                type = "source_and_target"
-            if isinstance(id, dict):
-                config = id
-
+    def __init__(self, connector="", name=None, config=None, type="source_and_target", id=None):
         """
         @param connector: pdkType
         @param name: datasource name
+        @param config: datasource config
         @param type: datasource can be used as source and target at the same time
         @param id: datasource id, it will get datasource config from backend by api if id provide
         """
