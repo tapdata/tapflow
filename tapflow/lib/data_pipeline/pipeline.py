@@ -945,15 +945,15 @@ class Pipeline:
 
 
     @help_decorate("stop this pipeline job", args="p.stop()")
-    def stop(self):
+    def stop(self, force=False):
         if self.job is None:
             # logger.fwarn("pipeline {} not start, can not stop", self.name)
             return self
-        self.job.stop()
+        self.job.stop(force=force)
         time.sleep(0.1)
-        self.job.stop()
+        self.job.stop(force=force)
         time.sleep(0.1)
-        self.job.stop()
+        self.job.stop(force=force)
         return self
 
     def full_qps(self):

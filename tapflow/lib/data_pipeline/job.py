@@ -176,14 +176,14 @@ class Job:
         self.dag = data["dag"]
         self.jobType = data["syncType"]
     
-    def stop(self, t=60, sync=True, quiet=True):
+    def stop(self, t=60, sync=True, quiet=True, force=False):
         if self.status() != JobStatus.running:
             if not quiet:
                 logger.warn("Task status is {}, not running, can not stop it", self.status())
             return False
         if self.id is None:
             return False
-        res = req.put('/Task/batchStop', params={'taskIds': self.id})
+        res = req.put('/Task/batchStop', params={'taskIds': self.id, 'force': force})
         s = time.time()
         while True:
             if time.time() - s > t:
