@@ -130,6 +130,8 @@ class Pipeline:
         child_p = self._lookup_cache[cache_key]
         child_p._pre_cumpute_node(kwargs)
 
+        relation = relation[::-1]
+
         if type == "object":
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
 

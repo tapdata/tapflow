@@ -63,9 +63,8 @@ PDK_MONGO_FORM = {
 PDK_MYSQL_FORM = {
     "database": {"type": str, "require": True},
     "host": {"type": str, "require": True},
-    "username": {"type": str, "require": True},
+    "user": {"type": str, "require": True},
     "password": {"type": str, "require": True},
-    "port": {"type": int, "require": True},
     "additionalString": {"type": str, "require": False},
     "timezone": {"type": str, "require": True, "default": "", "desc": "example: -09:00, +04:00, +00:00"},
 }
