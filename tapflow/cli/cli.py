@@ -509,6 +509,8 @@ class show_command(Magics):
                 line_split = line.split(" ")
                 limit = int(line_split[line_split.index("-n") + 1])
                 line = "".join(set(line_split) - set([str(limit), "-n"]))
+            else:
+                limit = 5
         except Exception as e:
             limit = 5
         table, connection = self._get_table(line)
