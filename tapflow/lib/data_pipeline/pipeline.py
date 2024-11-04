@@ -130,7 +130,8 @@ class Pipeline:
         child_p = self._lookup_cache[cache_key]
         child_p._pre_cumpute_node(kwargs)
 
-        relation = [ r[::-1] for r in relation ]
+        if relation is not None:
+            relation = [ r[::-1] for r in relation ]
 
         if type == "object":
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateWrite")
@@ -364,7 +365,12 @@ class Pipeline:
         if kwargs.get("rename"):
             self.rename_fields(kwargs.get("rename"))
         if kwargs.get("js"):
-            self.js(kwargs.get("js"))
+            if isinstance(kwargs.get("js"), dict):
+                self.js(**kwargs.get("js"))
+            elif isinstance(kwargs.get("js"), list):
+                self.js(*kwargs.get("js"))
+            else:
+                self.js(kwargs.get("js"))
         if kwargs.get("py"):
             self.py(kwargs.get("py"))
         if kwargs.get("mapper"):
