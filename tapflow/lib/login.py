@@ -1,3 +1,4 @@
+from datetime import datetime
 import requests
 
 from tapflow.lib.request import set_req
@@ -5,6 +6,8 @@ from tapflow.lib.utils.log import logger
 from tapflow.lib.cache import system_server_conf
 
 def login_with_access_code(server, access_code):
+    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: {server} \033[0m")
+    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
     req = set_req(server)
     api = "http://" + server + "/api"
     res = req.post("/users/generatetoken", json={"accesscode": access_code})
@@ -44,6 +47,8 @@ def login_with_access_code(server, access_code):
     return True
 
 def login_with_ak_sk(ak, sk):
+    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: https://cloud.tapdata.net \033[0m")
+    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
     global req
     server = "https://cloud.tapdata.net/api"
     req = set_req(server)
