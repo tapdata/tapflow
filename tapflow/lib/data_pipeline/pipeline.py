@@ -215,9 +215,15 @@ class Pipeline:
                 source = Source(db, table, mode=self.dag.jobType)
             else:
                 source = Source(source, mode=self.dag.jobType)
+        table_or_db = "table" if source.mode == JobType.sync else "database"
+        source_name = f"{source.connection.c.get('name', '')}.{source.table_name}" if source.mode == JobType.sync else source.connection.c.get("name", "")
         # check if table exists
         if not source.exists():
-            logger.warn("Cannot read from the non-existent table {}.{}", db, table)
+            logger.warn("Cannot read from the non-existent table {}", source_name)
+            return self
+        # check if the table is a target table
+        if source.connection_type() == "target":
+            logger.warn("Cannot read from {}, because it is a {} " + table_or_db, source_name, "target")
             return self
         if source.mode is not None:
             self.mode = source.mode
