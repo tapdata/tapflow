@@ -61,7 +61,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 if [[ -f "etc/config.ini" ]]; then
-  server=`cat etc/config.ini |grep "server"|awk -F ' ' '{print $3}'`
+  server=`cat etc/config.ini  | grep -v "#" |grep "server"|awk -F ' ' '{print $3}'`
   ak=`cat etc/config.ini |grep "ak"|grep -v \#`
   if [[ $? -eq 0 || "x"$server == "x" ]]; then
       info "connecting remote server: https://cloud.tapdata.net ..."

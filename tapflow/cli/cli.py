@@ -1,3 +1,4 @@
+import getpass
 import os, sys
 
 # 获取当前脚本文件所在的目录
@@ -571,21 +572,46 @@ def desc_table(line, quiet=True):
     if not quiet:
         print(json.dumps(display_fields, indent=2))
 
-def create_sample_config():
+def select_secrets_source():
+    """select secrets source in terminal"""
+    print("""Tap Flow requires TapData Live Data Platform(LDP) cluster to run. 
+If you would like to use with TapData Enterprise or TapData Community, type L to continue. 
+If you would like to use TapData Cloud, or you are new to TapData, type C or press ENTER to continue.""")
+    prompt_message = "Please type L or C (L/[C]): "
+    while True:
+        select_option = input(prompt_message)
+        if select_option in ["L", "C", ""]:
+            return select_option if select_option != "" else "C"
+        print("Invalid input, please try again\n")
+
+def set_server_and_access_code():
+    server = input("Please enter server:port of TapData LDP server: ")
+    access_code = getpass.getpass("Please enter access code: ")
+    return server, access_code
+
+
+def set_ak_sk():
+    print("You may obtain the keys by log onto TapFlow Cloud, and click: 'User Center' on the top right, then copy & paste the accesskey and secret key pair.")
+    ak = getpass.getpass("Enter AK: ")
+    sk = getpass.getpass("Enter SK: ")
+    return ak, sk
+
+
+def create_sample_config(server="", access_code="", ak="", sk=""):
     if not os.path.exists("etc"):
         os.mkdir("etc")
     with open("etc/config.ini", "w") as f:
-        f.write('''
+        f.write(f'''
 [backend]
 # If you are using TapFlow Cloud, please provide the access key and secret key(ak & sk).
 # You may obtain the keys by log onto TapFlow Cloud, and click "User Center" on the top right, then copy & paste the access key and secret key pair.
 # You can sign up for a new account from: https://cloud.tapdata.io if you don't have one
-ak = bNH2fpso1gWlkuNlcApnaanZGQI7bR8G
-sk = 50YOjCEoxYL21wvFE1pWGISb2dXOy8NV
+{f"ak = {ak}" if ak else "# ak = "}
+{f"sk = {sk}" if sk else "# sk = "}
 
 # If you are using TapFlow Enterprise, please specify the server URL & access token.
-server = 127.0.0.1:13030
-access_code = 3324cfdf-7d3e-4792-bd32-571638d4562f
+{f"server = {server}" if server else "# server = "}
+{f"access_code = {access_code}" if access_code else "# access_code = "}
 ''')
 
 def show_register():
@@ -594,13 +620,9 @@ def show_register():
     with open("etc/config.ini", "r") as f:
         print(f.read())
 
-def main():
-    # ipython settings
-    ip = TerminalInteractiveShell.instance()
-    ip.register_magics(show_command)
-    ip.register_magics(op_object_command)
-    ip.register_magics(ApiCommand)
+def _set_secrets():
     ini_config = "etc/config.ini"
+    """get secrets from config.ini or set in terminal"""
     if os.path.exists(ini_config):
         import configparser
         config = configparser.ConfigParser()
@@ -621,9 +643,24 @@ def main():
                 show_register()
                 os._exit(-1)
     else:
-        create_sample_config()
-        show_register()
-        os._exit(-1)
+        select_option = select_secrets_source()
+        if select_option == "L":
+            server, access_code = set_server_and_access_code()
+            create_sample_config(server=server, access_code=access_code)
+            login_with_access_code(server, access_code)
+        elif select_option == "C":
+            ak, sk = set_ak_sk()
+            create_sample_config(ak=ak, sk=sk)
+            login_with_ak_sk(ak, sk)
+
+
+def main():
+    # ipython settings
+    ip = TerminalInteractiveShell.instance()
+    ip.register_magics(show_command)
+    ip.register_magics(op_object_command)
+    ip.register_magics(ApiCommand)
+    _set_secrets()
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)
