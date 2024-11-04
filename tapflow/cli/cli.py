@@ -1,3 +1,4 @@
+from datetime import datetime
 import getpass
 import os, sys
 
@@ -591,7 +592,7 @@ def set_server_and_access_code():
 
 
 def set_ak_sk():
-    print("You may obtain the keys by log onto TapFlow Cloud, and click: 'User Center' on the top right, then copy & paste the accesskey and secret key pair.")
+    print("You may obtain the keys by log onto TapData Cloud, and click: 'User Center' on the top right, then copy & paste the accesskey and secret key pair.")
     ak = getpass.getpass("Enter AK: ")
     sk = getpass.getpass("Enter SK: ")
     return ak, sk
@@ -603,13 +604,13 @@ def create_sample_config(server="", access_code="", ak="", sk=""):
     with open("etc/config.ini", "w") as f:
         f.write(f'''
 [backend]
-# If you are using TapFlow Cloud, please provide the access key and secret key(ak & sk).
-# You may obtain the keys by log onto TapFlow Cloud, and click "User Center" on the top right, then copy & paste the access key and secret key pair.
+# If you are using Tapdata Cloud, please provide the access key and secret key(ak & sk).
+# You may obtain the keys by log onto Tapdata Cloud, and click "User Center" on the top right, then copy & paste the access key and secret key pair.
 # You can sign up for a new account from: https://cloud.tapdata.io if you don't have one
 {f"ak = {ak}" if ak else "# ak = "}
 {f"sk = {sk}" if sk else "# sk = "}
 
-# If you are using TapFlow Enterprise, please specify the server URL & access token.
+# If you are using TapData Enterprise, please specify the server URL & access token.
 {f"server = {server}" if server else "# server = "}
 {f"access_code = {access_code}" if access_code else "# access_code = "}
 ''')
@@ -652,6 +653,7 @@ def _set_secrets():
             ak, sk = set_ak_sk()
             create_sample_config(ak=ak, sk=sk)
             login_with_ak_sk(ak, sk)
+            show_agents(quiet=False)
 
 
 def main():

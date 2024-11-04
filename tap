@@ -60,18 +60,6 @@ if [[ $? -ne 0 ]]; then
     error "NO ipython3 find, please run pip3 install -r requirements.txt before use tapcli"
 fi
 
-if [[ -f "etc/config.ini" ]]; then
-  server=`cat etc/config.ini  | grep -v "#" |grep "server"|awk -F ' ' '{print $3}'`
-  ak=`cat etc/config.ini |grep "ak"|grep -v \#`
-  if [[ $? -eq 0 || "x"$server == "x" ]]; then
-      info "connecting remote server: https://cloud.tapdata.net ..."
-  else
-      info "connecting remote server: $server ..."
-  fi
-fi
-
-info "Welcome to TapData Live Data Platform, Enjoy Your Data Trip !"
-
 cat <<EOF > .cli/ipython_config.py
 c = get_config()  #noqa
 from IPython.terminal.prompts import Prompts, Token

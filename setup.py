@@ -4,7 +4,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='tapcli',
-    version='0.2.3',
+    version='0.2.6',
     packages=find_packages(),
     install_requires=required,
     scripts=['tap'],
