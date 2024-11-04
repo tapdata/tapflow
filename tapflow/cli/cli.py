@@ -1,5 +1,6 @@
 from datetime import datetime
 import getpass
+import shlex
 import os, sys
 
 # 获取当前脚本文件所在的目录
@@ -54,18 +55,18 @@ class op_object_command(Magics):
     types = op_object_command_class.keys()
     def __common_op(self, op, line):
         try:
-            object_type, signature = line.split(" ")[0], line.split(" ")[1]
+            object_type, signature = shlex.split(line)[0], shlex.split(line)[1]
             if object_type not in self.types:
                 object_type = "job"
-                signature = line.split(" ")[0]
+                signature = shlex.split(line)[0]
 
         except Exception as e:
             object_type = "job"
-            signature = line.split(" ")[0]
+            signature = shlex.split(line)[0]
         args = []
         kwargs = {}
-        if len(line.split(" ")) > 2:
-            for kv in line.split(" ")[2:]:
+        if len(shlex.split(line)) > 2:
+            for kv in shlex.split(line)[2:]:
                 if "=" not in kv:
                     args.append(kv)
                 else:
