@@ -61,6 +61,12 @@ class QuickDataSourceMigrateJob:
         self.__p__.stop()
         return self.__p__
 
+    def copy(self):
+        if self.__p__ is None:
+            logger.fwarn("no sync job create, can not copy...")
+            return self.__db__ + "." + "copy"
+        return self.__p__.copy()
+
     def delete(self):
         ds = get_obj("datasource", self.__db__)
         if ds is not None:

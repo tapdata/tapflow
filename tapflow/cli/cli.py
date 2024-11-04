@@ -108,6 +108,10 @@ class op_object_command(Magics):
     @line_magic
     def monitor(self, line):
         return self.__common_op("monitor", line)
+    
+    @line_magic
+    def copy(self, line):
+        return self.__common_op("copy", line)
 
     @line_magic
     def start(self, line):
