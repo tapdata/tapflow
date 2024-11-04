@@ -223,6 +223,25 @@ class Job:
         if not quiet:
             logger.info("{}", "Task deleted successfully")
         return True
+    
+    def copy(self, quiet=False):
+        res = req.put(f"/Task/copy/{self.id}")
+        if res.status_code != 200:
+            logger.fwarn("{}", "Task copy failed")
+            return False
+        res = res.json()
+        if res["code"] != "ok":
+            logger.fwarn("{}", "Task copy failed")
+            return False
+        client_cache["jobs"]["id_index"][res["data"]["id"]] = res["data"]
+        client_cache["jobs"]["name_index"][res["data"]["name"]] = res["data"]
+        client_cache["jobs"]["number_index"][str(len(client_cache["jobs"]["number_index"]))] = res["data"]
+        copy_id = res["data"]["id"]
+        job = Job(id=copy_id)
+        job.name = res["data"]["name"]
+        if not quiet:
+            logger.info("{}", f"Copy task '{self.name}' to '{job.name}' success")
+        return job
 
     def relations(self):
         if self.id is None:

@@ -472,6 +472,10 @@ class Pipeline:
         f = TimeAdd(field)
         self.lines.append(f)
         return self._common_stage(f)
+    
+    def copy(self):
+        job = self.job.copy(quiet=True)
+        return Pipeline(name=job.name)
 
     def func(self, script="", declareScript="", language="js", pk=None):
         return self.js(script, declareScript, language, pk)
