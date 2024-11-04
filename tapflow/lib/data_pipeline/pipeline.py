@@ -663,6 +663,9 @@ class Pipeline:
     def _find_node_by_id(self,node_id):
         return self._node_map.get(node_id, None)
     
+    def _get_source_node(self, target_node_id):
+        return self.dag.get_source_node(target_node_id)
+    
     def _set_default_stage(self):
 
         # 查找没有子节点的目标节点
@@ -696,8 +699,11 @@ class Pipeline:
             if node["type"] == "table":
                 self.sources.append(Sink(node["attrs"]["connectionName"], node["tableName"]))
 
-    def _set_lookup_cache(self, children: dict, parent_merge_node: Merge):
-        node = self._find_node_by_id(children["id"])
+    def _set_lookup_cache(self, children: dict, parent_merge_node: Merge, node = None):
+        node = self._find_node_by_id(children["id"]) if node is None else node
+        if not node["type"] in ["table", "database"]:
+            node = self._get_source_node(children["id"])
+            return self._set_lookup_cache(children, parent_merge_node, node.to_dict())
         if node is None:
             return
         table_name = children["tableName"]

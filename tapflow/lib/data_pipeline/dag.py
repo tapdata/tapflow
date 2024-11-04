@@ -75,6 +75,12 @@ class Dag:
         if target_id in self.graph[source_id]:
             self.graph[source_id].remove(target_id)
 
+    def get_source_node(self, target_node_id):
+        for g in self.graph:
+            if target_node_id in self.graph[g]:
+                return self.get_node(g)
+        return None
+
     def to_dict(self):
         """
         return dag in dict format
