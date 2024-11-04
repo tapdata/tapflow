@@ -140,3 +140,6 @@ class Source(BaseNode):
             return True
         show_tables(source=self.connectionId, quiet=True)
         return self.table in client_cache["tables"][self.connectionId]["name_index"]
+    
+    def connection_type(self):
+        return client_cache["connections"]["id_index"][self.connectionId]["connection_type"]

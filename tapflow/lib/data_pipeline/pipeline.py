@@ -219,6 +219,10 @@ class Pipeline:
         if not source.exists():
             logger.warn("Cannot read from the non-existent table {}.{}", db, table)
             return self
+        # check if the table is a target table
+        if source.connection_type() == "target":
+            logger.warn("Cannot read from table {}.{}, because it is a {} table", source.connection.c.get("name", ""), source.table_name, "target")
+            return self
         if source.mode is not None:
             self.mode = source.mode
         source.mode = self.mode
