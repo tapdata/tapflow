@@ -1,7 +1,9 @@
 from tapflow.lib.help_decorator import help_decorate
+from tapflow.lib.op_object import show_tables
 from tapflow.lib.request import req
 
 from tapflow.lib.data_pipeline.base_node import BaseNode, node_config, node_config_sync
+from tapflow.lib.cache import client_cache
 
 
 @help_decorate("source is start of a pipeline", "source = Source($Datasource, $table)")
@@ -132,3 +134,9 @@ class Source(BaseNode):
             "batchReadThreadSize": size
         })
         return self
+    
+    def exists(self):
+        if self.mode == "migrate":
+            return True
+        show_tables(source=self.connectionId, quiet=True)
+        return self.table in client_cache["tables"][self.connectionId]["name_index"]

@@ -215,6 +215,10 @@ class Pipeline:
                 source = Source(db, table, mode=self.dag.jobType)
             else:
                 source = Source(source, mode=self.dag.jobType)
+        # check if table exists
+        if not source.exists():
+            logger.warn("Cannot read from the non-existent table {}.{}", db, table)
+            return self
         if source.mode is not None:
             self.mode = source.mode
         source.mode = self.mode
