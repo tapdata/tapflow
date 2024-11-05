@@ -642,7 +642,7 @@ def _set_secrets():
         ak = ini_dict.get("backend", {}).get("ak")
         sk = ini_dict.get("backend", {}).get("sk")
         if ak and sk:
-            login_with_ak_sk(ak, sk)
+            login_with_ak_sk(ak, sk, server=server)
             show_agents(quiet=False)
         else:
             if server and access_token:

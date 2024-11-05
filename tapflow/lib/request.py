@@ -80,9 +80,9 @@ class RequestSession(requests.Session):
     def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
         if self.mode == "cloud":
             if request.url == "/agent":
-                self.base_url = "https://cloud.tapdata.net/api/tcm"
+                self.base_url = f"{self.server}/api/tcm"
             else:
-                self.base_url = "https://cloud.tapdata.net/tm/api"
+                self.base_url = f"{self.server}/tm/api"
             request = self.sign_request(request)
         else:
             request.url = self.base_url + request.url

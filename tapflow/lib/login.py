@@ -46,11 +46,15 @@ def login_with_access_code(server, access_code):
     system_server_conf.update(conf)
     return True
 
-def login_with_ak_sk(ak, sk):
-    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: https://cloud.tapdata.net \033[0m")
-    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
+def login_with_ak_sk(ak, sk, server=None):
     global req
-    server = "https://cloud.tapdata.net/api"
+    try:
+        if not server or server == "127.0.0.1:3030":
+            server = "https://cloud.tapdata.net"
+    except NameError:
+        server = "https://cloud.tapdata.net"
+    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: {server} \033[0m")
+    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
     req = set_req(server)
     req.set_ak_sk(ak, sk)
     return True
