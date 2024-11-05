@@ -456,6 +456,12 @@ class Job:
             if not quiet:
                 logger.warn("{}", "Task start failed")
             return False
+        try:
+            if res["data"][0]["code"] == "Task.ScheduleLimit":
+                logger.warn("{}", res["data"][0]["message"])
+                return False
+        except Exception as e:
+            pass
         if not quiet:
             logger.info("{}", "Task start succeed")
         return True
