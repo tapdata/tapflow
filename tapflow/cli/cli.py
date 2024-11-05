@@ -148,6 +148,12 @@ class op_object_command(Magics):
                 line = line.split(" ")[1]
             return desc_table(line, quiet=False)
         return self.__common_op("desc", line)
+    
+    @line_magic
+    def tap(self, line):
+        line = line.replace("-f", "").strip()
+        with open(line, "r") as f:
+            exec(f.read())
 
 
 @magics_class
@@ -688,7 +694,8 @@ def main():
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)
-    get_default_sink()
+    if req.mode == "cloud":
+        get_default_sink()
 
 
 if __name__ == "__main__":
