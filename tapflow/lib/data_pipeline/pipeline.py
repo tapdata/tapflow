@@ -253,6 +253,9 @@ class Pipeline:
 
     def write_to(self, *args, **kwargs):
         return self.writeTo(*args, **kwargs)
+    
+    def materialize(self, *args, **kwargs):
+        return self.writeTo(*args, **kwargs)
 
     @help_decorate("write data to sink", args="p.writeTo($sink, $relation)")
     def writeTo(self, sink, pk=None):
