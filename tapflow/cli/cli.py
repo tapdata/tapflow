@@ -664,16 +664,18 @@ def _set_secrets():
 
 
 def get_default_sink():
-    res = req.get("/tcm/mdb-instance-assigned")
+    res = req.get("/mdb-instance-assigned")
     if not res.status_code == 200 or not res.json().get("code") == "ok":
-        logger.warn("Failed to get default sink, please check your config")
-        return
+        res = req.post("/mdb-instance-assigned/connection")
+        show_connections(quiet=True)
+        if not res.status_code == 200 or not res.json().get("code") == "ok":
+            logger.warn("{}", "Failed to create default sink")
+            return
     connection_id = res.json().get("data", {}).get("connectionId")
-    if not connection_id:
-        logger.error("Failed to get default sink, please check your config")
-        return
-    # if not connection_id.startswith("mysql
-    return Sink(connection_id)
+    default_connection_name = client_cache["connections"]["id_index"][connection_id]["name"]
+    global DEFAULT_SINK
+    DEFAULT_SINK = Sink(default_connection_name)
+    client_cache["default_sink"] = DEFAULT_SINK
 
 
 def main():
@@ -686,6 +688,7 @@ def main():
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)
+    get_default_sink()
 
 
 if __name__ == "__main__":

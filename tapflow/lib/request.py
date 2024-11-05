@@ -78,11 +78,13 @@ class RequestSession(requests.Session):
         self.mode = "op"
 
     def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
+        url_map = {
+            "/agent": "/api/tcm",
+            "/mdb-instance-assigned": "/api/tcm",
+            "/mdb-instance-assigned/connection": "/api/tcm",
+        }
         if self.mode == "cloud":
-            if request.url == "/agent":
-                self.base_url = f"{self.server}/api/tcm"
-            else:
-                self.base_url = f"{self.server}/tm/api"
+            self.base_url = self.server + url_map.get(request.url, "/tm/api")
             request = self.sign_request(request)
         else:
             request.url = self.base_url + request.url
