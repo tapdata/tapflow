@@ -253,6 +253,10 @@ class Pipeline:
 
     def write_to(self, *args, **kwargs):
         return self.writeTo(*args, **kwargs)
+    
+    def materialize(self, view_name):
+        DEFAULT_SINK = client_cache["default_sink"]
+        return self.writeTo(f"{DEFAULT_SINK.name}.{view_name}")
 
     @help_decorate("write data to sink", args="p.writeTo($sink, $relation)")
     def writeTo(self, sink, pk=None):

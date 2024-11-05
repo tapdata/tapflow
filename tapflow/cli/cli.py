@@ -642,7 +642,7 @@ def _set_secrets():
         ak = ini_dict.get("backend", {}).get("ak")
         sk = ini_dict.get("backend", {}).get("sk")
         if ak and sk:
-            login_with_ak_sk(ak, sk)
+            login_with_ak_sk(ak, sk, server=server)
             show_agents(quiet=False)
         else:
             if server and access_token:
@@ -663,6 +663,21 @@ def _set_secrets():
             show_agents(quiet=False)
 
 
+def get_default_sink():
+    res = req.get("/mdb-instance-assigned")
+    if not res.status_code == 200 or not res.json().get("code") == "ok":
+        res = req.post("/mdb-instance-assigned/connection")
+        show_connections(quiet=True)
+        if not res.status_code == 200 or not res.json().get("code") == "ok":
+            logger.warn("{}", "Failed to create default sink")
+            return
+    connection_id = res.json().get("data", {}).get("connectionId")
+    default_connection_name = client_cache["connections"]["id_index"][connection_id]["name"]
+    global DEFAULT_SINK
+    DEFAULT_SINK = Sink(default_connection_name)
+    client_cache["default_sink"] = DEFAULT_SINK
+
+
 def main():
     # ipython settings
     ip = TerminalInteractiveShell.instance()
@@ -673,6 +688,7 @@ def main():
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)
+    get_default_sink()
 
 
 if __name__ == "__main__":

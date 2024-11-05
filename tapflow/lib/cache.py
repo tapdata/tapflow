@@ -7,7 +7,8 @@ client_cache = {
     "apiserver": {
         "name_index": {}
     },
-    "connectors": {}
+    "connectors": {},
+    "default_sink": None
 }
 
 system_server_conf = {

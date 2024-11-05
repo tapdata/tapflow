@@ -1,3 +1,4 @@
+import os
 from tapflow.lib.utils.log import logger
 
 import hmac
@@ -77,15 +78,38 @@ class RequestSession(requests.Session):
         self.mode = "op"
 
     def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
+        url_map = {
+            "/agent": "/api/tcm",
+            "/mdb-instance-assigned": "/api/tcm",
+            "/mdb-instance-assigned/connection": "/api/tcm",
+        }
         if self.mode == "cloud":
-            if request.url == "/agent":
-                self.base_url = "https://cloud.tapdata.net/api/tcm"
-            else:
-                self.base_url = "https://cloud.tapdata.net/tm/api"
+            self.base_url = self.server + url_map.get(request.url, "/tm/api")
             request = self.sign_request(request)
         else:
             request.url = self.base_url + request.url
         return super(RequestSession, self).prepare_request(request)
+    
+    def authentication_check(self, response: requests.Response):
+        res = response.json()
+        if self.mode == "cloud":
+            if res.get("code") == "NotFoundAccessKey":
+                logger.error("{}", "Access key not found. Please verify your AK & SK in the etc/config.ini file.")
+                os._exit(1)
+            else:
+                return True
+        else:
+            if res.get("code") == "AccessCode.No.User":
+                logger.error("{}", "Access code not found. Please verify your access code in the etc/config.ini file.")
+                os._exit(1)
+            else:
+                return True
+    
+    def request(self, method, url, *args, **kwargs):
+        response = super().request(method, url, *args, **kwargs)
+        if not self.authentication_check(response):
+            os._exit(1)
+        return response
 
     def set_ak_sk(self, ak, sk):
         self.ak = ak
