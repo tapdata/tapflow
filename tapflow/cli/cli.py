@@ -663,6 +663,19 @@ def _set_secrets():
             show_agents(quiet=False)
 
 
+def get_default_sink():
+    res = req.get("/tcm/mdb-instance-assigned")
+    if not res.status_code == 200 or not res.json().get("code") == "ok":
+        logger.warn("Failed to get default sink, please check your config")
+        return
+    connection_id = res.json().get("data", {}).get("connectionId")
+    if not connection_id:
+        logger.error("Failed to get default sink, please check your config")
+        return
+    # if not connection_id.startswith("mysql
+    return Sink(connection_id)
+
+
 def main():
     # ipython settings
     ip = TerminalInteractiveShell.instance()

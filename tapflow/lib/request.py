@@ -1,3 +1,4 @@
+import os
 from tapflow.lib.utils.log import logger
 
 import hmac
@@ -86,6 +87,27 @@ class RequestSession(requests.Session):
         else:
             request.url = self.base_url + request.url
         return super(RequestSession, self).prepare_request(request)
+    
+    def authentication_check(self, response: requests.Response):
+        res = response.json()
+        if self.mode == "cloud":
+            if res.get("code") == "NotFoundAccessKey":
+                logger.error("{}", "Access key not found. Please verify your AK & SK in the etc/config.ini file.")
+                os._exit(1)
+            else:
+                return True
+        else:
+            if res.get("code") == "AccessCode.No.User":
+                logger.error("{}", "Access code not found. Please verify your access code in the etc/config.ini file.")
+                os._exit(1)
+            else:
+                return True
+    
+    def request(self, method, url, *args, **kwargs):
+        response = super().request(method, url, *args, **kwargs)
+        if not self.authentication_check(response):
+            os._exit(1)
+        return response
 
     def set_ak_sk(self, ak, sk):
         self.ak = ak
