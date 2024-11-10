@@ -675,7 +675,7 @@ def get_default_sink():
         res = req.post("/mdb-instance-assigned/connection")
         show_connections(quiet=True)
         if not res.status_code == 200 or not res.json().get("code") == "ok":
-            logger.warn("{}", "Failed to create default sink")
+            logger.fwarn("{}", "Failed to create default sink")
             return
     connection_id = res.json().get("data", {}).get("connectionId")
     default_connection_name = client_cache["connections"]["id_index"][connection_id]["name"]

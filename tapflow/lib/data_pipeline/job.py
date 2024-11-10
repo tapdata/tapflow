@@ -669,7 +669,7 @@ class Job:
 
         job_status = self.status(quiet=True)
         if not quiet:
-            logger.info("job current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
+            logger.info("Flow current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
 
         return job_stats
 
