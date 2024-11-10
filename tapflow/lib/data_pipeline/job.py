@@ -293,15 +293,14 @@ class Job:
             self.job = {
                 "editVersion": int(time.time() * 1000),
                 "syncType": self.dag.jobType,
-                "mappingTemplate": self.dag.jobType,
                 "name": self.name,
-                "status": JobStatus.wait_start,
+                "status": JobStatus.edit,
                 "dag": self.dag.dag,
                 "user_id": system_server_conf["user_id"],
                 "customId": system_server_conf["user_id"],
                 "createUser": system_server_conf["username"],
                 "syncPoints": self.dag.setting.get("syncPoints", []),
-                "dynamicAdjustMemoryUsage": False,
+                "dynamicAdjustMemoryUsage": True,
                 "crontabExpressionFlag": False
             }
 
@@ -310,11 +309,11 @@ class Job:
                 "editVersion": int(time.time() * 1000),
                 "name": self.name,
                 "dag": self.dag.dag,
-                "user_id": system_server_conf["user_id"],
-                "customId": system_server_conf["user_id"],
-                "createUser": system_server_conf["username"],
+                "user_id": "64f587d2c65c2750c076ea34",
+                "customId": "64f587d203c4d54b1733aea4",
+                "createUser": "jerry@tapdata.io",
                 "syncPoints": self.dag.setting.get("syncPoints", []),
-                "dynamicAdjustMemoryUsage": False,
+                "dynamicAdjustMemoryUsage": True,
                 "crontabExpressionFlag": False
             })
 
@@ -349,21 +348,30 @@ class Job:
                 else:
                     logger.warn("save failed {}", res)
                     return False
+            else:
+                self.id = res["data"]["id"]
         job = self.job
         job.update(self.setting)
-        res = req.patch("/Task", json=job)
+        job.update(self.dag.to_dict())
+        # load schema
+        if self.pipeline.target is not None:
+            res = req.get(f"/MetadataInstances/node/schema", params={"nodeId": self.pipeline.target.id}).json()
+        if self.id is None:
+            self._get()
+        body = {
+            "dag": {
+                "nodes": self.dag.dag["nodes"],
+                "edges": self.dag.dag["edges"],
+            },
+            "editVersion": int(time.time() * 1000),
+            "id": self.id,
+            "pageVersion": int(time.time() * 1000),
+        }
+        res = req.patch("/Task", json=body)
         if res.status_code != 200 or res.json().get("code") != "ok":
-            logger.fwarn("start failed {}", res)
-            logger.fdebug("res: ", res.json())
+            logger.warn("start failed {}", res.json())
+            logger.debug("res: {}", res.json())
             return False
-        res = req.patch(f"/Task/confirm/{self.id}", json=job)
-        res = res.json()
-        if res["code"] != "ok":
-            logger.fwarn("start failed {}", res)
-            return False
-        self.job = res["data"]
-        self.setting = res["data"]
-
         # 如果源有文件类型, 调用下推演
         for s in self.pipeline.sources:
             if str(s.databaseType).lower() in ["csv"]:
@@ -430,6 +438,13 @@ class Job:
                         break
                     else:
                         logger.fwarn("discover schema failed for {} times, retrying, most 10 times", i)
+        res = req.patch(f"/Task/confirm/{self.id}", json=self.job)
+        res = res.json()
+        if res["code"] != "ok":
+            logger.warn("save failed {}", res)
+            return False
+        self.job = res["data"]
+        self.setting = res["data"]
         return True
 
     def start(self, quiet=True):
@@ -654,7 +669,7 @@ class Job:
 
         job_status = self.status(quiet=True)
         if not quiet:
-            logger.info("job current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
+            logger.info("Flow current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
 
         return job_stats
 
@@ -797,7 +812,7 @@ class Job:
                 "databaseType": n.get("databaseType"),
                 "cdcConcurrent": True,
                 "cdcConcurrentWriteNum": 8,
-                "increaseReadSize": 500,
+                "increaseReadSize": 1,
                 "initialConcurrent": True,
                 "initialConcurrentWriteNum": 8,
                 "writeBatchSize": 100,

@@ -82,6 +82,7 @@ class RequestSession(requests.Session):
             "/agent": "/api/tcm",
             "/mdb-instance-assigned": "/api/tcm",
             "/mdb-instance-assigned/connection": "/api/tcm",
+            "/agent/agentCount": "/api/tcm",
         }
         if self.mode == "cloud":
             self.base_url = self.server + url_map.get(request.url, "/tm/api")

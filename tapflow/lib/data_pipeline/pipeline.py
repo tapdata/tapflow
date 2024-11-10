@@ -87,6 +87,7 @@ class Pipeline:
         self.id = id
         self.mergeNode = None
         self.sources = []
+        self.target = None
         self.lines = []
         self.sinks = []
         self.validateConfig = None
@@ -296,6 +297,7 @@ class Pipeline:
         self._write_to_ed = True
         obj = self._clone(sink)
         self.__dict__ = obj.__dict__
+        self.target = sink
         return self
 
     def _common_stage(self, f):
@@ -910,7 +912,7 @@ class Pipeline:
             t = "current"
         for i in range(len(source_connections)):
             syncPoints.append({
-                "dateTime": start_time,
+                "dateTime": int(start_time),
                 "timezone": tz,
                 "pointType": t,
                 "connectionId": source_connections[i].connectionId,
@@ -919,7 +921,8 @@ class Pipeline:
                 "nodeName": source_connections[i].name
             })
         config["syncPoints"] = syncPoints
-        config["sync_type"] = "cdc"
+        config["syncType"] = "sync"
+        config["type"] = "cdc"
         self.config(config)
 
     def save(self):
@@ -939,6 +942,14 @@ class Pipeline:
         self.config({})
         job.save()
         return self
+    
+    def start_at(self, start_time, tz="+8"):
+        """
+        设置时，进入cdc模式，并设置cdc开始时间
+        :param start_time: 开始时间戳
+        :param tz: 时区
+        """
+        return self.config_cdc_start_time(start_time, tz)
 
     @help_decorate("start this pipeline as a running job", args="p.start()")
     def start(self):
@@ -1190,9 +1201,6 @@ class Pipeline:
             logger.fwarn(
                 "{}", "The status of this task is not in [running, stop, complete], unable to check data."
             )
-            return
-        if not self.dag.setting.get("isAutoInspect"):
-            logger.fwarn("please set {} to enable auto inspect", "$pipeline.config({'isAutoInspect': True})", "info")
             return
         for _ in range(count):
             time.sleep(1)

@@ -13,6 +13,7 @@ from tapflow.lib.params.datasource import pdk_config, DATASOURCE_CONFIG
 
 from tapflow.lib.cache import client_cache
 from tapflow.lib.system.ext_storage import get_default_external_storage_id
+from tapflow.lib.request import req
 
 
 @help_decorate("Data Source, you can see it as database",
@@ -212,6 +213,15 @@ class DataSource:
         return data["data"]["items"][0]
 
     def save(self):
+        # check agent running
+        if req.mode == "cloud":
+            res = req.get("/agent/agentCount")
+            if res.status_code != 200:
+                logger.warn("Failed to check agent running, err is: {}", res.json())
+                return False
+            if res.json().get("data", {}).get("agentRunningCount", 0) == 0:
+                logger.warn("{}", "No agent running, please check agent status")
+                return False
         if not self.config_changed:
             logger.finfo("datasource {} config not changed, no need to save", self.setting.get("name"))
             return True
