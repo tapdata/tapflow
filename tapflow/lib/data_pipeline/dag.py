@@ -20,7 +20,6 @@ class Dag:
         }
         self.jobType = JobType.migrate
         self.setting = {
-            "distinctWriteType": "intellect"
         }
 
         self.graph = {}
@@ -85,10 +84,12 @@ class Dag:
         """
         return dag in dict format
         """
-        return {
+        set = {
             "edges": [{"source": source, "target": target} for source in self.graph for target in self.graph[source]],
-            "nodes": [self.node_map[node_id].to_dict() for node_id in self.node_map]
+            "nodes": [self.node_map[node_id].to_dict() for node_id in self.node_map],
         }
+        set.update(self.setting)
+        return set
     
     def get_node(self, node_id):
         """
