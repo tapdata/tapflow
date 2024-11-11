@@ -32,8 +32,12 @@ def get_table_fields(t, whole=False, source=None, cache=True):
     table_id = ""
     index_type = get_index_type(t)
     if index_type == "short_id_index":
-        t = match_line(client_cache["tables"]["id_index"], t)
-        index_type = "id_index"
+        try:
+            t = match_line(client_cache["tables"]["id_index"], t)
+            index_type = "id_index"
+        except KeyError as e:
+            logger.warn("table {} not find in system", t)
+            return
     if index_type == "id_index":
         table_id = t
     if client_cache["tables"].get(t) is None:
