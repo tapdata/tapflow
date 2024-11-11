@@ -129,7 +129,7 @@ class Pipeline:
             self._lookup_path_cache[path] = child_p
 
         child_p = self._lookup_cache[cache_key]
-        child_p._pre_cumpute_node(kwargs)
+        child_p._pre_process_node(kwargs)
 
         if relation is not None:
             relation = [ r[::-1] for r in relation ]
@@ -318,13 +318,13 @@ class Pipeline:
         return self._clone(f)
 
     @help_decorate("using simple query filter data", args='p.filter("id > 2 and sex=male")')
-    def filter(self, query="", filterType=FilterType.keep, mode=None):
+    def filter(self, query="", filterType=FilterType.keep, mode=None, name="Row Filter"):
         if mode is not None:
             filterType = mode
         if self.dag.jobType == JobType.migrate:
             logger.fwarn("{}", "migrate job not support filter processor")
             return self
-        f = Filter(query, filterType)
+        f = Filter(query, filterType, name=name)
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: filter added")
@@ -344,22 +344,22 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
 
-    def renameField(self, config={}):
-        f = FieldRename(config)
+    def renameField(self, config={}, name="Fields Rename"):
+        f = FieldRename(config, name=name)
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: fields rename node added")
         self.command.append(["rename_fields", config])
         return self._common_stage(f)
 
-    def rename_fields(self, config={}):
-        return self.renameField(config)
+    def rename_fields(self, config={}, name="Fields Rename"):
+        return self.renameField(config, name)
 
-    def type_adjust(self, converts, table):
+    def type_adjust(self, converts, table, name="Type Adjust"):
         """
         :params converts: List[tuple, (field, field_type)]
         """
-        f = TypeAdjust()
+        f = TypeAdjust(name=name)
         for c in converts:
             f.convert(c[0], c[1])
         connection_ids = self._get_source_connection_id()
@@ -369,40 +369,34 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
     
-    def _pre_cumpute_node(self, kwargs):
+    def _pre_process_node(self, kwargs):
         """
         前置的计算节点
         :param kwargs:
         """
-        if kwargs.get("filter"):
-            self.filter(kwargs.get("filter"))
-        if kwargs.get("fields"):
-            self.filterColumn(kwargs.get("fields"))
-        if kwargs.get("rename"):
-            self.rename_fields(kwargs.get("rename"))
-        if kwargs.get("js"):
-            if isinstance(kwargs.get("js"), dict):
-                self.js(**kwargs.get("js"))
-            elif isinstance(kwargs.get("js"), list):
-                self.js(*kwargs.get("js"))
-            else:
-                self.js(kwargs.get("js"))
-        if kwargs.get("py"):
-            self.py(kwargs.get("py"))
-        if kwargs.get("mapper"):
-            mapper = kwargs.get("func") if kwargs.get("func") else kwargs.get("js")
-            self.func(script=mapper, pk=kwargs.get("pk"))
-        if kwargs.get("adjust_time"):
-            self.adjust_time(**kwargs.get("adjust_time"))
-        if kwargs.get("type_adjust"):
-            self.type_adjust(**kwargs.get("type_adjust"))
-        if kwargs.get("include"):
-            self.include(*kwargs.get("include"))
-        if kwargs.get("exclude"):
-            self.exclude(*kwargs.get("exclude"))
+        fn_map = {
+            "filter": self.filter,
+            "fields": self.filterColumn,
+            "rename": self.rename_fields,
+            "js": self.js,
+            "py": self.py,
+            "mapper": self.func,
+            "adjust_time": self.adjust_time,
+            "type_adjust": self.type_adjust,
+            "include": self.include,
+            "exclude": self.exclude,
+        }
+        for k, v in kwargs.items():
+            if k in fn_map:
+                if isinstance(v, dict):
+                    fn_map[k](**v)
+                elif isinstance(v, list):
+                    fn_map[k](*v)
+                else:
+                    fn_map[k](v)
 
     def union(self, unionNode=None, **kwargs):
-        self._pre_cumpute_node(kwargs)
+        self._pre_process_node(kwargs)
         source = unionNode
         if unionNode is None and self._union_node is None:
             unionNode = UnionNode()
@@ -432,25 +426,25 @@ class Pipeline:
         return self._common_stage(self._union_node)
 
     @help_decorate("filter column", args='p.filterColumn(["id", "name"], FilterType.keep)')
-    def filterColumn(self, query=[], filterType=FilterType.keep):
+    def filterColumn(self, query=[], filterType=FilterType.keep, name="Column Filter"):
         if self.dag.jobType == JobType.migrate:
             logger.fwarn("{}", "migrate job not support filterColumn processor")
             return self
-        f = ColumnFilter(query, filterType)
+        f = ColumnFilter(query, filterType, name=name)
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: column filter added")
         self.command.append(["filter_columns", query])
         return self._common_stage(f)
 
-    def include(self, *args):
-        return self.filter_columns(query=list(args), filterType=FilterType.keep)
+    def include(self, *args, name="Include"):
+        return self.filter_columns(query=list(args), filterType=FilterType.keep, name=name)
 
-    def exclude(self, *args):
-        return self.filter_columns(query=list(args), filterType=FilterType.delete)
+    def exclude(self, *args, name="Exclude"):
+        return self.filter_columns(query=list(args), filterType=FilterType.delete, name=name)
 
-    def filter_columns(self, query=[], filterType=FilterType.keep):
-        return self.filterColumn(query, filterType)
+    def filter_columns(self, query=[], filterType=FilterType.keep, name="Column Filter"):
+        return self.filterColumn(query, filterType, name)
 
     def typeMap(self, field, t):
         return self
@@ -479,8 +473,8 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
 
-    def adjust_time(self, addHours=0, t=["now"]):
-        f = TimeAdjust(addHours, t=t)
+    def adjust_time(self, addHours=0, t=["now"], name="Time Adjust"):
+        f = TimeAdjust(addHours, t=t, name=name)
         self.lines.append(f)
         return self._common_stage(f)
 
@@ -493,14 +487,14 @@ class Pipeline:
         job = self.job.copy(quiet=True)
         return Pipeline(name=job.name)
 
-    def func(self, script="", declareScript="", language="js", pk=None):
-        return self.js(script, declareScript, language, pk)
+    def func(self, script="", declareScript="", language="js", pk=None, name="Function"):
+        return self.js(script, declareScript, language, pk, name)
 
-    def py(self, script="", declareScript="", pk=None):
-        return self.func(script=script, declareScript=declareScript, pk=pk)
+    def py(self, script="", declareScript="", pk=None, name="Python"):
+        return self.func(script=script, declareScript=declareScript, pk=pk, name=name)
 
     @help_decorate("use a function(js text/python function) transform data", args="p.js()")
-    def js(self, script="", declareScript="", language="js", pk=None):
+    def js(self, script="", declareScript="", language="js", name="JS", pk=None):
         if pk is not None:
             if declareScript != "" and not declareScript.endswith(";"):
                 declareScript += ";\n"
@@ -525,7 +519,7 @@ class Pipeline:
             if script.endswith(".js"):
                 js_script = open(script, "r").read()
                 script = js_script
-            f = Js(script, declareScript, language=language)
+            f = Js(script, declareScript, language=language, name=name)
         self.lines.append(f)
         if is_tapcli():
             print("Flow updated: custom function added")

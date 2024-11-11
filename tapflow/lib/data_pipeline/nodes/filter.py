@@ -39,7 +39,7 @@ class Filter(BaseObj):
             "catalog": "processor",
             "isTransformed": False,
             "id": self.id,
-            "name": "Row Filter",
+            "name": self.name,
             "elementType": "Node",
             "disabled": False
         }

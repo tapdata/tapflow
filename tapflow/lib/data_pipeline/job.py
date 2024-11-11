@@ -369,8 +369,8 @@ class Job:
         }
         res = req.patch("/Task", json=body)
         if res.status_code != 200 or res.json().get("code") != "ok":
-            logger.warn("start failed {}", res.json())
-            logger.debug("res: {}", res.json())
+            logger.fwarn("start failed {}", res.json())
+            logger.fdebug("res: {}", res.json())
             return False
         # 如果源有文件类型, 调用下推演
         for s in self.pipeline.sources:
@@ -441,7 +441,7 @@ class Job:
         res = req.patch(f"/Task/confirm/{self.id}", json=self.job)
         res = res.json()
         if res["code"] != "ok":
-            logger.warn("save failed {}", res)
+            logger.fwarn("save failed {}", res)
             return False
         self.job = res["data"]
         self.setting = res["data"]
