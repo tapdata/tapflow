@@ -918,6 +918,7 @@ class Pipeline:
         config["syncType"] = "sync"
         config["type"] = "cdc"
         self.config(config)
+        return self
 
     def save(self):
         if self.job is not None:
