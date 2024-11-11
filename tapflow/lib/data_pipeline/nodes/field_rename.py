@@ -22,7 +22,7 @@ class FieldRename(BaseObj):
             "operations": operations,
             "catalog": "processor",
             "elementType": "Node",
-            "name": "Field Rename",
+            "name": self.name,
             "type": "field_rename_processor"
         }
     

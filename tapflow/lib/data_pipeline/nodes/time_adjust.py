@@ -3,7 +3,7 @@ from tapflow.lib.data_pipeline.base_obj import BaseObj
 
 # 时间调整节点
 class TimeAdjust(BaseObj):
-    def __init__(self, addHours=0, t=None):
+    def __init__(self, addHours=0, t=None, name="Time Adjust"):
         super().__init__()
         if t is None:
             t = ["now"]
@@ -19,7 +19,7 @@ class TimeAdjust(BaseObj):
             "id": self.id,
             "catalog": "processor",
             "elementType": "Node",
-            "name": "Time Adjust",
+            "name": self.name,
             "type": "date_processor",
         }
     
