@@ -22,56 +22,5 @@ fi
 # 设置环境变量, 兼容 macos 和 linux
 export LC_ALL="en_US.utf8" 2>/dev/null
 
-error() {
-    echo -e `date`"\033[31m $1 \033[0m"
-    exit 1
-}
-
-info() {
-    echo -e `date`"\033[36m $1 \033[0m"
-}
-
-notice() {
-    echo -e `date`"\033[32m $1 \033[0m"
-}
-
-warn() {
-    echo -e `date`"\033[33m $1 \033[0m"
-}
-
-file_value=""
-# 使用 getopts 解析 -f 参数
-while getopts "f:" opt; do
-  case $opt in
-    f)
-      file_value="$OPTARG"
-      python3 $file_value
-      exit 0
-      ;;
-    \?)
-      ;;
-  esac
-done
-
-mkdir -p .cli
-
-which ipython3 &> /dev/null
-if [[ $? -ne 0 ]]; then
-    error "NO ipython3 find, please run pip3 install -r requirements.txt before use tapcli"
-fi
-
-cat <<EOF > .cli/ipython_config.py
-c = get_config()  #noqa
-from IPython.terminal.prompts import Prompts, Token
-
-class NoPrompt(Prompts):
-    def in_prompt_tokens(self, cli=None):
-        return [(Token.Prompt, 'tap > ')]
-
-    def out_prompt_tokens(self):
-        return [(Token.OutPrompt, 'tap > ')]
-
-c.TerminalInteractiveShell.prompts_class = NoPrompt
-EOF
-
-ipython3 --no-banner --profile-dir=.cli --profile=ipython_config -i $source_path/cli/cli.py
+# 运行 tap.py 脚本
+python3 tapflow/cli/tap.py

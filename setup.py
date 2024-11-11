@@ -4,18 +4,22 @@ with open('requirements.txt') as f:
 
 setup(
     name='tapflow',
-    version='0.2.7',
+    version='0.2.13',
     packages=find_packages(),
     install_requires=required,
-    scripts=['tap'],
     include_package_data=True,
     package_data={
         '': ['*.md', '*.txt', '*.sh', "*.py"],
+    },
+    entry_points={
+        'console_scripts': [
+            'tap=tapflow.cli.tap:main',
+        ],
     },
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.6',  # Python 版本要求
+    python_requires='>=3.6',
 )
