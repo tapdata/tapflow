@@ -309,9 +309,9 @@ class Job:
                 "editVersion": int(time.time() * 1000),
                 "name": self.name,
                 "dag": self.dag.dag,
-                "user_id": "64f587d2c65c2750c076ea34",
-                "customId": "64f587d203c4d54b1733aea4",
-                "createUser": "jerry@tapdata.io",
+                "user_id": system_server_conf["user_id"],
+                "customId": system_server_conf["user_id"],
+                "createUser": system_server_conf["username"],
                 "syncPoints": self.dag.setting.get("syncPoints", []),
                 "dynamicAdjustMemoryUsage": True,
                 "crontabExpressionFlag": False
