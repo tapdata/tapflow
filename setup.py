@@ -3,8 +3,8 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 
 setup(
-    name='tapcli',
-    version='0.2.6',
+    name='tapflow',
+    version='0.2.7',
     packages=find_packages(),
     install_requires=required,
     scripts=['tap'],
