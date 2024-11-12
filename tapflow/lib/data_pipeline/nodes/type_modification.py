@@ -104,6 +104,8 @@ class TypeAdjust(BaseObj):
     def to_instance(cls, node_dict):
         t_node = cls(id=node_dict["id"],
                    name=node_dict["name"])
-        for op in node_dict["operations"]:
-            t_node.convert(op["field"], op["operand"])
+        if "operations" in node_dict:
+            for op in node_dict["operations"]:
+                t_node.convert(op["field"], op["operand"])
+                t_node.pre_table_name = "_".join(op["id"].split("_")[1:-1])
         return t_node

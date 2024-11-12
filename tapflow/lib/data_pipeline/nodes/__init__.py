@@ -4,6 +4,7 @@ from tapflow.lib.data_pipeline.nodes.field_calculate import FieldCalculate
 from tapflow.lib.data_pipeline.nodes.field_rename import FieldRename
 from tapflow.lib.data_pipeline.nodes.sink import Sink
 from tapflow.lib.data_pipeline.nodes.merge import Merge
+from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.time_adjust import TimeAdjust
 from tapflow.lib.data_pipeline.nodes.type_modification import TypeAdjust
 from tapflow.lib.data_pipeline.nodes.union import UnionNode
@@ -16,7 +17,6 @@ from tapflow.lib.data_pipeline.nodes.unwind import Unwind
 
 
 NODE_MAP = {
-    "table": Sink,
     "merge_table_processor": Merge,
     "union_processor": UnionNode,
     "js_processor": Js,
@@ -43,5 +43,10 @@ def get_node_instance(node_dict: dict) -> BaseNode:
         raise ValueError("Invalid node_dict")
     node_class = NODE_MAP.get(node_type, None)
     if node_class is None:
+        if node_type == "table":
+            if node_dict.get("nodeConfig", {}).get("skipDeletedEventsOnFilling") is None:
+                return Sink.to_instance(node_dict)
+            else:
+                return Source.to_instance(node_dict)
         raise ValueError(f"Node type {node_type} not supported")
     return node_class.to_instance(node_dict)

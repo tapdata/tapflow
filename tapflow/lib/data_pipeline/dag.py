@@ -2,6 +2,7 @@ from typing import Any
 from tapflow.lib.data_pipeline.base_node import BaseNode
 from tapflow.lib.data_pipeline.job import JobType, JobStatus
 from tapflow.lib.data_pipeline.nodes.merge import MergeNode
+from tapflow.lib.data_pipeline.nodes.sink import Sink
 from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.nodes.filter import Filter
 from tapflow.lib.data_pipeline.nodes import get_node_instance
@@ -75,9 +76,41 @@ class Dag:
             self.graph[source_id].remove(target_id)
 
     def get_source_node(self, target_node_id):
+        """
+        获取target_node_id的父节点, 如果没有父节点, 则返回target_node_id
+        """
         for g in self.graph:
             if target_node_id in self.graph[g]:
                 return self.get_node(g)
+        return self.get_node(target_node_id)
+    
+    def get_read_from_nodes(self):
+        """
+        获取所有源节点
+        1. 源节点必须有子节点
+        2. 源节点必须是Source节点
+        3. 源节点不能有父节点
+        """
+        child_nodes = set()
+        for childs in self.graph.values():
+            for child in childs:
+                child_nodes.add(child)
+        source_nodes = []
+        for node_id in self.graph:
+            if isinstance(self.get_node(node_id), Source) and len(self.graph[node_id]) > 0 and node_id not in child_nodes:
+                source_nodes.append(self.get_node(node_id))
+        return source_nodes
+    
+    def get_target_node(self):
+        """
+        获取目标节点, Dag只有一个目标节点
+        1. 目标节点必须有父节点
+        2. 目标节点不能有子节点
+        3. 目标节点必须是Sink节点
+        """
+        for node_id in self.graph:
+            if len(self.graph[node_id]) == 0:
+                return self.get_node(node_id) if isinstance(self.get_node(node_id), Sink) else None
         return None
 
     def to_dict(self):

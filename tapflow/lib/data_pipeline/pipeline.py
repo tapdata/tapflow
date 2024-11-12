@@ -1,3 +1,4 @@
+import inspect
 import uuid
 import time
 import copy
@@ -203,7 +204,7 @@ class Pipeline:
         return conditions
 
     @help_decorate("read data from source", args="p.readFrom($source)")
-    def readFrom(self, source, setting={}, query=None, filter=None):
+    def readFrom(self, source, setting={}, query=None, filter=None, quiet=False):
         if self._read_from_ed:
             logger.warn("Read data from DB is already setted, please create a new Flow before reading data")
             return self
@@ -241,7 +242,7 @@ class Pipeline:
                 source.setting.update({"conditions": conditions, "isFilter": True})
         self.sources.append(source)
         self.lines.append(source)
-        if is_tapcli():
+        if is_tapcli() and not quiet:
             print("Flow updated: source added")
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         self._read_from_ed = True
@@ -367,11 +368,7 @@ class Pipeline:
         self.lines.append(f)
         return self._common_stage(f)
     
-    def _pre_process_node(self, kwargs):
-        """
-        前置的计算节点
-        :param kwargs:
-        """
+    def _fn_map(self):
         fn_map = {
             "filter": self.filter,
             "fields": self.filterColumn,
@@ -384,6 +381,14 @@ class Pipeline:
             "include": self.include,
             "exclude": self.exclude,
         }
+        return fn_map
+    
+    def _pre_process_node(self, kwargs):
+        """
+        前置的计算节点
+        :param kwargs:
+        """
+        fn_map = self._fn_map()
         for k, v in kwargs.items():
             if k in fn_map:
                 if isinstance(v, dict):
@@ -393,11 +398,11 @@ class Pipeline:
                 else:
                     fn_map[k](v)
 
-    def union(self, unionNode=None, **kwargs):
+    def union(self, unionNode=None, name="Union", **kwargs):
         self._pre_process_node(kwargs)
         source = unionNode
         if unionNode is None and self._union_node is None:
-            unionNode = UnionNode()
+            unionNode = UnionNode(name=name)
             self._union_node = unionNode
 
         if isinstance(unionNode, UnionNode):
@@ -405,7 +410,7 @@ class Pipeline:
 
         if isinstance(source, QuickDataSourceMigrateJob) or isinstance(source, str) or isinstance(source, Source):
             if self._union_node is None:
-                self._union_node = UnionNode()
+                self._union_node = UnionNode(name=name)
             if isinstance(source, QuickDataSourceMigrateJob):
                 source = source.__db__
                 source = Source(source)
@@ -722,7 +727,7 @@ class Pipeline:
             child_p = Pipeline(mode=self.dag.jobType)
             conn = f"{node['attrs']['connectionName']}.{node['tableName']}"
             source = Source(conn, mode=self.dag.jobType)
-            child_p.read_from(source)
+            child_p.read_from(source, quiet=True)
             self._lookup_cache[cache_key] = child_p
             self._lookup_path_cache[path] = child_p
             child_p.mergeNode = Merge(
@@ -755,6 +760,145 @@ class Pipeline:
         if self.mergeNode is not None:
             self.dag.update_node(self.mergeNode) 
 
+    def _set_command(self):
+
+        _process_kwargs_map = {
+            Filter: lambda node: { "query": node.f.values()[0], "filterType": node.f.keys()[0], "name": node.name },
+            FieldRename: lambda node: { "config": node.config, "name": node.name },
+            Js: lambda node: { "script": node.script, "declareScript": node.declareScript, "language": node.language, "name": node.name },
+            Python: lambda node: { "script": node.script, "declareScript": node.declareScript, "name": node.name },
+            TimeAdjust: lambda node: { "addHours": node.addHours, "t": node.t, "name": node.name },
+            TypeAdjust: lambda node: { "converts": node._convert_field, "table": node.pre_table_name, "name": node.name },
+            Source: lambda node: { "source": f"{node.connection.c.get('name', '')}.{node.table_name}" if node.mode == JobType.sync else node.connection.c.get("name", "")},
+            Sink: lambda node: { "sink": f"{node.connection.c.get('name', '')}.{node.table_name}" if node.mode == JobType.sync else node.connection.c.get("name", "")},
+            UnionNode: lambda node: { "name": node.name },
+        }
+
+        _process_func_map = {
+            Filter: self.filter,
+            FieldRename: self.rename_fields,
+            Js: self.js,
+            Python: self.py,
+            TimeAdjust: self.adjust_time,
+            TypeAdjust: self.type_adjust,
+            Source: self.readFrom,
+            Sink: self.writeTo,
+            UnionNode: self.union,
+        }
+
+        def command_generator(node, lookup_params=False):
+            method = _process_func_map[type(node)]
+            method_name = method.__name__.replace("readFrom", "read_from").replace("writeTo", "write_to")
+            kwargs = _process_kwargs_map[type(node)](node)
+            params = []
+            if lookup_params:
+                return [f"{method_name}={str(kwargs)}"]
+            for k, v in kwargs.items():
+                # 如果k是位置参数，则直接添加到params_str中
+                if inspect.signature(method).parameters[k].default is None or inspect.signature(method).parameters[k].default == inspect.Parameter.empty:
+                    params.append(v)
+                # 如果k是默认参数，则添加到params中
+                elif inspect.signature(method).parameters[k].default is not None:
+                    params.append(f"{k}={v}")
+            param_str = ", ".join(params)
+            return [method_name, param_str]
+        
+        def look_from_source_node_to_merge_node(node, merge_node, child_table=False):
+            """
+            从顶层节点遍历到merge节点
+
+            1. 当node为子(表)节点, 则使用lookup语法:
+                子:  .lookup(node, js=kwargs)
+                父:  .read_from(node).js()....
+            2. 当存在多个子节点, 
+                如: 
+                        -> js 
+                    node          -> merge
+                        -> filter 
+                则: 不进行实现，只遍历第一个链条即 node -> js -> merge
+            3. 当存在单个子节点, 则使用lookup语法: 
+                如: node -> js -> merge, 则: .lookup(node, js=kwargs)
+
+            :param node: 当前节点
+            :param child_table: 是否是lookup中的子表, 当node为子(表)节点, 则使用lookup语法
+            """
+            # 退出条件
+            if isinstance(node, MergeNode) or len(self.dag.graph[node.id]) == 0:
+                return []
+            
+            child_node = self.dag.get_node(self.dag.graph[node.id][0])
+
+            if child_table:
+                if isinstance(node, Source):
+                    command = ["lookup", node.connection.c.get("name", "")+"."+node.table_name]
+                    if merge_node.targetPath != "":
+                        command.append(f"path={merge_node.targetPath}")
+                    if merge_node.association:
+                        command.append(f"relation={merge_node.association}")
+                    if merge_node.arrayKeys:
+                        command.append(f"arrayKeys={merge_node.arrayKeys}")
+                    command += look_from_source_node_to_merge_node(child_node, merge_node, child_table=True)
+                    return [command]
+                else:
+                    command = command_generator(node, lookup_params=True)
+                    command += look_from_source_node_to_merge_node(child_node, merge_node, child_table=True)
+                    return command
+            
+            else:
+                command = [command_generator(node)]
+                command += look_from_source_node_to_merge_node(child_node, merge_node, child_table=False)
+                return command
+
+        def find_head_node_by_merge_node(merge_node):
+            head_node = merge_node.node_id
+            if isinstance(self._find_node_by_id(head_node), Source):
+                return self._find_node_by_id(head_node)
+            else:
+                return self.dag.get_source_node(head_node)
+            
+        def look_by_merge_node(merge_node, is_head_node=False):
+            """
+            根据merge节点中描述的children顺序, 依次遍历
+            """
+            node = find_head_node_by_merge_node(merge_node)
+            if node is None:
+                return
+            self.command += look_from_source_node_to_merge_node(node, merge_node, child_table=not is_head_node)
+
+            # 退出条件: 当不存在子Merge节点
+            if len(merge_node.child) == 0:
+                return
+            
+            for child in merge_node.child:
+                look_by_merge_node(child, is_head_node=False)
+
+        def look_end_to_write_node(node):
+            # 退出条件
+            if isinstance(node, Sink):
+                return
+            self.command.append(command_generator(node))
+            for child in self.dag.graph[node.id]:
+                look_end_to_write_node(self.dag.get_node(child))
+
+        # 如果存在merge节点
+        merge_nodes = [node for node in self.dag.node_map.values() if isinstance(node, Merge)]
+        merge_node, father_node_id = None, None
+        # 多个merge节点不考虑，只考虑第一个merge节点
+        if len(merge_nodes) > 0:
+            merge_node = merge_nodes[0]
+            father_node_id = merge_node.node_id
+        # 如果merge_node存在，找到最顶层的源节点
+        if merge_node is not None and father_node_id is not None:
+            look_by_merge_node(merge_node, is_head_node=True)
+        else:
+            head_nodes = self.dag.get_read_from_nodes()
+            for head_node in head_nodes:
+                look_end_to_write_node(head_node)
+        # 如果存在目标节点，则添加目标节点
+        target_node = self.dag.get_target_node()
+        if target_node is not None:
+            self.command.append(command_generator(target_node))
+
     def get(self):
         job = Job(name=self.name, id=self.id, pipeline=self)
         if job.id is not None:
@@ -768,6 +912,7 @@ class Pipeline:
             self._set_lines()
             self._set_sources()
             self._set_merge_node()
+            self._set_command()
 
     def _get_source_connection_id(self):
         ids = []
@@ -969,7 +1114,10 @@ class Pipeline:
     def show(self):
         command = ""
         for i in self.command:
-            command = command + "." + i[0] + "(" + ",".join(i[1:]) + ")"
+            command = command + "." + i[0] + "(" + ", ".join([str(j) for j in i[1:]]) + ")"
+        # 获取当前调用的类名
+        class_name = self.__class__.__name__
+        command = f"{class_name}({self.name}){command}"
         return command
 
     def preview(self):
