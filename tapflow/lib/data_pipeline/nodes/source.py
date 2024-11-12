@@ -10,6 +10,25 @@ from tapflow.lib.cache import client_cache
 class Source(BaseNode):
     def __getattr__(self, name):
         return Source(self.connection, table=name, mode="sync")
+    
+    @classmethod
+    def to_instance(cls, node_dict: dict) -> "Source":
+        """
+        to_dict方法的逆向操作
+        :param node_dict: API 返回的节点dict
+        :return: 节点实例
+        """
+        try:
+            s = cls(
+                node_dict["attrs"]["connectionName"],
+                node_dict["tableName"],
+                mode="sync" if node_dict["type"] == "table" else "migrate"
+            )
+            s.id = node_dict["id"]
+            s.setting["id"] = node_dict["id"]
+            return s
+        except KeyError as e:
+            raise ValueError(f"Invalid node_dict, {e}")
 
     def __init__(self, connection, table=None, table_re=None, mode=None):
         if mode is None:

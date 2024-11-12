@@ -17,7 +17,7 @@ class Filter(BaseObj):
         def replace_variable(match):
             var = match.group(1)
             # 不对操作符两侧的字符串做处理
-            if var not in ['==', '>', '<', '&&', '||', '>=', '<=', '!=']:
+            if var not in ['==', '>', '<', '&&', '||', '>=', '<=', '!='] and not var.startswith("record."):
                 return f'record.{var}'
             return var
 

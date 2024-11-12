@@ -350,7 +350,15 @@ class show_command(Magics):
                 return
             eval("show_" + line + "(quiet=False)")
         except Exception as e:
-            eval("show_dbs('" + line + "')")
+            # by default show pipeline
+            obj = get_signature_v("pipeline", line)
+            if obj is None:
+                logger.warn("no pipeline {} found", line)
+                return
+            obj_id = obj['id']
+            name = obj['name']
+            pipeline = Pipeline(name=name, id=obj_id)
+            print(pipeline.show())
 
     @line_magic
     def preview(self, line):

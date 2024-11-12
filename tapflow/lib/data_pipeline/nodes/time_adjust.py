@@ -9,6 +9,7 @@ class TimeAdjust(BaseObj):
             t = ["now"]
         self.addHours = addHours
         self.t = t
+        self.name = name
 
     def to_dict(self):
         return {
