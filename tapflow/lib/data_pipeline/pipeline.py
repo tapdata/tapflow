@@ -156,6 +156,22 @@ class Pipeline:
 
     def read_from(self, *args, **kwargs):
         return self.readFrom(*args, **kwargs)
+    
+    def _conditions_to_filter(self, conditions):
+        m = {
+            1: ">",
+            2: ">=",
+            3: "<",
+            4: "<=",
+            5: "="
+        }
+        operators = []
+        for c in conditions:
+            operator = m.get(c["operator"], "=")
+            left = c["key"]
+            value = c["value"]
+            operators.append(f"\"{left} {operator} {value}\"")
+        return " and ".join(operators)
 
     def _filter_to_conditions(self, filter=None):
         if filter is None:
@@ -242,6 +258,7 @@ class Pipeline:
                 source.setting.update({"conditions": conditions, "isFilter": True})
         self.sources.append(source)
         self.lines.append(source)
+        self.dag.add_node(source)
         if is_tapcli() and not quiet:
             print("Flow updated: source added")
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
@@ -800,6 +817,13 @@ class Pipeline:
                 # 如果k是默认参数，则添加到params中
                 elif inspect.signature(method).parameters[k].default is not None:
                     params.append(f"{k}={v}")
+                if isinstance(node, Source) and len(node.setting.get("conditions", [])) > 0:
+                    params.append(f"filter={self._conditions_to_filter(node.setting.get('conditions'))}")
+                if isinstance(node, Source) and node.setting.get("customCommand") is not None:
+                    try:
+                        params.append(f"query={node.setting.get('customCommand')['params']['sql']}")
+                    except Exception as e:
+                        pass
             param_str = ", ".join(params)
             return [method_name, param_str]
         
@@ -1120,7 +1144,7 @@ class Pipeline:
         command = f"{class_name}({self.name}){command}"
         return command
 
-    def preview(self):
+    def preview(self, quiet=False):
         self.save()
         if self.job is None:
             return

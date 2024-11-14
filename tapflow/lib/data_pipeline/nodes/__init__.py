@@ -44,7 +44,11 @@ def get_node_instance(node_dict: dict) -> BaseNode:
     node_class = NODE_MAP.get(node_type, None)
     if node_class is None:
         if node_type == "table":
-            if node_dict.get("nodeConfig", {}).get("skipDeletedEventsOnFilling") is None:
+            # 判断是源节点还是目标节点
+            skipDeletedEventsOnFilling = node_dict.get("nodeConfig", {}).get("skipDeletedEventsOnFilling")
+            batchReadThreadSize = node_dict.get("nodeConfig", {}).get("batchReadThreadSize")
+            maximumQueueSize = node_dict.get("nodeConfig", {}).get("maximumQueueSize")
+            if skipDeletedEventsOnFilling is None and batchReadThreadSize is None and maximumQueueSize is None:
                 return Sink.to_instance(node_dict)
             else:
                 return Source.to_instance(node_dict)

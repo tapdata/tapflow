@@ -365,7 +365,6 @@ class Job:
             },
             "editVersion": int(time.time() * 1000),
             "id": self.id,
-            "pageVersion": int(time.time() * 1000),
         }
         res = req.patch("/Task", json=body)
         if res.status_code != 200 or res.json().get("code") != "ok":
@@ -722,7 +721,6 @@ class Job:
 
 
     def preview(self, quiet=True):
-        self.save()
         final_target = self.find_final_target()
         start_time = time.time()
         res = req.post("/proxy/call", json={
@@ -741,7 +739,7 @@ class Job:
 
         data = res["data"]
         nodeResult = data.get("nodeResult", {})
-        print(nodeResult)
+        print(json.dumps(nodeResult, indent=2))
         if not quiet:
             for k, v in nodeResult.items():
                 if k in final_target:
