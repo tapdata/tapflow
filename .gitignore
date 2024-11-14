@@ -9,3 +9,4 @@ tapcli.egg-info/
 etc/config.ini
 dist/
 tapflow.egg-info/
+.coverage

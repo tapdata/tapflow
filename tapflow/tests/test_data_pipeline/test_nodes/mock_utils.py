@@ -70,4 +70,60 @@ def mock_req_get_for_metadata_instance_details():
                 {"field_name": "name", "primaryKey": False}
             ]
         }
+    })
+
+def mock_req_post_for_metadata_v3(database_type, table_name, fields):
+    # URL: /MetadataInstances/metadata/v3
+    # 用途: 模拟获取元数据v3的API响应，返回表的元数据信息
+    return Mock(status_code=200, json=lambda: {
+        "reqId": "b2ec30d2-c118-43ed-8202-ec6e06dbbc99",
+        "ts": 1731569721616,
+        "code": "ok",
+        "data": {
+            "672065f6d6c2485881e9dd08": [
+                {
+                    "qualifiedName": f"T_{database_type}_io_tapdata_1_0-SNAPSHOT_{table_name}_672065f6d6c2485881e9dd08",
+                    "tapTable": {
+                        "lastUpdate": 1731569660772,
+                        "nameFieldMap": fields,
+                        "indexList": [
+                            {
+                                "name": "__t__{\"v\": 2, \"key\": {\"_id\": 1}, \"name\": \"_id_\"}",
+                                "indexFields": [{}],
+                                "unique": False,
+                                "primary": False
+                            }
+                        ],
+                        "id": table_name,
+                        "name": table_name,
+                        "tableAttr": {
+                            "size": 224,
+                            "ns": f"autoTest.{table_name}",
+                            "capped": False,
+                            "storageSize": 4096,
+                            "avgObjSize": 224,
+                            "shard": {}
+                        },
+                        "partitionIndex": {
+                            "indexFields": [
+                                {
+                                    "name": "_id",
+                                    "fieldAsc": True
+                                }
+                            ],
+                            "unique": True,
+                            "indexMap": {
+                                "_id": {
+                                    "name": "_id",
+                                    "fieldAsc": True
+                                }
+                            }
+                        },
+                        "ancestorsName": table_name,
+                        "maxPos": len(fields),
+                        "maxPKPos": 1
+                    }
+                }
+            ]
+        }
     }) 
