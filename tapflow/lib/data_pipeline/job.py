@@ -739,7 +739,7 @@ class Job:
 
         data = res["data"]
         nodeResult = data.get("nodeResult", {})
-        print(nodeResult)
+        print(json.dumps(nodeResult, indent=2))
         if not quiet:
             for k, v in nodeResult.items():
                 if k in final_target:
