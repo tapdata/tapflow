@@ -721,7 +721,6 @@ class Job:
 
 
     def preview(self, quiet=True):
-        self.save()
         final_target = self.find_final_target()
         start_time = time.time()
         res = req.post("/proxy/call", json={

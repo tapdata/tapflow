@@ -1144,7 +1144,7 @@ class Pipeline:
         command = f"{class_name}({self.name}){command}"
         return command
 
-    def preview(self):
+    def preview(self, quiet=False):
         self.save()
         if self.job is None:
             return

@@ -96,6 +96,9 @@ class op_object_command(Magics):
                 confirm = input(f"Are you sure you want to delete {object_type if object_type != 'job' else 'flow'} {signature} (y/[n]): ")
                 if confirm != "y":
                     return
+            if isinstance(obj, Job) and op == "preview":
+                obj = Pipeline(name=obj.name, id=obj.id)
+                kwargs["quiet"] = False
             getattr(obj, op)(*args, **kwargs)
 
     @line_magic
@@ -137,6 +140,10 @@ class op_object_command(Magics):
     @line_magic
     def stats(self, line):
         return self.__common_op("stats", line)
+    
+    @line_magic
+    def preview(self, line):
+        return self.__common_op("preview", line)
 
     @line_magic
     def desc(self, line):
