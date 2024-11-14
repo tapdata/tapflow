@@ -365,7 +365,6 @@ class Job:
             },
             "editVersion": int(time.time() * 1000),
             "id": self.id,
-            "pageVersion": int(time.time() * 1000),
         }
         res = req.patch("/Task", json=body)
         if res.status_code != 200 or res.json().get("code") != "ok":

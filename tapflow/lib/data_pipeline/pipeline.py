@@ -242,6 +242,7 @@ class Pipeline:
                 source.setting.update({"conditions": conditions, "isFilter": True})
         self.sources.append(source)
         self.lines.append(source)
+        self.dag.add_node(source)
         if is_tapcli() and not quiet:
             print("Flow updated: source added")
         self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
