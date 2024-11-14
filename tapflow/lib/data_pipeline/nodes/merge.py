@@ -52,6 +52,7 @@ class MergeNode(BaseObj):
         self.association = node.association
         self.isArray = node.isArray
         self.arrayKeys = node.arrayKeys
+        self.join_value_change = node.join_value_change
         for nc in node.child:
             b = False
             for c in self.child:
@@ -145,7 +146,7 @@ class Merge(MergeNode):
                     "mergeType": "updateOrInsert",
                     "enableUpdateJoinKeyValue": self.join_value_change
                 }],
-                "id": self.id or self.node_id,
+                "id": self.id,
                 "elementType": "Node",
                 "mergeMode": "main_table_first",
                 "disable": False,
