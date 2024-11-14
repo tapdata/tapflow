@@ -26,6 +26,7 @@ class Source(BaseNode):
             )
             s.id = node_dict["id"]
             s.setting["id"] = node_dict["id"]
+            s.setting.update(node_dict)
             return s
         except KeyError as e:
             raise ValueError(f"Invalid node_dict, {e}")
