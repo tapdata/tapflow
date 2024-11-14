@@ -183,7 +183,7 @@ class Job:
             return False
         if self.id is None:
             return False
-        res = req.put('/Task/batchStop', params={'taskIds': self.id, 'force': force})
+        req.put('/Task/batchStop', params={'taskIds': self.id, 'force': force})
         s = time.time()
         while True:
             if time.time() - s > t:
@@ -198,9 +198,6 @@ class Job:
                 return True
             if status == JobStatus.stopping and not sync:
                 return True
-        if not quiet:
-            logger.warn("{}", "Task stopped failed")
-        return False
 
     def delete(self, quiet=True):
         if self.id is None:
@@ -227,11 +224,11 @@ class Job:
     def copy(self, quiet=False):
         res = req.put(f"/Task/copy/{self.id}")
         if res.status_code != 200:
-            logger.fwarn("{}", "Task copy failed")
+            logger.warn("{}", "Task copy failed")
             return False
         res = res.json()
         if res["code"] != "ok":
-            logger.fwarn("{}", "Task copy failed")
+            logger.warn("{}", "Task copy failed")
             return False
         client_cache["jobs"]["id_index"][res["data"]["id"]] = res["data"]
         client_cache["jobs"]["name_index"][res["data"]["name"]] = res["data"]
