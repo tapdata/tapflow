@@ -742,9 +742,10 @@ class Job:
         print(json.dumps(nodeResult, indent=2))
         if not quiet:
             for k, v in nodeResult.items():
+                if len(self.dag.node_map) == 1:
+                    print(json.dumps(v.get("data", [{}])[0], indent=2))
                 if k in final_target:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
-
         return nodeResult
 
     def wait(self, print_log=False, t=600):
