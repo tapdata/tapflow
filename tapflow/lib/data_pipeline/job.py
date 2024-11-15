@@ -723,6 +723,7 @@ class Job:
     def preview(self, quiet=True):
         final_target = self.find_final_target()
         start_time = time.time()
+        self.job.update({"id": self.id})
         res = req.post("/proxy/call", json={
             "className": "TaskPreviewService",
             "method": "preview",
@@ -744,6 +745,7 @@ class Job:
             for k, v in nodeResult.items():
                 if len(self.dag.node_map) == 1:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
+                    continue
                 if k in final_target:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
         return nodeResult
