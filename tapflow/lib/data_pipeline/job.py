@@ -723,6 +723,7 @@ class Job:
     def preview(self, quiet=True):
         final_target = self.find_final_target()
         start_time = time.time()
+        self.job.update({"id": self.id})
         res = req.post("/proxy/call", json={
             "className": "TaskPreviewService",
             "method": "preview",
