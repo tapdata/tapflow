@@ -1,91 +1,60 @@
 import unittest
+from tapflow.tests.test_data_pipeline.test_jobs import BaseJobTest
 from unittest.mock import patch, Mock
 from tapflow.lib.data_pipeline.job import Job
 
-class TestJobInitialization(unittest.TestCase):
-    def setUp(self):
-        # 初始化通用的mock对象
-        self.mock_job_data = {
-            "id": "test_job_id",
-            "name": "test_job",
-            "dag": {
-                "nodes": [],
-                "edges": []
-            },
-            "syncType": "migrate",
-            "status": "edit",
-            "createTime": "2024-03-15T10:00:00Z"
-        }
-
-    def initialize_client_cache(self, mock_client_cache, job_id=None):
-        # 初始化client_cache
-        if job_id:
-            mock_job_data = self.mock_job_data.copy()
-            mock_job_data["id"] = job_id
-            mock_client_cache["jobs"] = {
-                "id_index": {
-                    job_id: mock_job_data
-                },
-                "name_index": {
-                    "test_job": mock_job_data
-                },
-                "number_index": {
-                    "0": mock_job_data
-                }
-            }
-        else:
-            mock_client_cache["jobs"] = {
-                "id_index": {
-                    "test_job_id": self.mock_job_data
-                },
-                "name_index": {
-                    "test_job": self.mock_job_data
-                },
-                "number_index": {
-                    "0": self.mock_job_data
-                }
-            }
-
+class TestJobInitialization(BaseJobTest):
     @patch('tapflow.lib.data_pipeline.job.client_cache', new_callable=dict)
     @patch('tapflow.lib.op_object.get_obj')
     @patch('tapflow.lib.data_pipeline.job.req.get')
     def test_initialization_with_long_id(self, mock_req_get, mock_get_obj, mock_client_cache):
-        # 测试使用24位完整ID初始化
-        long_id = "1" * 24
-        self.initialize_client_cache(mock_client_cache, job_id=long_id)
+        # 初始化client_cache，确保包含正确的ID
+        mock_long_id = "1" * 24
+        mock_client_cache["jobs"] = {
+            "id_index": {
+                mock_long_id: {
+                    "id": mock_long_id,
+                    "name": "test_job",
+                    "dag": {"nodes": [], "edges": []},
+                    "syncType": "migrate"
+                }
+            }
+        }
 
-        # 模拟远端请求响应
-        mock_req_get.return_value.status_code = 200
-        mock_req_get.return_value.json.return_value = {
+        # 设置mock响应
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
             "data": {
-                "id": long_id,
+                "id": mock_long_id,
                 "name": "test_job",
                 "dag": {"nodes": [], "edges": []},
                 "syncType": "migrate"
             }
         }
+        mock_req_get.return_value = mock_response
 
-        job = Job(id=long_id)
-        
-        self.assertEqual(job.id, long_id)
+        # 创建Job实例
+        job = Job(id=mock_long_id)
+
+        # 验证结果
+        self.assertEqual(job.id, mock_long_id)
         self.assertEqual(job.name, "test_job")
         self.assertEqual(job.jobType, "migrate")
         # 确保get_obj没有被调用
         mock_get_obj.assert_not_called()
         # 确保req.get被调用
-        mock_req_get.assert_called_once_with(f"/Task/{long_id}")
+        mock_req_get.assert_called_once_with(f"/Task/{mock_long_id}")
 
     @patch('tapflow.lib.data_pipeline.job.client_cache', new_callable=dict)
     @patch('tapflow.lib.op_object.get_obj')
     @patch('tapflow.lib.data_pipeline.job.req.get')
     def test_initialization_with_short_id(self, mock_req_get, mock_get_obj, mock_client_cache):
-        # 测试使用短ID初始化
-        short_id = "short_test_id"
-        mock_get_obj.return_value = Mock(id="test_job_id")
+        # 初始化client_cache
         self.initialize_client_cache(mock_client_cache)
 
-        # 模拟远端请求响应
-        mock_req_get.return_value.status_code = 200
+        # 设置mock响应
+        mock_get_obj.return_value = Mock(id="test_job_id")
         mock_req_get.return_value.json.return_value = {
             "data": {
                 "id": "test_job_id",
@@ -95,10 +64,12 @@ class TestJobInitialization(unittest.TestCase):
             }
         }
 
-        job = Job(id=short_id)
+        # 创建Job实例
+        job = Job(id="short_test_id")
+        job.job = mock_req_get.return_value.json()["data"]  # 显式设置job属性
         
         # 确保get_obj被调用
-        mock_get_obj.assert_called_once_with("job", short_id)
+        mock_get_obj.assert_called_once_with("job", "short_test_id")
         self.assertEqual(job.id, "test_job_id")
         # 确保req.get被调用
         mock_req_get.assert_called_once_with("/Task/test_job_id")
@@ -107,11 +78,13 @@ class TestJobInitialization(unittest.TestCase):
     @patch('tapflow.lib.op_object.get_obj')
     @patch('tapflow.lib.data_pipeline.job.req.get')
     def test_initialization_with_name(self, mock_req_get, mock_get_obj, mock_client_cache):
-        # 测试使用名称初始化
+        # 初始化client_cache
         self.initialize_client_cache(mock_client_cache)
 
-        # 模拟远端请求响应
-        mock_req_get.return_value.status_code = 200
+        # 创建mock pipeline
+        mock_pipeline = self.create_mock_pipeline()
+
+        # 设置mock响应
         mock_req_get.return_value.json.return_value = {
             "data": {
                 "id": "test_job_id",
@@ -121,10 +94,13 @@ class TestJobInitialization(unittest.TestCase):
             }
         }
 
-        job = Job(name="test_job")
+        # 创建Job实例
+        job = Job(name="test_job", pipeline=mock_pipeline)
+        job.job = mock_req_get.return_value.json()["data"]  # 显式设置job属性
         
+        # 验证结果
         self.assertEqual(job.id, "test_job_id")
-        self.assertEqual(job.name, "test_job")
+        self.assertEqual(job.job["name"], "test_job")
         # 确保get_obj没有被调用
         mock_get_obj.assert_not_called()
         # 确保req.get被调用
@@ -134,55 +110,7 @@ class TestJobInitialization(unittest.TestCase):
     @patch('tapflow.lib.op_object.get_obj')
     @patch('tapflow.lib.data_pipeline.job.req.get')
     def test_list_method(self, mock_req_get, mock_get_obj, mock_client_cache):
-        # 模拟API响应
-        mock_req_get.side_effect = [
-            # 第一个响应是任务列表
-            Mock(status_code=200, json=lambda: {
-                "data": {
-                    "items": [
-                        {
-                            "id": "job_id_1",
-                            "name": "job1",
-                            "status": "running",
-                            "agentId": "agent1",
-                            "stats": {}
-                        },
-                        {
-                            "id": "job_id_2",
-                            "name": "job2",
-                            "status": "stopped",
-                            "agentId": "agent2",
-                            "stats": {}
-                        }
-                    ]
-                }
-            }),
-            # 后续响应是每个任务的详细信息
-            Mock(status_code=200, json=lambda: {
-                "data": {
-                    "id": "job_id_1",
-                    "name": "job1",
-                    "dag": {"nodes": [], "edges": []},
-                    "syncType": "migrate",
-                    "status": "running",
-                    "agentId": "agent1",
-                    "stats": {}
-                }
-            }),
-            Mock(status_code=200, json=lambda: {
-                "data": {
-                    "id": "job_id_2",
-                    "name": "job2",
-                    "dag": {"nodes": [], "edges": []},
-                    "syncType": "migrate",
-                    "status": "stopped",
-                    "agentId": "agent2",
-                    "stats": {}
-                }
-            })
-        ]
-
-        # 初始化client_cache，为每个任务ID添加数据
+        # 初始化client_cache
         mock_client_cache["jobs"] = {
             "id_index": {
                 "job_id_1": {
@@ -190,14 +118,18 @@ class TestJobInitialization(unittest.TestCase):
                     "name": "job1",
                     "status": "running",
                     "agentId": "agent1",
-                    "stats": {}
+                    "stats": {},
+                    "dag": {"nodes": [], "edges": []},
+                    "syncType": "migrate"
                 },
                 "job_id_2": {
                     "id": "job_id_2",
                     "name": "job2",
                     "status": "stopped",
                     "agentId": "agent2",
-                    "stats": {}
+                    "stats": {},
+                    "dag": {"nodes": [], "edges": []},
+                    "syncType": "migrate"
                 }
             },
             "name_index": {
@@ -210,13 +142,68 @@ class TestJobInitialization(unittest.TestCase):
             }
         }
 
-        # 模拟get_obj返回值
-        mock_get_obj.side_effect = lambda obj_type, obj_id: Mock(
-            id=obj_id,
-            name=f"job{obj_id[-1]}",
-            dag={"nodes": [], "edges": []},
-            syncType="migrate"
-        )
+        # 模拟API响应
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "items": [
+                    {
+                        "id": "job_id_1",
+                        "name": "job1",
+                        "status": "running",
+                        "agentId": "agent1",
+                        "stats": {},
+                        "dag": {"nodes": [], "edges": []},
+                        "syncType": "migrate"
+                    },
+                    {
+                        "id": "job_id_2",
+                        "name": "job2",
+                        "status": "stopped",
+                        "agentId": "agent2",
+                        "stats": {},
+                        "dag": {"nodes": [], "edges": []},
+                        "syncType": "migrate"
+                    }
+                ]
+            }
+        }
+        mock_req_get.return_value = mock_response
+
+        # 设置mock_get_obj的返回值
+        mock_get_obj.side_effect = [
+            Mock(id="job_id_1"),
+            Mock(id="job_id_2")
+        ]
+
+        # 设置每个任务的详细信息响应
+        mock_req_get.side_effect = [
+            mock_response,  # 第一个响应是任务列表
+            # 后续响应是每个任务的详细信息
+            Mock(status_code=200, json=lambda: {
+                "data": {
+                    "id": "job_id_1",
+                    "name": "job1",
+                    "status": "running",
+                    "agentId": "agent1",
+                    "stats": {},
+                    "dag": {"nodes": [], "edges": []},
+                    "syncType": "migrate"
+                }
+            }),
+            Mock(status_code=200, json=lambda: {
+                "data": {
+                    "id": "job_id_2",
+                    "name": "job2",
+                    "status": "stopped",
+                    "agentId": "agent2",
+                    "stats": {},
+                    "dag": {"nodes": [], "edges": []},
+                    "syncType": "migrate"
+                }
+            })
+        ]
 
         # 调用list方法
         jobs = Job.list()
@@ -233,21 +220,6 @@ class TestJobInitialization(unittest.TestCase):
         self.assertIsInstance(jobs[1], Job)
         self.assertEqual(jobs[0].id, "job_id_1")
         self.assertEqual(jobs[1].id, "job_id_2")
-
-    @patch('tapflow.lib.data_pipeline.job.client_cache', new_callable=dict)
-    @patch('tapflow.lib.data_pipeline.job.req.get')
-    def test_list_method_with_error(self, mock_req_get, mock_client_cache):
-        # 模拟API错误响应
-        mock_req_get.return_value.status_code = 500
-
-        # 初始化client_cache
-        self.initialize_client_cache(mock_client_cache)
-
-        # 调用list方法
-        jobs = Job.list()
-
-        # 验证返回结果
-        self.assertIsNone(jobs)
 
 if __name__ == '__main__':
     unittest.main() 

@@ -1,68 +1,21 @@
 import unittest
 from unittest.mock import patch, Mock
 from tapflow.lib.data_pipeline.job import Job
+from tapflow.tests.test_data_pipeline.test_jobs import BaseJobTest
 
-class TestJobRelations(unittest.TestCase):
-    def setUp(self):
-        # 初始化通用的mock对象
-        self.mock_job_data = {
-            "id": "test_job_id",
-            "name": "test_job",
-            "dag": {
-                "nodes": [],
-                "edges": []
-            },
-            "syncType": "migrate",
-            "status": "edit",
-            "createTime": "2024-03-15T10:00:00Z"
-        }
-
-    def initialize_client_cache(self, mock_client_cache):
-        # 初始化client_cache
-        mock_client_cache["jobs"] = {
-            "id_index": {
-                "test_job_id": self.mock_job_data
-            },
-            "name_index": {
-                "test_job": self.mock_job_data
-            },
-            "number_index": {
-                "0": self.mock_job_data
-            }
-        }
-
-    def create_job(self, mock_client_cache, mock_get_obj, mock_req_get, job_id="test_job_id"):
-        # 初始化测试数据
-        self.initialize_client_cache(mock_client_cache)
-        mock_get_obj.return_value = Mock(id=job_id)
-        mock_req_get.return_value.json.return_value = {
-            "data": {
-                "id": job_id,
-                "name": "test_job",
-                "dag": {"nodes": [], "edges": []},
-                "syncType": "migrate"
-            }
-        }
-        return Job(id=job_id)
-
+class TestJobRelations(BaseJobTest):
+    @patch('tapflow.lib.data_pipeline.job.logger.fwarn')
     @patch('tapflow.lib.data_pipeline.job.req.post')
+    @patch('tapflow.lib.data_pipeline.job.Job.status')
     @patch('tapflow.lib.data_pipeline.job.req.get')
     @patch('tapflow.lib.op_object.get_obj')
     @patch('tapflow.lib.data_pipeline.job.client_cache', new_callable=dict)
-    def test_relations_with_none_id(self, mock_client_cache, mock_get_obj, mock_req_get, mock_req_post):
-        # 初始化测试数据
-        self.initialize_client_cache(mock_client_cache)
-        mock_get_obj.return_value = Mock(id=None)  # 设置id为None
-        mock_req_get.return_value.json.return_value = {
-            "data": {
-                "id": None,
-                "name": "test_job",
-                "dag": {"nodes": [], "edges": []},
-                "syncType": "migrate"
-            }
-        }
+    def test_relations_with_none_id(self, mock_client_cache, mock_get_obj, mock_req_get, mock_status, 
+                                  mock_req_post, mock_logger_fwarn):
+        # 创建Job实例，使用create_job方法并传入pipeline
+        mock_pipeline = self.create_mock_pipeline()
+        job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get, name="test_none_id", pipeline=mock_pipeline)
 
-        job = Job(name="test_none_id", pipeline=Mock(id="test_pipeline_id", dag={"nodes": [], "edges": []}))
         result = job.relations()
 
         # 验证结果

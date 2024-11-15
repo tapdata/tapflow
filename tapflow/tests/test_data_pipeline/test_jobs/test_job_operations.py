@@ -1,50 +1,9 @@
 import unittest
 from unittest.mock import patch, Mock
 from tapflow.lib.data_pipeline.job import Job
+from tapflow.tests.test_data_pipeline.test_jobs import BaseJobTest
 
-class TestJobOperations(unittest.TestCase):
-    def setUp(self):
-        # 初始化通用的mock对象
-        self.mock_job_data = {
-            "id": "test_job_id",
-            "name": "test_job",
-            "dag": {
-                "nodes": [],
-                "edges": []
-            },
-            "syncType": "migrate",
-            "status": "edit",
-            "createTime": "2024-03-15T10:00:00Z"
-        }
-
-    def initialize_client_cache(self, mock_client_cache):
-        # 初始化client_cache
-        mock_client_cache["jobs"] = {
-            "id_index": {
-                "test_job_id": self.mock_job_data
-            },
-            "name_index": {
-                "test_job": self.mock_job_data
-            },
-            "number_index": {
-                "0": self.mock_job_data
-            }
-        }
-
-    def create_job(self, mock_client_cache, mock_get_obj, mock_req_get, job_id="test_job_id"):
-        # 初始化测试数据
-        self.initialize_client_cache(mock_client_cache)
-        mock_get_obj.return_value = Mock(id=job_id)
-        mock_req_get.return_value.json.return_value = {
-            "data": {
-                "id": job_id,
-                "name": "test_job",
-                "dag": {"nodes": [], "edges": []},
-                "syncType": "migrate"
-            }
-        }
-        return Job(id=job_id)
-
+class TestJobOperations(BaseJobTest):
     @patch('tapflow.lib.data_pipeline.job.logger.warn')
     @patch('tapflow.lib.data_pipeline.job.logger.info')
     @patch('tapflow.lib.data_pipeline.job.req.patch')
@@ -229,7 +188,7 @@ class TestJobOperations(unittest.TestCase):
         mock_time.time.side_effect = [0, 1]  # 确保不会超时
         
         # 模拟任务状态
-        mock_status.side_effect = ["running", "stopping"]  # 第一次是running，第二次是stopping
+        mock_status.side_effect = ["running", "stopping"]  # 第一次是running，第二���是stopping
         
         result = job.stop(sync=False, quiet=False)  # 设置sync=False
         
@@ -496,22 +455,13 @@ class TestJobOperations(unittest.TestCase):
     @patch('tapflow.lib.data_pipeline.job.client_cache', new_callable=dict)
     def test_stop_with_none_id(self, mock_client_cache, mock_get_obj, mock_req_get, mock_status, 
                               mock_put, mock_logger_warn, mock_time):
-        # 初始化测试数据
-        self.initialize_client_cache(mock_client_cache)
-        mock_get_obj.return_value = Mock(id=None)  # 设置id为None
-        mock_req_get.return_value.json.return_value = {
-            "data": {
-                "id": None,
-                "name": "test_job",
-                "dag": {"nodes": [], "edges": []},
-                "syncType": "migrate"
-            }
-        }
+        # 创建Job实例，使用create_job方法并传入pipeline
+        mock_pipeline = self.create_mock_pipeline()
+        job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get, name="test_none_id", pipeline=mock_pipeline)
         
         # 模拟任务状态为running
         mock_status.return_value = "running"
         
-        job = Job(name="test_none_id", pipeline=Mock(id="test_pipeline_id", dag={"nodes": [], "edges": []}))
         result = job.stop()
         
         # 验证结果
