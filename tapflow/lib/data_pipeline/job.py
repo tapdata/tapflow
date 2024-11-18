@@ -740,7 +740,6 @@ class Job:
 
         data = res["data"]
         nodeResult = data.get("nodeResult", {})
-        print(json.dumps(nodeResult, indent=2))
         if not quiet:
             for k, v in nodeResult.items():
                 if len(self.dag.node_map) == 1:

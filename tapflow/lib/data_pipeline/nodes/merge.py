@@ -96,29 +96,45 @@ class Merge(MergeNode):
         )
 
     @classmethod
-    def to_instance(cls, node_dict: dict) -> "Merge":
+    def to_instance(cls, node_dict: dict, is_head=True) -> "Merge":
         """
         to_dict方法的逆向操作
         :param node_dict: API 返回的节点dict
         :param table_name: 源表名
         :return: 节点实例
         """
-        father_node = None
-        if node_dict.get("mergeProperties") is None:
-            return None
-        mergePropertie = node_dict["mergeProperties"][0]
         # make head node
-        father_node = cls(mergePropertie["id"],
+        if is_head:
+            if node_dict.get("mergeProperties") is None:
+                return None
+            mergePropertie = node_dict["mergeProperties"][0]
+            node = cls(mergePropertie["id"],
                     mergePropertie["tableName"],
-                    [],
+                    [[i["target"], i["source"]] for i in mergePropertie.get("joinKeys", [])],
                     mergeType=mergePropertie['mergeType'],
                     targetPath=mergePropertie.get('targetPath', ''),
                     isArray=mergePropertie['isArray'],
                     arrayKeys=mergePropertie.get('arrayKeys', []),
                     join_value_change=mergePropertie.get('enableUpdateJoinKeyValue', False),
-                    id=node_dict["id"]
+                id=node_dict["id"]
+            )
+            children = mergePropertie.get("children", [])
+        else:
+            node = MergeNode(node_dict["id"],
+                    node_dict["tableName"],
+                    [[i["target"], i["source"]] for i in node_dict.get("joinKeys", [])],
+                    mergeType=node_dict['mergeType'],
+                    targetPath=node_dict.get('targetPath', ''),
+                    isArray=node_dict['isArray'],
+                    arrayKeys=node_dict.get('arrayKeys', []),
+                    join_value_change=node_dict.get('enableUpdateJoinKeyValue', False),
                 )
-        return father_node
+            children = node_dict.get("children", [])
+        for child in children:
+            child_node = cls.to_instance(child, is_head=False)
+            if child_node is not None:
+                node.add(child_node)
+        return node
     
     def find_by_node_id(self, node_id):
         if self.node_id == node_id:
