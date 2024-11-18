@@ -48,7 +48,8 @@ def get_node_instance(node_dict: dict) -> BaseNode:
             skipDeletedEventsOnFilling = node_dict.get("nodeConfig", {}).get("skipDeletedEventsOnFilling")
             batchReadThreadSize = node_dict.get("nodeConfig", {}).get("batchReadThreadSize")
             maximumQueueSize = node_dict.get("nodeConfig", {}).get("maximumQueueSize")
-            if skipDeletedEventsOnFilling is None and batchReadThreadSize is None and maximumQueueSize is None:
+            writeBatchSize = node_dict.get("writeBatchSize")
+            if skipDeletedEventsOnFilling is None and batchReadThreadSize is None and maximumQueueSize is None and writeBatchSize is not None:
                 return Sink.to_instance(node_dict)
             else:
                 return Source.to_instance(node_dict)

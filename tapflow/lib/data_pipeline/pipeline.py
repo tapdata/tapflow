@@ -144,7 +144,7 @@ class Pipeline:
             self.merge(child_p, association=relation, targetPath=path, mergeType="updateIntoArray", isArray=True, arrayKeys=arrayKeys)
         if is_tapcli():
             logger.info("Flow updated: new table {} added as child table", source.table_name)
-        self.command.append(["lookup", source.table, path, type, relation, kwargs])
+        self.command.append(["lookup", f"{source.name}.{source.table}", f"path={path}", f"type={type}", f"relation={relation}", kwargs])
         self._lookup_ed = True
         return self
 
@@ -758,7 +758,6 @@ class Pipeline:
                 join_value_change=self.joinValueChange,
                 id=node["id"]
             )
-            parent_merge_node.add(child_p.mergeNode)
 
         for child in children["children"]:
             self._set_lookup_cache(child, parent_merge_node)
@@ -860,6 +859,8 @@ class Pipeline:
                     if merge_node.association:
                         command.append(f"relation={merge_node.association}")
                     if merge_node.arrayKeys:
+                        if len(merge_node.arrayKeys) > 0:
+                            command.append("type=array")
                         command.append(f"arrayKeys={merge_node.arrayKeys}")
                     command += look_from_source_node_to_merge_node(child_node, merge_node, child_table=True)
                     return [command]
