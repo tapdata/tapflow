@@ -670,8 +670,7 @@ class show_command(Magics):
         if res is False:
             return
         try:
-            count = res["data"].get("tableInfo", {}).get("numOfRows", 0)
-            logger.info("table {} has {} records", table_name, count)
+            self.count(line)
             sample_data = res["data"]["sampleData"]
             x = 0
             for i in sample_data:
@@ -691,12 +690,16 @@ class show_command(Magics):
         elif connection_id is None:
             logger.warn("no datasource set, please use 'use $datasource_name' to set a valid datasource")
             return
-        table, connection = self._get_table(line)
-        res = self._peek(line, connection, table)
+        table, _ = self._get_table(line)
+        res = req.get("/proxy/table/count", params={
+            "connectionId": connection_id,
+            "table": table["original_name"],
+            "readType": "table"
+        }).json()
         if res is False:
             return
         try:
-            count = res["data"].get("tableInfo", {}).get("numOfRows", 0)
+            count = res["data"].get("rows", 0)
             logger.info("table {} has {} records", table["original_name"], count)
         except Exception as e:
             pass
