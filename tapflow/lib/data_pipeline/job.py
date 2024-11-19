@@ -574,6 +574,16 @@ class Job:
 
     def stats(self, res=None, quiet=True):
         data = TaskApi().get(self.id)["data"]
+        if data.get("taskRecordId") is None:
+            try:
+                res = req.get("/agent").json()
+                if res.get("code") == "ok":
+                    if res["data"]["total"] == 0 or "Running" not in [item["status"] for item in res["data"]["items"]]:
+                        logger.warn("No agent {}, skip stats", "Running")
+            except Exception as e:
+                pass
+            finally:
+                return None
         payload = {
             "totalData": {
                 "uri": "/api/measurement/query/v2",
