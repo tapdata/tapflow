@@ -39,6 +39,9 @@ class Dag:
         """
         add edge by source and target
         """
+        if source is None or target is None:
+            return
+        
         if source.id == target.id:
             return
         
@@ -156,6 +159,7 @@ class Dag:
             if source_id == old_node.id:
                 self.graph[new_node.id] = self.graph[source_id]
                 del self.graph[source_id]
+                break
             # if old_node is target, replace it with new_node
             for index, target_id in enumerate(self.graph[source_id]):
                 if target_id == old_node.id:
