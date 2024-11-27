@@ -3,6 +3,8 @@ import getpass
 import shlex
 import os, sys
 
+from tapflow.lib.data_pipeline.project.project import Project
+
 # 获取当前脚本文件所在的目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -158,10 +160,55 @@ class op_object_command(Magics):
     
     @line_magic
     def tap(self, line):
-        line = line.replace("-f", "").strip()
-        with open(line, "r") as f:
-            exec(f.read())
 
+        def run_file(path):
+            with open(path, "r") as f:
+                exec(f.read())
+
+        def run_dir(path):
+
+            def help_info():
+                logger.info("use {} to init project", "tap -d --init $path")
+                logger.info("use {} to save project", "tap -d [--save] $path")
+                logger.info("use {} to start project", "tap -d --start $path")
+                logger.info("use {} to stop project", "tap -d --stop $path")
+                logger.info("use {} to delete project", "tap -d --delete $path")
+
+            if len(path.split(" ")) > 1:
+                func = path.split(" ")[0]
+                path = path.split(" ")[1]
+            else:
+                if path == "--help" or path == "-h":
+                    help_info()
+                    return
+                func = "--start"
+                path = path.split(" ")[0]
+
+            f = {
+                "--start": lambda: Project(path=path).start(),
+                "--save": lambda: Project(path=path).save(),
+                "--init": lambda: Project(path=path).init(),
+                "--stop": lambda: Project(path=path).stop(),
+                "--delete": lambda: Project(path=path).delete(),
+                "--help": lambda: help_info(),
+            }
+            try:
+                f[func]()
+            except KeyError as e:
+                logger.warn("unknown command: {}", func)
+                help_info()
+
+        operate = {
+            "-f": run_file,
+            "-d": run_dir,
+        }
+
+        if len(line.split(" ")) < 2:
+            with open(line, "r") as f:
+                exec(f.read())
+            return
+        ope, path = line.split(" ")[0], line.split(" ")[1:]
+        operate[ope](" ".join(path))
 
 @magics_class
 class ApiCommand(Magics):
@@ -670,7 +717,8 @@ class show_command(Magics):
         if res is False:
             return
         try:
-            self.count(line)
+            count = res["data"].get("tableInfo", {}).get("numOfRows", 0)
+            logger.info("table {} has {} records", table_name, count)
             sample_data = res["data"]["sampleData"]
             x = 0
             for i in sample_data:
@@ -690,16 +738,12 @@ class show_command(Magics):
         elif connection_id is None:
             logger.warn("no datasource set, please use 'use $datasource_name' to set a valid datasource")
             return
-        table, _ = self._get_table(line)
-        res = req.get("/proxy/table/count", params={
-            "connectionId": connection_id,
-            "table": table["original_name"],
-            "readType": "table"
-        }).json()
+        table, connection = self._get_table(line)
+        res = self._peek(line, connection, table)
         if res is False:
             return
         try:
-            count = res["data"].get("rows", 0)
+            count = res["data"].get("tableInfo", {}).get("numOfRows", 0)
             logger.info("table {} has {} records", table["original_name"], count)
         except Exception as e:
             pass

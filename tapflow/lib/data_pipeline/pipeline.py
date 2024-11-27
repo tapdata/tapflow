@@ -103,7 +103,15 @@ class Pipeline:
         self._write_to_ed = False
         self._lookup_ed = False
         self._union_node = None
+        self.depends_on = []
         self.get()
+
+    def depend(self, depends_on: str | list[str]):
+        if isinstance(depends_on, str):
+            self.depends_on.append(depends_on)
+        else:
+            self.depends_on.extend(depends_on)
+        return self
 
     def _get_lookup_parent(self, path):
         if path == "" or "." not in path:
@@ -1055,6 +1063,7 @@ class Pipeline:
         p.joinValueChange = self.joinValueChange
         p.command = self.command
         p._union_node = self._union_node
+        p.depends_on = self.depends_on
         return p
 
     def cache(self, ttl):
@@ -1134,6 +1143,7 @@ class Pipeline:
             logger.fwarn("job {} start timeout!", self.name)
             print(job.logs(level=["debug", "error"]))
             return False
+        self.id = job.id
         return self
 
     def show(self):
