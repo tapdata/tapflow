@@ -4,13 +4,17 @@ import os
 import queue
 import re
 import time
+import traceback
 from typing import Callable
 
 import yaml
+
+from tapflow.lib.op_object import show_jobs
 from .projectInterface import ProjectInterface
 from tapflow.lib.utils.log import logger
 from tapflow.lib.data_pipeline.pipeline import Flow, Pipeline
 from tapflow.lib.request import req
+from tapflow.lib.cache import client_cache
 
 
 class ProjectRuntime:
@@ -158,8 +162,12 @@ class ProjectScheduler:
                 logger.error("Flow {} start timeout, please check", flow.name)
                 break
 
-            milestone = res["data"]["attrs"].get("milestone", "")
-            
+            try:
+                milestone = res["data"]["attrs"].get("milestone", "")
+            except KeyError as e:
+                time.sleep(1)
+                continue
+
             # 收集当前时刻所有需要发送的事件
             current_events = set()
             
@@ -213,7 +221,8 @@ class ProjectScheduler:
         try:
             self._start_flow(flow)
         except Exception as e:
-            logger.error("Flow {} execution failed: {}", flow.name, str(e), exc_info=True)
+            logger.warn("Flow {} execution failed", flow.name)
+            traceback.print_exc()
 
     def start(self):
         """
@@ -259,7 +268,7 @@ class Project(ProjectInterface):
         if name == "" and path == "":
             raise ValueError("Project name and path cannot be empty")
         if name == "" and path != "":
-            name = os.path.basename(path)
+            name = os.path.basename(path.rstrip(os.sep))
         if path == "":
             raise ValueError("Project path cannot be empty")
         self.path = path
@@ -379,10 +388,10 @@ class Project(ProjectInterface):
             if len(dep.split(".")) != 3 and len(dep.split(".")) != 2:
                 logger.warn("Dependend flow {} is invalid, skip", dep)
                 return False
-            depended_flow_name = dep.split(".")[0]
-            if depended_flow_name not in [flow.name for flow in self.flows]:
-                logger.warn("Dependend flow {} not in project, skip", depended_flow_name)
-                return False
+            # depended_flow_name = dep.split(".")[0]
+            # if depended_flow_name not in [flow.name for flow in self.flows]:
+            #     logger.warn("Dependend flow {} not in project, skip", depended_flow_name)
+            #     return False
         return True
 
     def add_flow(self, flow: str | Pipeline, depended: str | list[str]=""):
@@ -422,20 +431,35 @@ class Project(ProjectInterface):
         if os.path.exists(self.project_file_path):
             os.remove(self.project_file_path)
 
-    def delete_flows(self):
-        for flow in self.flows:
+    def delete_flows(self, _flows: list[Flow]=None, max_depth: int=5):
+        """删除flow，并检查是否存在未删除的任务，如果存在，递归删除，递归深度为5次"""
+
+        if max_depth == 0:
+            return
+
+        flows = self.flows.copy() if _flows is None else _flows
+        print(flows)
+        for flow in flows:
             flow.delete()
+
+        # 重新刷新任务列表
+        show_jobs(quiet=True)
+        exists_flow = []
+        for flow in flows:
+            if flow.name in client_cache["jobs"]["name_index"].keys():
+                exists_flow.append(flow)
+
+        if exists_flow:
+            time.sleep(0.5)
+            self.delete_flows(exists_flow, max_depth-1)
 
     def delete(self):
         """delete project, project file and all flows"""
-        try:
-            self.delete_project()  # delete project by api
-            self.delete_flows()  # delete flows
-            self.delete_project_file()  # delete project file
-            logger.info("Project {} deleted", self.name)
-        except Exception as e:
-            logger.error(f"Delete project {self.name} failed: {e}")
-            return False
+        self.delete_project()  # delete project by api
+        self.delete_project_file()  # delete project file
+        self.delete_flows()  # delete flows
+        logger.info("Project {} deleted", self.name)
+        show_jobs(quiet=True)
         return True
 
     def _stop(self):
@@ -609,6 +633,7 @@ class Project(ProjectInterface):
 
     def start(self):
         """start project"""
+        show_jobs(quiet=True)
         self.before_start()
 
         if not self.check_dag_valid():
