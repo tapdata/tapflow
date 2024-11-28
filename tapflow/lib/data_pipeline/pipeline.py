@@ -65,6 +65,11 @@ def is_tapcli():
         return True
     except NameError:
         return False
+    
+
+class SourceNotExistError(Exception):
+    pass
+
 
 @help_decorate("use to define a stream pipeline", "p = new Pipeline($name).readFrom($source).writeTo($sink)")
 class Pipeline:
@@ -245,10 +250,10 @@ class Pipeline:
         source_name = f"{source.connection.c.get('name', '')}.{source.table_name}" if source.mode == JobType.sync else source.connection.c.get("name", "")
         # check if table exists
         if not source.exists():
-            raise Exception(f"Cannot read from the non-existent table {source_name}")
+            raise SourceNotExistError(f"Cannot read from the non-existent table {source_name}")
         # check if the table is a target table
         if source.connection_type() == "target":
-            raise Exception(f"Cannot read from {source_name}, because it is a {table_or_db}")
+            raise SourceNotExistError(f"Cannot read from {source_name}, because it is a {table_or_db}")
         if source.mode is not None:
             self.mode = source.mode
         source.mode = self.mode

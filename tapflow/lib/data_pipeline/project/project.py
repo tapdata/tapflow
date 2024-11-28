@@ -205,7 +205,7 @@ class ProjectScheduler:
         try:
             self._start_flow(flow)
         except Exception as e:
-            logger.error("Flow {} execution failed: {}", flow.name, str(e))
+            logger.error("Flow {} execution failed: {}", flow.name, str(e), exc_info=True)
 
     def start(self):
         """

@@ -192,9 +192,9 @@ class op_object_command(Magics):
                 "--delete": lambda: Project(path=path).delete(),
                 "--help": lambda: help_info(),
             }
-            try:
+            if func in f:
                 f[func]()
-            except KeyError as e:
+            else:
                 logger.warn("unknown command: {}", func)
                 help_info()
 
