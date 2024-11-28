@@ -140,16 +140,24 @@ class ProjectScheduler:
         1. 首先需要对前置任务的target进行loadSchema
         2. 然后启动flow并监听事件
         """
-        if load_schema:
-            logger.info("Loading schema for flow {}...", flow.name)
-            flow.target.load_schema()
+        # if load_schema:
+            # logger.info("Loading schema for flow {}...", flow.name)
+            # flow.target.load_schema()
         
         logger.info("Running flow {}...", flow.name)
         flow.start()
 
+        edit_times = 0
         while True:
             res = req.get(f"/Task/{flow.id}").json()
             status = res["data"]["status"]
+
+            if status == "edit":
+                edit_times += 1
+            if edit_times > 5:
+                logger.error("Flow {} start timeout, please check", flow.name)
+                break
+
             milestone = res["data"]["attrs"].get("milestone", "")
             
             # 收集当前时刻所有需要发送的事件
@@ -275,12 +283,13 @@ class Project(ProjectInterface):
         spec.loader.exec_module(module)
         return module
 
-    def scan(self):
+    def scan(self, quiet=False) -> list[Flow]:
         """
         扫描当前路径下的所有 flow 文件，更新项目配置
         """
 
-        logger.info("Scanning all python scripts under {}", self.path)
+        if not quiet:
+            logger.info("Scanning all python scripts under {}", self.path)
 
         # 当前目录及子目录中以.py结尾的path数组
 
@@ -291,7 +300,8 @@ class Project(ProjectInterface):
                 if file.endswith(".py") and file not in self.exclude_path:
                     flow_files.append(os.path.join(root, file))
 
-        logger.info("{} TapFlow scripts found, running in alphebetic order: ", len(flow_files))
+        if not quiet:
+            logger.info("{} TapFlow scripts found, running in alphebetic order: ", len(flow_files))
 
         def disabled_method(*args, **kwargs):
             pass
@@ -310,14 +320,13 @@ class Project(ProjectInterface):
         try:
             flows = []
             for flow_file in flow_files:
-                logger.info("Scanning {}...", flow_file)
+                if not quiet:
+                    logger.info("Scanning {}...", flow_file)
                 module = self.load_module_from_file(flow_file)
                 # 获取module中所有Flow或者Pipeline的实例
                 flows.extend([getattr(module, name) for name in dir(module) if isinstance(getattr(module, name), (Flow, Pipeline))])
             
-            for flow in flows:
-                depends_on = flow.depends_on
-                self.add_flow(flow, depended=depends_on)
+            return flows
 
         finally:
             # 恢复原始方法
@@ -339,7 +348,10 @@ class Project(ProjectInterface):
         当 .project 文件存在时, 读取.project文件中的内容
         """
         if not os.path.exists(self.project_file_path):
-            self.scan()
+            flows = self.scan()
+            for flow in flows:
+                depends_on = flow.depends_on
+                self.add_flow(flow, depended=depends_on)
             self.save(quiet=True)
         else:
             self._set_attr_after_load(self.load_project())
@@ -418,8 +430,8 @@ class Project(ProjectInterface):
         """delete project, project file and all flows"""
         try:
             self.delete_project()  # delete project by api
-            self.delete_project_file()  # delete project file
             self.delete_flows()  # delete flows
+            self.delete_project_file()  # delete project file
             logger.info("Project {} deleted", self.name)
         except Exception as e:
             logger.error(f"Delete project {self.name} failed: {e}")
@@ -501,8 +513,21 @@ class Project(ProjectInterface):
         self.description = project_dict["project"]["description"]
         self.cron = project_dict["project"]["cron"]
         self.exclude_path = project_dict["config"]["exclude"]
-        self.flows = [Flow(flow["name"]) for flow in project_dict["flows"]]
+
+        flows = self.scan(quiet=True)
+        flow_map = {flow.name: flow for flow in flows}
+
+        try:
+            flow_in_dict = [flow_map[flow["name"]] for flow in project_dict["flows"]]
+        except KeyError as e:
+            logger.error("Flow {} not found in flows", e)
+            raise e
+
+        self.flows = flow_in_dict
         self.depended_flows = project_dict["depended_flows"]
+        # 设置dag的出度
+        for flow in self.flows:
+            self.dag_degree[flow.name] = len(self.depended_flows.get(flow.name, []))
 
     def are_projects_equal(self, old_project: dict, new_project: dict):
         return old_project == new_project
