@@ -152,9 +152,21 @@ class ProjectScheduler:
         flow.start()
 
         edit_times = 0
+
+        key_error_times = 0
+
         while True:
-            res = req.get(f"/Task/{flow.id}").json()
-            status = res["data"]["status"]
+
+            try:
+                res = req.get(f"/Task/{flow.id}").json()
+                status = res["data"]["status"]
+            except KeyError as e:
+                key_error_times += 1
+                if key_error_times > 5:
+                    logger.error("Flow {} start timeout, please check", flow.name)
+                    break
+                time.sleep(1)
+                continue
 
             if status == "edit":
                 edit_times += 1
@@ -165,6 +177,10 @@ class ProjectScheduler:
             try:
                 milestone = res["data"]["attrs"].get("milestone", "")
             except KeyError as e:
+                key_error_times += 1
+                if key_error_times > 5:
+                    logger.error("Flow {} milestone not found, please check", flow.name)
+                    break
                 time.sleep(1)
                 continue
 
@@ -404,6 +420,9 @@ class Project(ProjectInterface):
         
         if isinstance(flow, str):
             f = Flow(flow)
+            if f.job is None:
+                logger.warn("Flow {} not exist in remote, skip", flow)
+                return False
         elif isinstance(flow, Pipeline):
             f = flow
         else:
@@ -438,7 +457,6 @@ class Project(ProjectInterface):
             return
 
         flows = self.flows.copy() if _flows is None else _flows
-        print(flows)
         for flow in flows:
             flow.delete()
 
