@@ -1,5 +1,11 @@
+import asyncio
+import copy
+import json
+import time
+
+import websockets
 from tapflow.lib.help_decorator import help_decorate
-from tapflow.lib.op_object import show_tables
+from tapflow.lib.op_object import show_connections, show_tables
 from tapflow.lib.request import req
 
 from tapflow.lib.data_pipeline.base_node import BaseNode, node_config, node_config_sync
@@ -163,3 +169,55 @@ class Source(BaseNode):
     
     def connection_type(self):
         return client_cache["connections"]["id_index"][self.connectionId]["connection_type"]
+
+    def load_schema(self) -> bool:
+        schema = copy.deepcopy(client_cache["connections"]["name_index"][self.name])
+        schema.update({
+            "disabledLoadSchema": False,
+            "everLoadSchema": True,
+            "heartbeatEnable": False,
+            "loadSchemaField": True,
+            "updateSchema": True,
+        })
+        
+        async def load():
+            ws_uri = f"{req.server.replace('https://', 'wss://')}/tm/ws/agent?id={self.id}"
+            cookies = req.cookies.get_dict()
+            cookies_header = "; ".join([f"{key}={value}" for key, value in cookies.items()])
+            async with websockets.connect(ws_uri, extra_headers=[("Cookie", cookies_header)]) as websocket:
+                payload = {
+                    "type": "testConnection",
+                    "data": schema,
+                }
+                await websocket.send(json.dumps(payload))
+                while True:
+                    time.sleep(1)
+                    recv = await websocket.recv()
+                    loadResult = json.loads(recv)
+                    if "type" not in loadResult:
+                        continue
+                    if loadResult["type"] != "pipe":
+                        continue
+                    if loadResult["data"]["type"] != "testConnectionResult":
+                        continue
+                    if loadResult["data"]["result"]["status"] is None:
+                        continue
+
+                    if loadResult["data"]["result"]["status"] != "ready":
+                        res = False
+                    else:
+                        res = True
+
+                    if loadResult["data"]["result"] is None:
+                        continue
+
+                    await websocket.close()
+                    return res
+                
+        res = asyncio.run(load())
+        if res:
+            show_connections(quiet=True)
+            return True
+        else:
+            return False
+        

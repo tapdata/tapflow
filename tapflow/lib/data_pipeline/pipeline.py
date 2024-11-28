@@ -65,6 +65,11 @@ def is_tapcli():
         return True
     except NameError:
         return False
+    
+
+class SourceNotExistError(Exception):
+    pass
+
 
 @help_decorate("use to define a stream pipeline", "p = new Pipeline($name).readFrom($source).writeTo($sink)")
 class Pipeline:
@@ -103,7 +108,15 @@ class Pipeline:
         self._write_to_ed = False
         self._lookup_ed = False
         self._union_node = None
+        self.depends_on = []
         self.get()
+
+    def depend(self, depends_on: str | list[str]):
+        if isinstance(depends_on, str):
+            self.depends_on.append(depends_on)
+        else:
+            self.depends_on.extend(depends_on)
+        return self
 
     def _get_lookup_parent(self, path):
         if path == "" or "." not in path:
@@ -237,10 +250,10 @@ class Pipeline:
         source_name = f"{source.connection.c.get('name', '')}.{source.table_name}" if source.mode == JobType.sync else source.connection.c.get("name", "")
         # check if table exists
         if not source.exists():
-            raise Exception(f"Cannot read from the non-existent table {source_name}")
+            raise SourceNotExistError(f"Cannot read from the non-existent table {source_name}")
         # check if the table is a target table
         if source.connection_type() == "target":
-            raise Exception(f"Cannot read from {source_name}, because it is a {table_or_db}")
+            raise SourceNotExistError(f"Cannot read from {source_name}, because it is a {table_or_db}")
         if source.mode is not None:
             self.mode = source.mode
         source.mode = self.mode
@@ -1055,6 +1068,7 @@ class Pipeline:
         p.joinValueChange = self.joinValueChange
         p.command = self.command
         p._union_node = self._union_node
+        p.depends_on = self.depends_on
         return p
 
     def cache(self, ttl):
@@ -1134,6 +1148,7 @@ class Pipeline:
             logger.fwarn("job {} start timeout!", self.name)
             print(job.logs(level=["debug", "error"]))
             return False
+        self.id = job.id
         return self
 
     def show(self):
