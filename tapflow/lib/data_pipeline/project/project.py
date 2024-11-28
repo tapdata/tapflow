@@ -429,6 +429,8 @@ class Project(ProjectInterface):
             raise ValueError(f"Invalid flow type: {type(flow)}")
         self.flows.append(f)
 
+        depended = depended or f.depends_on
+
         if depended:
             if isinstance(depended, str):
                 depended = [depended]
