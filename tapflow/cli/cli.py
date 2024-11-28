@@ -187,7 +187,7 @@ class op_object_command(Magics):
             f = {
                 "--start": lambda: Project(path=path).start(),
                 "--save": lambda: Project(path=path).save(),
-                "--init": lambda: Project(path=path).init(),
+                "--init": lambda: Project(path=path),
                 "--stop": lambda: Project(path=path).stop(),
                 "--delete": lambda: Project(path=path).delete(),
                 "--help": lambda: help_info(),
