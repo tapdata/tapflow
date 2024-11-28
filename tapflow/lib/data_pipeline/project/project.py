@@ -333,8 +333,16 @@ class Project(ProjectInterface):
         return os.path.join(self.path, self._project_file_name())
 
     def init(self) -> bool:
-        self.scan()
-        self.save(quiet=True)
+        """
+        初始化 .project 文件    
+        当 .project 文件不存在时, 扫描当前目录下的所有flow文件创建.project文件
+        当 .project 文件存在时, 读取.project文件中的内容
+        """
+        if not os.path.exists(self.project_file_path):
+            self.scan()
+            self.save(quiet=True)
+        else:
+            self._set_attr_after_load(self.load_project())
         return True
 
     def setSchedule(self, cron: str):
@@ -517,7 +525,8 @@ class Project(ProjectInterface):
 
     def save(self, quiet=False):
         """
-        save project, when project file not exists, create it, otherwise, clean and write
+        保存项目配置
+        根据当前项目配置生成.project文件，如果存在.project文件，则更新文件内容
         """
         self.checkNameNotNull()
         self.checkCronValid()
