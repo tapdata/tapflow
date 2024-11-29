@@ -1118,6 +1118,7 @@ class Pipeline:
         self.job.dag = self.dag
         self.config({})
         job.save()
+        self.id = job.id
         return self
     
     def start_at(self, start_time, tz="+8"):
