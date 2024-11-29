@@ -149,11 +149,11 @@ class ProjectScheduler:
             # flow.target.load_schema()
         
         logger.info("Running flow {}...", flow.name)
-        flow.start()
+        flow.save().start()
 
-        edit_times = 0
+        edit_times, edit_times_limit = 0, 10
 
-        key_error_times = 0
+        key_error_times, key_error_times_limit = 0, 10
 
         while True:
 
@@ -162,7 +162,7 @@ class ProjectScheduler:
                 status = res["data"]["status"]
             except KeyError as e:
                 key_error_times += 1
-                if key_error_times > 5:
+                if key_error_times > key_error_times_limit:
                     logger.error("Flow {} start timeout, please check", flow.name)
                     break
                 time.sleep(1)
@@ -170,8 +170,9 @@ class ProjectScheduler:
 
             if status == "edit":
                 edit_times += 1
-            if edit_times > 5:
-                logger.error("Flow {} start timeout, please check", flow.name)
+            if edit_times > edit_times_limit:
+                logger.error("Flow {} start timeout or config error, please check", flow.name)
+                time.sleep(1)
                 break
 
             try:
