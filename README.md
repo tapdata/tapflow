@@ -1,77 +1,56 @@
-# TapFlow 命令行客户端使用文档
+## Overview
 
-## 安装
-1. 自行安装 python3, pip3, and ipython3 
-2. 运行 `pip3 install .` 安装客户端
+Tap Flow is an API framework for TapData Live Data Platform. It provides a programmable interace to interact with TapData, such as managing replication pipelines, building wide tables/materialized views and perform general data integration tasks. 
 
-## 配置
-1. 编辑 etc/config.ini, 填写地址与鉴权信息, 其中:
+Currently A Python SDK and interative CLI shell is provided in Tap Flow framework. 
 
-如果访问的是企业版, 请填写两个信息:
-server: 企业版地址, 例如: 192.168.106.1:13030
-access_code: 企业版的鉴权 token
+## Use cases
+You may use Tap Flow for:
 
-如果访问的是云版, 只需要填写鉴权信息即可, 包括:
-ak: access key
-sk: secret key
+- Speed up the query performance of your relational database by serving the data in a high performance data store
+- Create a materialized view for publishing API
+- Create a wide table in data warehouse for fast analytic
+- As a Kafka ETL alternative to build real time ata pipelines
+- As Oracle Golden Date alternatie to replicate data between different databases
 
-## 运行
-1. 在完成安装后, 运行命令 `tapcli` 即可打开命令行客户端
+## Quick Start
 
-## 命令行模式使用手册
-### 查看基本连接与表信息
-0. 帮助
-`h`
+🔔 **Reminder:** You need a TapData cluster ready in order to continue. The easiest way is sign up a free [TapData Cloud](https://cloud.tapdata.io) account. 
 
-1. 列出所有数据源
-`show dbs`
-![](./docs/images/show_db.png)
 
-2. 切换到某个数据源, 并列出表
-`use $db` 后, `show tables`
-![](./docs/images/show_table.png)
+1. Install Tap Shell, which comes with Python SDK/API
 
-3. 探索表结构与表数据
-`desc $table` 查看表结构, `peek $table` 预览表数据
-![](./docs/images/desc_table.png)
+ ```
+pip3 install tapcli
+ ```
 
-### 创建数据源
-1. 创建 MongoDB 数据源
-```
-m = DataSource("mongodb", name="mdb");
-m.host("127.0.0.1:27017").db("source").username("root").password("Gotapd8!").type("source").props("authSource=admin");
-m.save();
-```
+2. Follow the on-screen instruction to configure the TapData Cluster
 
-2. 创建 MySQL 数据源
-```
-m = DataSource("mysql", name="sql");
-m.host("127.0.0.1").port(3306).db("source").username("root").password("Gotapd8!");
-m.save();
-```
+3. Once you have installed and configured, follow these links to create your data pipelines
 
-### 配置与运行建模任务
-```python
-source = Source("qa_mongodb_repl_42240")
-order = Flow("left_join_demo").read_from(source.order).filter("order_time > 2024-01-02")
-def user_mapper(record):
-    record["user_id"] = str(record["user_id"])
-    return record
-order.lookup(source.user, path="user", type=dict, relation=[["user_id", "user_id"]], mapper=user_mapper, filter="user_id > 1", fields=["user_id", "user_name"])
-order.lookup(source.goods, path="goods", type=dict, relation=[["goods_id", "goods_id"]])
-order.write_to(source.order_view)
-order.start()
-```
+- [Quick start tutorial: creating your mysql to mongodb replication flow](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/quick-start)
+- [Build a continously updated materized view](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/tapflow-tutorial/build-real-time-wide-table)
+- [Tap CLI Command Reference](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/tapcli-reference)
 
-### 任务查看
-1. 列出任务: `show jobs`
-2. 查看任务状态: `status $job_name`
-3. 查看任务指标: `stats $job_name`
-4. 查看任务日志: `logs $job_name`
-5. 开始任务: `start $job_name`
-6. 停止任务: `stop $job_name`
-7. 删除任务: `delete $job_name`
 
-## 类库模式使用说明
-1. 引入依赖库
-`from tapflow.lib import *`
+## When to use Tap Flow 
+
+- When you have many pipelines, managing them manually from UI becomes difficult
+- When you want to integrate TapData capability with your application or workflow, programmatically
+- When you have multiple environments(Dev, QA, UAT, Prod) and you would like to version control your data pipelines
+- When you have complex processing logic that must use Javascript or Python
+- You just like coding experience!
+
+## Join the community
+
+
+
+## Roadmap
+
+- Project support: where you can define a set of data flows and sequences of running
+- API publishing capability
+- Integration with 3rd party scheduler
+- Java API/SDK
+
+
+ 
