@@ -4,12 +4,12 @@ with open('requirements.txt') as f:
 
 setup(
     name='tapflow',
-    version='0.2.19',
+    version='0.2.24',
     packages=find_packages(),
     install_requires=required,
     include_package_data=True,
     package_data={
-        '': ['*.md', '*.txt', '*.sh', "*.py"],
+        '': ['*.md', '*.txt', '*.sh', "*.py", '*.project'],
     },
     entry_points={
         'console_scripts': [

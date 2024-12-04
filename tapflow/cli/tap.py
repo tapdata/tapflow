@@ -182,7 +182,6 @@ def command_mode(basepath, source_path):
             print(f"Error in project operation: {e}")
             import traceback
             traceback.print_exc()
-            parser.print_help()
     else:
         parser.print_help()
 

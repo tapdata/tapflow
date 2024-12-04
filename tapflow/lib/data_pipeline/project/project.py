@@ -490,7 +490,7 @@ class Project(ProjectInterface):
         """delete project, project file and all flows"""
         self.delete_project()  # delete project by api
         self.delete_project_file()  # delete project file
-        self.delete_flows()  # delete flows
+        # self.delete_flows()  # delete flows
         logger.info("Project {} deleted", self.name)
         show_jobs(quiet=True)
         return True
