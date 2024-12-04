@@ -1,0 +1,37 @@
+# Project Configuration Template
+# -----------------------------
+
+project:
+  name: "project name"                # The name of your project
+  description: "project description"  # A brief description of what this project does
+  cron: "0 0 * * *"                   # Cron expression for scheduling (default: run daily at midnight)
+
+flows:
+  # Flow Definition Examples
+  - name: "flow 1"                    # First flow name
+    depends_on: []                    # No dependencies, will run first
+
+  - name: "flow 2"                    # Second flow name
+    depends_on:                       # Dependencies configuration
+      - flow 1.end                    # Waits for flow 1 to complete
+
+  - name: "flow 3"                    # Third flow name
+    depends_on:
+      - flow 1.initial_sync.end       # Waits for flow 1's initial sync to complete
+      - flow 2.cdc.start              # Waits for flow 2's CDC to start
+
+# Available dependency status points:
+# - flow.start                : When the flow starts
+# - flow.initial_sync.start   : When the initial sync phase starts
+# - flow.initial_sync.end     : When the initial sync phase completes
+# - flow.cdc.start            : When the CDC (Change Data Capture) phase starts
+# - flow.cdc.end              : When the CDC phase completes
+# - flow.end                  : When the entire flow completes
+# - flow.error                : When the flow encounters an error
+
+config:
+  exclude:                            # Files to exclude from the project
+    - "example.py"                    # Exact file match
+    - "temp/*.py"                     # Wildcard pattern for Python files in temp directory
+    - "**/__pycache__"                # Exclude all __pycache__ directories
+    - "*.log"                         # Exclude all log files

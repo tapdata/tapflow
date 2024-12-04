@@ -3,6 +3,7 @@ import importlib
 import os
 import queue
 import re
+import shutil
 import time
 import traceback
 from typing import Callable
@@ -15,6 +16,12 @@ from tapflow.lib.utils.log import logger
 from tapflow.lib.data_pipeline.pipeline import Flow, Pipeline
 from tapflow.lib.request import req
 from tapflow.lib.cache import client_cache
+
+
+# 当前脚本文件位置
+CURRENT_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+# template文件位置
+TEMPLATE_FILE_PATH = os.path.join(CURRENT_FILE_PATH, "templates")
 
 
 class ProjectRuntime:
@@ -300,7 +307,12 @@ class Project(ProjectInterface):
         # 记录dag的出度
         self.dag_degree = {}
         self.runtime = None
-        self.init()
+        self._load_from_file()
+
+    def _load_from_file(self):
+        if not os.path.exists(self.project_file_path):
+            return
+        self._set_attr_after_load(self.load_project())
 
     def load_module_from_file(self, file_path):
         module_name = os.path.splitext(os.path.basename(file_path))[0]  # 从文件路径中提取模块名称
@@ -365,8 +377,12 @@ class Project(ProjectInterface):
     def project_file_path(self):
         if self.path.endswith(".project"):
             return self.path
-        return os.path.join(self.path, self._project_file_name())
-
+        return os.path.join(self.path, self._project_file_name)
+    
+    @property
+    def data_flows_file_path(self):
+        return os.path.join(self.path, "data_flows.py")
+    
     def init(self) -> bool:
         """
         初始化 .project 文件    
@@ -374,13 +390,9 @@ class Project(ProjectInterface):
         当 .project 文件存在时, 读取.project文件中的内容
         """
         if not os.path.exists(self.project_file_path):
-            flows = self.scan()
-            for flow in flows:
-                depends_on = flow.depends_on
-                self.add_flow(flow, depended=depends_on)
-            self.save(quiet=True)
-        else:
-            self._set_attr_after_load(self.load_project())
+            shutil.copy(os.path.join(TEMPLATE_FILE_PATH, "template.project"), self.project_file_path)
+        if not os.path.exists(self.data_flows_file_path):
+            shutil.copy(os.path.join(TEMPLATE_FILE_PATH, "data_flows.py"), self.data_flows_file_path)
         return True
 
     def setSchedule(self, cron: str):
@@ -538,18 +550,21 @@ class Project(ProjectInterface):
         with open(self.project_file_path, "r") as f:
             project_dict = yaml.load(f, Loader=yaml.FullLoader)
 
+        project_info = project_dict.get("project", {})
+        flows = project_dict.get("flows", [])
+        config = project_dict.get("config", {})
+
         result = {
             "project": {
-                "name": project_dict["project"]["name"],
-                "description": project_dict["project"]["description"],
-                "cron": project_dict["project"]["cron"]
+                "name": project_info["name"],
+                "description": project_info["description"],
+                "cron": project_info["cron"]
             },
-            "flows": project_dict["flows"],
-            "depended_flows": {flow["name"]: flow["depends_on"] for flow in project_dict["flows"]},
-            "config": {
-                "exclude": project_dict["config"]["exclude"]
-            }
+            "flows": flows,
+            "depended_flows": {flow["name"]: flow["depends_on"] for flow in flows},
         }
+
+        result.update(config)
 
         return result
 
@@ -557,7 +572,10 @@ class Project(ProjectInterface):
         self.name = project_dict["project"]["name"]
         self.description = project_dict["project"]["description"]
         self.cron = project_dict["project"]["cron"]
-        self.exclude_path = project_dict["config"]["exclude"]
+        try:
+            self.exclude_path = project_dict["config"]["exclude"]
+        except KeyError:
+            self.exclude_path = []
 
         flows = self.scan(quiet=True)
         flow_map = {flow.name: flow for flow in flows}
@@ -587,6 +605,7 @@ class Project(ProjectInterface):
         if not re.match(r"^(\*|(\d+|\d+\-\d+)(,\d+|\/\d+)?)( (\*|(\d+|\d+\-\d+)(,\d+|\/\d+)?)){5}$", self.cron):
             raise ValueError("Cron expression is invalid")
 
+    @property
     def _project_file_name(self):
         """默认为当前目录名.project"""
         if not self.path:
@@ -665,3 +684,10 @@ class Project(ProjectInterface):
         scheduler.start()
 
         self.after_start()
+
+    def status(self):
+        logger.warn("{}", "Project.status() not supported now.")
+
+    @classmethod
+    def list(cls):
+        logger.warn("{}", "Project.list() not supported now.")

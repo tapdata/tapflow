@@ -5,9 +5,10 @@ from tapflow.lib.request import set_req
 from tapflow.lib.utils.log import logger
 from tapflow.lib.cache import system_server_conf
 
-def login_with_access_code(server, access_code):
-    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: {server} \033[0m")
-    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
+def login_with_access_code(server, access_code, show_welcome=True):
+    if show_welcome:
+        print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: {server} \033[0m")
+        print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
     req = set_req(server)
     api = "http://" + server + "/api"
     res = req.post("/users/generatetoken", json={"accesscode": access_code})
@@ -46,15 +47,16 @@ def login_with_access_code(server, access_code):
     system_server_conf.update(conf)
     return True
 
-def login_with_ak_sk(ak, sk, server=None):
+def login_with_ak_sk(ak, sk, server=None, show_welcome=True):
     global req
     try:
         if not server or server == "127.0.0.1:3030":
             server = "https://cloud.tapdata.net"
     except NameError:
         server = "https://cloud.tapdata.net"
-    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: {server} \033[0m")
-    print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
+    if show_welcome:
+        print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m connecting remote server: {server} \033[0m")
+        print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
     req = set_req(server)
     req.set_ak_sk(ak, sk)
     return True
