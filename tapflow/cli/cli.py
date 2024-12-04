@@ -798,9 +798,14 @@ def get_default_sink():
     client_cache["default_sink"] = DEFAULT_SINK
 
 
-def init():
-    """命令行模式"""
-    ConfigParser(get_configuration_path(), interactive=False).init()
+def init(config_path=None):
+    """命令行模式初始化
+    
+    Args:
+        config_path (str, optional): 配置文件路径. 如果为None, 则使用默认路径
+    """
+    config_file = config_path if config_path else get_configuration_path()
+    ConfigParser(config_file, interactive=False).init()
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)

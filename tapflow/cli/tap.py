@@ -60,21 +60,6 @@ def execute_file(file_path):
 
 # 命令行模式
 def command_mode(basepath, source_path):
-    # 动态导入并初始化命令行环境
-    try:
-        # 使用相对导入
-        from ..cli import cli as cli_module
-        cli_module.init()
-    except ImportError:
-        try:
-            # 备选方案：直接导入本地模块
-            import cli
-            cli.init()
-        except Exception as e:
-            print(f"Error initializing command line mode: {e}")
-            import traceback
-            traceback.print_exc()
-    
     # 创建主解析器
     parser = argparse.ArgumentParser(
         description="Tapflow command line interface",
@@ -84,6 +69,9 @@ def command_mode(basepath, source_path):
     # 添加全局帮助选项
     help_group = parser.add_argument_group('Help Options')
     help_group.add_argument('-h', '--help', action='store_true', help="Show this help message and exit")
+
+    # 配置文件选项
+    parser.add_argument("-c", "--config", help="Specify the configuration file path", metavar="CONFIG")
 
     # 文件执行选项
     parser.add_argument("-f", "--file", help="Run a python file", metavar="FILE")
@@ -127,6 +115,24 @@ def command_mode(basepath, source_path):
         else:
             parser.print_help()
         return
+
+    # 设置配置文件路径并初始化
+    config_path = os.path.abspath(args.config) if args.config else None
+    
+    # 动态导入并初始化命令行环境
+    try:
+        # 使用相对导入
+        from ..cli import cli as cli_module
+        cli_module.init(config_path)
+    except ImportError:
+        try:
+            # 备选方案：直接导入本地模块
+            import cli
+            cli.init(config_path)
+        except Exception as e:
+            print(f"Error initializing command line mode: {e}")
+            import traceback
+            traceback.print_exc()
 
     # 处理 -f 参数
     if args.file:
