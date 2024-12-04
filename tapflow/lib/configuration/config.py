@@ -46,10 +46,10 @@ class ConfigParser:
         return config
     
     def write(self, configuration: Configuration):
+        # if directory not exist, create it
+        if not os.path.exists(os.path.dirname(self.config_path)):
+            os.makedirs(os.path.dirname(self.config_path))
         with open(self.config_path, "w") as f:
-            # if directory not exist, create it
-            if not os.path.exists(os.path.dirname(self.config_path)):
-                os.makedirs(os.path.dirname(self.config_path))
             f.write(f'''[backend]
 ; If you are using Tapdata Cloud, please provide the access key and secret key(ak & sk).
 ; You may obtain the keys by log onto Tapdata Cloud, and click "User Center" on the top right, then copy & paste the access key and secret key pair.

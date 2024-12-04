@@ -36,26 +36,11 @@ c.TerminalInteractiveShell.prompts_class = NoPrompt
     start_ipython(argv=['--no-banner', '--profile-dir=' + profile_dir, '-i', os.path.join(source_path, 'cli', 'cli.py')])
 
 def execute_file(file_path):
-    """执行指定的Python文件"""
-    if not os.path.exists(file_path):
-        print(f"Error: File not found: {file_path}")
-        return
-    
-    try:
-        # 获取文件的绝对路径
-        abs_path = os.path.abspath(file_path)
-        # 添加文件所在目录到Python路径
-        file_dir = os.path.dirname(abs_path)
-        sys.path.insert(0, file_dir)
-        
-        # 执行文件
-        with open(abs_path, 'r', encoding='utf-8') as f:
-            exec(f.read(), {'__file__': abs_path})
-            
-    except Exception as e:
-        print(f"Error executing file: {e}")
-        import traceback
-        traceback.print_exc()
+    module_name = os.path.splitext(os.path.basename(file_path))[0]  # 从文件路径中提取模块名称
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 # 命令行模式

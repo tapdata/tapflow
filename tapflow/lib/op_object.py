@@ -284,7 +284,7 @@ def show_connections(f=None, quiet=False):
     global show_connections_last_time
     import time
     if show_connections_last_time + 1 > int(time.time()):
-        return
+        return {}
     show_connections_last_time = int(time.time())
     f = {"limit": 10000}
     res = req.get("/Connections", params={"filter": json.dumps(f)})
