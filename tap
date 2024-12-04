@@ -23,4 +23,4 @@ fi
 export LC_ALL="en_US.utf8" 2>/dev/null
 
 # 运行 tap.py 脚本
-python3 tapflow/cli/tap.py
+python3 tapflow/cli/tap.py "$@"

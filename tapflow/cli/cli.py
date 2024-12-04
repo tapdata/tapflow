@@ -2,6 +2,7 @@ from datetime import datetime
 import getpass
 import shlex
 import os, sys
+from os.path import expanduser
 
 from tapflow.lib.data_pipeline.project.project import Project
 
@@ -84,7 +85,10 @@ class op_object_command(Magics):
                             kwargs[kv.split("=")[0]] = False
                             continue
                         kwargs[kv.split("=")[0]] = v
-        obj = get_obj(object_type, signature)
+        if object_type == "project":
+            obj = Project(signature)
+        else:
+            obj = get_obj(object_type, signature)
         if obj is None:
             return
         if op in dir(obj):
@@ -187,7 +191,7 @@ class op_object_command(Magics):
             f = {
                 "--start": lambda: Project(path=path).start(),
                 "--save": lambda: Project(path=path).save(),
-                "--init": lambda: Project(path=path),
+                "--init": lambda: Project(path=path).init(),
                 "--stop": lambda: Project(path=path).stop(),
                 "--delete": lambda: Project(path=path).delete(),
                 "--help": lambda: help_info(),
@@ -818,17 +822,30 @@ def create_sample_config(server="", access_code="", ak="", sk=""):
 {f"server = {server}" if server else "# server = "}
 {f"access_code = {access_code}" if access_code else "# access_code = "}
 ''')
+        
+config_path_order = ["etc/config.ini", 
+                    os.path.join(expanduser("~"), ".tapflow/config.ini"), 
+                    "/etc/tapflow/config.ini"]
+        
+def get_configuration_path():
+    for path in config_path_order:
+        expanded_path = os.path.expanduser(path)
+        if os.path.exists(expanded_path):
+            return expanded_path
+    return None
 
-def show_register():
-    print("\n")
-    logger.warn("{}", "no valid config file found, you can config etc/config.ini from sample file")
-    with open("etc/config.ini", "r") as f:
-        print(f.read())
+def show_register(show_welcome=False):
+    if show_welcome:
+        print("\n")
+    logger.warn("{}", f"no valid config file found, you can config {config_path_order} from sample file")
+    if show_welcome:
+        with open("etc/config.ini", "r") as f:
+            print(f.read())
 
-def _set_secrets():
-    ini_config = "etc/config.ini"
+def _set_secrets(show_welcome=False):
     """get secrets from config.ini or set in terminal"""
-    if os.path.exists(ini_config):
+    ini_config = get_configuration_path()
+    if ini_config:
         import configparser
         config = configparser.ConfigParser()
         config.read(ini_config)
@@ -839,25 +856,30 @@ def _set_secrets():
         ak = ini_dict.get("backend", {}).get("ak")
         sk = ini_dict.get("backend", {}).get("sk")
         if ak and sk:
-            login_with_ak_sk(ak, sk, server=server)
-            show_agents(quiet=False)
+            login_with_ak_sk(ak, sk, server=server, show_welcome=show_welcome)
+            if show_welcome:
+                show_agents(quiet=False)
         else:
             if server and access_token:
-                login_with_access_code(server, access_token)
+                login_with_access_code(server, access_token, show_welcome=show_welcome)
             else:
                 show_register()
                 os._exit(-1)
-    else:
+    elif show_welcome:
         select_option = select_secrets_source()
         if select_option == "L":
             server, access_code = set_server_and_access_code()
             create_sample_config(server=server, access_code=access_code)
-            login_with_access_code(server, access_code)
+            login_with_access_code(server, access_code, show_welcome=show_welcome)
         elif select_option == "C":
             ak, sk = set_ak_sk()
             create_sample_config(ak=ak, sk=sk)
-            login_with_ak_sk(ak, sk)
-            show_agents(quiet=False)
+            login_with_ak_sk(ak, sk, show_welcome=show_welcome)
+            if show_welcome:
+                show_agents(quiet=False)
+    else:
+        show_register()
+        os._exit(-1)
 
 
 def get_default_sink():
@@ -875,13 +897,23 @@ def get_default_sink():
     client_cache["default_sink"] = DEFAULT_SINK
 
 
+def init():
+    """命令行模式的初始化，不显示欢迎信息"""
+    _set_secrets(show_welcome=False)
+    globals().update(show_connections(quiet=True))
+    show_connectors(quiet=True)
+    show_jobs(quiet=True)
+    if req.mode == "cloud":
+        get_default_sink()
+
 def main():
+    """交互式模式的初始化，显示完整信息"""
     # ipython settings
     ip = TerminalInteractiveShell.instance()
     ip.register_magics(show_command)
     ip.register_magics(op_object_command)
     ip.register_magics(ApiCommand)
-    _set_secrets()
+    _set_secrets(show_welcome=True)
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)
