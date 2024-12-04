@@ -95,13 +95,13 @@ class RequestSession(requests.Session):
         res = response.json()
         if self.mode == "cloud":
             if res.get("code") == "NotFoundAccessKey":
-                logger.error("{}", "Access key not found. Please verify your AK & SK in the etc/config.ini file.")
+                logger.error("{}", "Access key not found. Please verify your AK & SK in the configuration file.")
                 os._exit(1)
             else:
                 return True
         else:
             if res.get("code") == "AccessCode.No.User":
-                logger.error("{}", "Access code not found. Please verify your access code in the etc/config.ini file.")
+                logger.error("{}", "Access code not found. Please verify your access code in the configuration file.")
                 os._exit(1)
             else:
                 return True
