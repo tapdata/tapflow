@@ -4,6 +4,7 @@ import shlex
 import os, sys
 from os.path import expanduser
 
+from tapflow.lib.configuration.config import get_configuration_path, ConfigParser
 from tapflow.lib.data_pipeline.project.project import Project
 
 # 获取当前脚本文件所在的目录
@@ -781,106 +782,6 @@ def desc_table(line, quiet=True):
     if not quiet:
         print(json.dumps(display_fields, indent=2))
 
-def select_secrets_source():
-    """select secrets source in terminal"""
-    print("""Tap Flow requires TapData Live Data Platform(LDP) cluster to run. 
-If you would like to use with TapData Enterprise or TapData Community, type L to continue. 
-If you would like to use TapData Cloud, or you are new to TapData, type C or press ENTER to continue.""")
-    prompt_message = "Please type L or C (L/[C]): "
-    while True:
-        select_option = input(prompt_message)
-        if select_option in ["L", "C", ""]:
-            return select_option if select_option != "" else "C"
-        print("Invalid input, please try again\n")
-
-def set_server_and_access_code():
-    server = input("Please enter server:port of TapData LDP server: ")
-    access_code = getpass.getpass("Please enter access code: ")
-    return server, access_code
-
-
-def set_ak_sk():
-    print("You may obtain the keys by log onto TapData Cloud, and click: 'User Center' on the top right, then copy & paste the accesskey and secret key pair.")
-    ak = getpass.getpass("Enter AK: ")
-    sk = getpass.getpass("Enter SK: ")
-    return ak, sk
-
-
-def create_sample_config(server="", access_code="", ak="", sk=""):
-    if not os.path.exists("etc"):
-        os.mkdir("etc")
-    with open("etc/config.ini", "w") as f:
-        f.write(f'''
-[backend]
-# If you are using Tapdata Cloud, please provide the access key and secret key(ak & sk).
-# You may obtain the keys by log onto Tapdata Cloud, and click "User Center" on the top right, then copy & paste the access key and secret key pair.
-# You can sign up for a new account from: https://cloud.tapdata.io if you don't have one
-{f"ak = {ak}" if ak else "# ak = "}
-{f"sk = {sk}" if sk else "# sk = "}
-
-# If you are using TapData Enterprise, please specify the server URL & access token.
-{f"server = {server}" if server else "# server = "}
-{f"access_code = {access_code}" if access_code else "# access_code = "}
-''')
-        
-config_path_order = ["etc/config.ini", 
-                    os.path.join(expanduser("~"), ".tapflow/config.ini"), 
-                    "/etc/tapflow/config.ini"]
-        
-def get_configuration_path():
-    for path in config_path_order:
-        expanded_path = os.path.expanduser(path)
-        if os.path.exists(expanded_path):
-            return expanded_path
-    return None
-
-def show_register(show_welcome=False):
-    if show_welcome:
-        print("\n")
-    logger.warn("{}", f"no valid config file found, you can config {config_path_order} from sample file")
-    if show_welcome:
-        with open("etc/config.ini", "r") as f:
-            print(f.read())
-
-def _set_secrets(show_welcome=False):
-    """get secrets from config.ini or set in terminal"""
-    ini_config = get_configuration_path()
-    if ini_config:
-        import configparser
-        config = configparser.ConfigParser()
-        config.read(ini_config)
-        global server, access_token
-        ini_dict = {section: dict(config.items(section)) for section in config.sections()}
-        server = ini_dict.get("backend", {}).get("server")
-        access_token = ini_dict.get("backend", {}).get("access_code")
-        ak = ini_dict.get("backend", {}).get("ak")
-        sk = ini_dict.get("backend", {}).get("sk")
-        if ak and sk:
-            login_with_ak_sk(ak, sk, server=server, show_welcome=show_welcome)
-            if show_welcome:
-                show_agents(quiet=False)
-        else:
-            if server and access_token:
-                login_with_access_code(server, access_token, show_welcome=show_welcome)
-            else:
-                show_register()
-                os._exit(-1)
-    elif show_welcome:
-        select_option = select_secrets_source()
-        if select_option == "L":
-            server, access_code = set_server_and_access_code()
-            create_sample_config(server=server, access_code=access_code)
-            login_with_access_code(server, access_code, show_welcome=show_welcome)
-        elif select_option == "C":
-            ak, sk = set_ak_sk()
-            create_sample_config(ak=ak, sk=sk)
-            login_with_ak_sk(ak, sk, show_welcome=show_welcome)
-            if show_welcome:
-                show_agents(quiet=False)
-    else:
-        show_register()
-        os._exit(-1)
-
 
 def get_default_sink():
     res = req.get("/mdb-instance-assigned")
@@ -898,8 +799,8 @@ def get_default_sink():
 
 
 def init():
-    """命令行模式的初始化，不显示欢迎信息"""
-    _set_secrets(show_welcome=False)
+    """命令行模式"""
+    ConfigParser(get_configuration_path(), interactive=False).init()
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)
@@ -907,13 +808,13 @@ def init():
         get_default_sink()
 
 def main():
-    """交互式模式的初始化，显示完整信息"""
+    """交互式模式"""
     # ipython settings
     ip = TerminalInteractiveShell.instance()
     ip.register_magics(show_command)
     ip.register_magics(op_object_command)
     ip.register_magics(ApiCommand)
-    _set_secrets(show_welcome=True)
+    ConfigParser(get_configuration_path(), interactive=True).init()
     globals().update(show_connections(quiet=True))
     show_connectors(quiet=True)
     show_jobs(quiet=True)
