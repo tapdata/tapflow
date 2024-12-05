@@ -156,7 +156,11 @@ class ProjectScheduler:
             # flow.target.load_schema()
         
         logger.info("Running flow {}...", flow.name)
-        flow.save().start()
+        if flow.job is None or flow.job.id is None:
+            flow.save().start()
+        else:
+            flow = Flow(flow.name)
+            flow.start()
 
         edit_times, edit_times_limit = 0, 10
 
