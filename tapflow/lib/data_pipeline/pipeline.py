@@ -949,6 +949,7 @@ class Pipeline:
             self.job = job
             self._dag = job.dag
             self.dag = Dag.to_instance(job.dag, self.name)
+            self.id = job.id
             self.job.dag = self.dag
             self.dag.jobType = self.job.jobType
             self._node_map = {node["id"]: node for node in self.dag.dag["nodes"]}
