@@ -274,7 +274,10 @@ class Pipeline:
         self.dag.add_node(source)
         if is_tapcli() and not quiet:
             print("Flow updated: source added")
-        self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
+        if self.mode == JobType.sync:
+            self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
+        else:
+            self.command.append(["read_from", source.connection.c.get("name", "")])
         self._read_from_ed = True
         self.merge_node_childs.append(source)
         obj = self._clone(source)
@@ -322,7 +325,10 @@ class Pipeline:
         self.lines.append(sink)
         if is_tapcli():
             print("Flow updated: sink added")
-        self.command.append(["write_to", sink.connection.c.get("name", "")+"."+sink.table_name])
+        if self.mode == JobType.sync:
+            self.command.append(["write_to", sink.connection.c.get("name", "")+"."+sink.table_name])
+        else:
+            self.command.append(["write_to", sink.connection.c.get("name", "")])
         self._write_to_ed = True
         obj = self._clone(sink)
         self.__dict__ = obj.__dict__
@@ -1406,11 +1412,11 @@ class Pipeline:
 
 
 class MView(Pipeline):
-    def __init__(self, name=None, id=None):
-        super().__init__(name=name, mode=mview, id=id)
+    def __init__(self, name=None, mode=None, id=None):
+        super().__init__(name=name, mode=mode, id=id)
 
 class Flow(Pipeline):
-    def __init__(self, name=None, id=None):
-        super().__init__(name=name, mode=mview, id=id)
+    def __init__(self, name=None, mode=mview, id=None):
+        super().__init__(name=name, mode=mode, id=id)
         global _flows
         _flows[name] = self
