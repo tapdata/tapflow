@@ -3,8 +3,7 @@ import uuid
 import time
 import copy
 import datetime
-from dataclasses import Field
-from typing import Iterable, Tuple, Sequence
+from typing import Iterable, Tuple, Sequence, List, Dict
 
 from tapflow.lib.data_pipeline.nodes import get_node_instance
 from tapflow.lib.data_pipeline.nodes.field_add_del import FieldAddDel
@@ -111,7 +110,7 @@ class Pipeline:
         self.depends_on = []
         self.get()
 
-    def depend(self, depends_on: str | list[str]):
+    def depend(self, depends_on: str or List[str]):
         if isinstance(depends_on, str):
             self.depends_on.append(depends_on)
         else:
