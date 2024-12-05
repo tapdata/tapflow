@@ -210,22 +210,24 @@ class ProjectScheduler:
                 
                 # 根据不同类型的flow收集相应事件
                 if flow_type in ["initial_sync", "initial_sync+cdc"]:
-                    if snapshot_status == "RUNNING":
+                    if snapshot_status in ["RUNNING", "FINISH"]:
                         current_events.add(f"{flow.name}.initial_sync.start")
-                    elif snapshot_status == "FINISH":
+                    if snapshot_status == "FINISH":
                         current_events.add(f"{flow.name}.initial_sync.end")
                 
                 if flow_type in ["cdc", "initial_sync+cdc"]:
                     if cdc_status == "FINISH":
                         if status == "running":
                             current_events.add(f"{flow.name}.cdc.start")
-                        elif status == "complete":
-                            current_events.add(f"{flow.name}.cdc.end")
             
             # 任务结束事件
             if status == "complete":
                 current_events.add(f"{flow.name}.end")
-                
+            
+            # 任务报错事件
+            if status == "error":
+                current_events.add(f"{flow.name}.error")
+            
             # 批量发送新的事件
             new_events = current_events - self._occurred_events
             for event in new_events:
@@ -234,6 +236,12 @@ class ProjectScheduler:
             # 任务完成时退出循环
             if status == "complete":
                 logger.info("Flow {} finished", flow.name)
+                break
+            if f"{flow.name}.cdc.start" in current_events:
+                logger.info("Flow {} cdc started", flow.name)
+                break
+            if status == "error":
+                logger.error("Flow {} error", flow.name)
                 break
                 
             # 避免频繁请求
