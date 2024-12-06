@@ -2,6 +2,7 @@
 
 
 from tapflow.lib.data_pipeline.pipeline import Pipeline
+from typing import Union
 
 
 class ProjectInterface:
@@ -80,7 +81,7 @@ class ProjectInterface:
         """
         raise NotImplementedError
 
-    def add_flow(self, flow: str | Pipeline, depended: str=""):
+    def add_flow(self, flow: Union[str, Pipeline], depended: str=""):
         """
         CN: 添加flow
         EN: Add flow

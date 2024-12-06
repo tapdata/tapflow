@@ -6,7 +6,7 @@ import re
 import shutil
 import time
 import traceback
-from typing import Callable
+from typing import List, Dict, Set, Union
 
 import yaml
 
@@ -28,12 +28,12 @@ class ProjectRuntime:
     """
     ProjectRuntime 记录Project运行时状态
     """
-    flows: list[Flow] = []
-    depended_flows: dict[str, list[str]] = {} # 记录每个flow依赖的flow
-    dag_degree: dict[str, int] = {}
-    flows_depends_on: dict[str, list[str]] = {} # 记录每个flow被哪些flow依赖, 用于dag_degree的更新
+    flows: List[Flow] = []
+    depended_flows: Dict[str, List[str]] = {} # 记录每个flow依赖的flow
+    dag_degree: Dict[str, int] = {}
+    flows_depends_on: Dict[str, List[str]] = {} # 记录每个flow被哪些flow依赖, 用于dag_degree的更新
 
-    def __init__(self, flows: list[Flow], depended_flows: dict[str, list[str]], dag_degree: dict[str, int]):
+    def __init__(self, flows: List[Flow], depended_flows: Dict[str, List[str]], dag_degree: Dict[str, int]):
         self.flows = flows
         self.depended_flows = depended_flows
         self.dag_degree = dag_degree
@@ -67,12 +67,11 @@ class ProjectScheduler:
         self.executor = ThreadPoolExecutor(max_workers=project.parallelism)
         # 消息队列
         self._event_queue: queue.Queue = queue.Queue()
-        # 任务队列, 队列大小为dag的度
-        self._queue: list[queue.Queue] = [queue.Queue() for _ in range(max(project.dag_degree.values()) + 1)]
+        self._queue: List[queue.Queue] = [queue.Queue() for _ in range(max(project.dag_degree.values()) + 1)]
         # 已发生的事件集合
-        self._occurred_events: set[str] = set()
+        self._occurred_events: Set[str] = set()
         # 任务等待的事件映射 {flow_name: set(waiting_events)}
-        self._waiting_events: dict[str, set[str]] = {}
+        self._waiting_events: Dict[str, Set[str]] = {}
 
     def _send_event(self, event: str):
         """
@@ -107,7 +106,7 @@ class ProjectScheduler:
 
     def _add_queue(self, flow: Flow, depth: int):
         """
-        添加任务到队列
+        添加加任务到队列
         :param flow: 任务对应的flow
         :param depth: 任务所在的队列深度, 从0开始, 0为最优先
         """
@@ -169,7 +168,7 @@ class ProjectScheduler:
         while True:
 
             try:
-                res = req.get(f"/Task/{flow.id}").json()
+                res = req.get("/Task/{}".format(flow.id)).json()
                 status = res["data"]["status"]
             except KeyError as e:
                 key_error_times += 1
@@ -200,8 +199,8 @@ class ProjectScheduler:
             current_events = set()
             
             # 任务开始事件
-            if status == "running" and f"{flow.name}.start" not in self._occurred_events:
-                current_events.add(f"{flow.name}.start")
+            if status == "running" and "{}.start".format(flow.name) not in self._occurred_events:
+                current_events.add("{}.start".format(flow.name))
             
             if milestone:
                 flow_type = res["data"]["type"]
@@ -333,7 +332,7 @@ class Project(ProjectInterface):
         spec.loader.exec_module(module)
         return module
 
-    def scan(self, quiet=False) -> list[Flow]:
+    def scan(self, quiet=False) -> List[Flow]:
         """
         扫描当前路径下的所有 flow 文件，更新项目配置
         """
@@ -413,13 +412,13 @@ class Project(ProjectInterface):
     def exclude(self, path: str):
         self.exclude_path.append(path)
 
-    def check_flow_name_repeat(self, flow: str | Pipeline):
+    def check_flow_name_repeat(self, flow: Union[str, Pipeline]):
         if flow in self.flows:
             logger.warn("Flow name {} already exists, skip", flow.name)
             return False
         return True
 
-    def check_depended_flow_valid(self, depended: str | list[str]):
+    def check_depended_flow_valid(self, depended: Union[str, List[str]]):
         """depended格式为: flow_name.stage(cdc_or_initial_sync or empty).start_or_end(start or end)"""
         if depended == "" or (isinstance(depended, list) and len(depended) == 0):
             return True
@@ -429,13 +428,9 @@ class Project(ProjectInterface):
             if len(dep.split(".")) != 3 and len(dep.split(".")) != 2:
                 logger.warn("Dependend flow {} is invalid, skip", dep)
                 return False
-            # depended_flow_name = dep.split(".")[0]
-            # if depended_flow_name not in [flow.name for flow in self.flows]:
-            #     logger.warn("Dependend flow {} not in project, skip", depended_flow_name)
-            #     return False
         return True
 
-    def add_flow(self, flow: str | Pipeline, depended: str | list[str]=""):
+    def add_flow(self, flow: Union[str, Pipeline], depended: Union[str, List[str]]=""):
         # 检查flow名称是否重复
         if not self.check_flow_name_repeat(flow):
             return False
@@ -451,7 +446,7 @@ class Project(ProjectInterface):
         elif isinstance(flow, Pipeline):
             f = flow
         else:
-            raise ValueError(f"Invalid flow type: {type(flow)}")
+            raise ValueError("Invalid flow type: {}".format(type(flow)))
         self.flows.append(f)
 
         depended = depended or f.depends_on
@@ -477,7 +472,7 @@ class Project(ProjectInterface):
         if os.path.exists(self.project_file_path):
             os.remove(self.project_file_path)
 
-    def delete_flows(self, _flows: list[Flow]=None, max_depth: int=5):
+    def delete_flows(self, _flows: List[Flow]=None, max_depth: int=5):
         """删除flow，并检查是否存在未删除的任务，如果存在，递归删除，递归深度为5次"""
 
         if max_depth == 0:

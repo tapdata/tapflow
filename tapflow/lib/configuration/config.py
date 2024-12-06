@@ -1,7 +1,7 @@
 import configparser
 import getpass
 import os
-from posixpath import expanduser
+from os.path import expanduser
 
 from tapflow.lib.login import login_with_access_code, login_with_ak_sk
 from tapflow.lib.op_object import show_agents
