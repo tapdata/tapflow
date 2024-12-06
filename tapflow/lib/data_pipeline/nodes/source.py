@@ -39,7 +39,7 @@ class Source(BaseNode):
 
     def __init__(self, connection, table=None, table_re=None, mode=None):
         if mode is None:
-            if table is not None and isinstance(table, str):
+            if table is not None:
                 mode = "sync"
             else:
                 mode = "migrate"
