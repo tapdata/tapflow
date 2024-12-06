@@ -4,7 +4,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='tapflow',
-    version='0.2.30',
+    version='0.2.32',
     packages=find_packages(),
     install_requires=required,
     include_package_data=True,
