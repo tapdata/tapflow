@@ -76,6 +76,35 @@ def get_table_fields(t, whole=False, source=None, cache=True):
     return display_fields
 
 
+def desc_table(line, quiet=True):
+    connection_id = client_cache.get("connection")
+    db = connection_id
+    if "." in line:
+        db = line.split(".")[0]
+        line = line.split(".")[1]
+    index_type = get_index_type(db)
+    if index_type == "short_id_index":
+        db = match_line(client_cache["connections"]["id_index"], db)
+        index_type = "id_index"
+    if index_type == "id_index":
+        client_cache["connection"] = db
+    if client_cache.get("connections") is None:
+        show_connections(quiet=True)
+    if db is None:
+        logger.warn("please {} before desc table, or {} to get a valid result", "use db", "use db.table")
+        return
+
+    connection = client_cache["connections"][index_type][db]
+    connection_id = connection["id"]
+
+    if connection_id is None:
+        return
+
+    display_fields = get_table_fields(line, source=connection_id)
+    if not quiet:
+        print(json.dumps(display_fields, indent=2))
+
+
 class Connection:
     @help_decorate("__init__ method",
                    args="id or connection, connection can be a dict, or Object has a to_dict() method")
