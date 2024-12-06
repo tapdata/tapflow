@@ -255,7 +255,7 @@ def show_tables(source=None, quiet=False):
 
 # show datasources
 def show_dbs(quiet=True):
-    show_connections(quiet=quiet)
+    return show_connections(quiet=quiet)
 
 
 # show datasources
