@@ -69,13 +69,10 @@ class QuickDataSourceMigrateJob:
 
     def delete(self):
         ds = get_obj("datasource", self.__db__)
-        if ds is not None:
-            if ds.delete():
-                pass
-            else:
-                logger.fwarn("delete datasource {} fail, maybe some job is still use it", self.__db__)
-            return
-        logger.fwarn("datasource {} not found", self.__db__)
+        if ds and not ds.delete():
+            logger.fwarn("delete datasource {} fail, maybe some job is still use it", self.__db__)
+        elif not ds:
+            logger.fwarn("datasource {} not found", self.__db__)
 
 # object that can be operated by command
 op_object_command_class = {
@@ -218,38 +215,28 @@ def show_tables(source=None, quiet=False):
     tables = []
     each_line_table_count = 5
     each_line_tables = []
-    max_table_name_len = 0
-    for i in range(len(data)):
-        if "original_name" not in data[i]:
-            continue
-        if len(data[i]["original_name"]) > max_table_name_len:
-            max_table_name_len = len(data[i]["original_name"])
+    max_table_name_len = max(len(item["original_name"]) for item in data if "original_name" in item)
 
-    for i in range(len(data)):
-        if data[i]["meta_type"] == "database":
+    for i, item in enumerate(data):
+        if item.get("meta_type") == "database" or "original_name" not in item:
             continue
-        if "original_name" not in data[i]:
-            continue
-        tables.append(data[i])
-        client_cache["tables"][source]["name_index"][data[i]["original_name"]] = data[i]
-        client_cache["tables"][source]["id_index"][data[i]["id"]] = data[i]
-        client_cache["tables"][source]["number_index"][str(i)] = data[i]
+        tables.append(item)
+        client_cache["tables"][source]["name_index"][item["original_name"]] = item
+        client_cache["tables"][source]["id_index"][item["id"]] = item
+        client_cache["tables"][source]["number_index"][str(i)] = item
 
-        statement = source_name + "." + data[i]["original_name"] + "=" + '"' + source_name + "." + data[i][
-                "original_name"] + '"'
+        statement = f'{source_name}.{item["original_name"]}="{source_name}.{item["original_name"]}"'
         try:
             exec(statement, globals())
-        except Exception as e:
+        except Exception:
             pass
         if not quiet:
+            each_line_tables.append(pad(item["original_name"], max_table_name_len))
             if len(each_line_tables) == each_line_table_count:
-                logger.log("{} " * each_line_table_count, *each_line_tables,
-                           *["notice" for i in range(each_line_table_count)])
+                logger.log("{} " * each_line_table_count, *each_line_tables, *["notice"] * each_line_table_count)
                 each_line_tables = []
-            each_line_tables.append(pad(data[i]["original_name"], max_table_name_len))
-    if not quiet and len(each_line_tables) > 0:
-        logger.log("{} " * len(each_line_tables), *each_line_tables,
-                   *["notice" for i in range(len(each_line_tables))])
+    if not quiet and each_line_tables:
+        logger.log("{} " * len(each_line_tables), *each_line_tables, *["notice"] * len(each_line_tables))
     return tables
 
 
