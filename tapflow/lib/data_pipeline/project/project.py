@@ -10,6 +10,7 @@ from typing import List, Dict, Set, Union
 
 import yaml
 
+from tapflow.lib.data_pipeline.base_node import BaseNode
 from tapflow.lib.op_object import show_jobs
 from .projectInterface import ProjectInterface
 from tapflow.lib.utils.log import logger
@@ -121,28 +122,6 @@ class ProjectScheduler:
             
             self._waiting_events[flow.name] = waiting_events
             self._queue[depth].put(flow)
-    
-    def _event_initial_sync_start(self, flow: Flow, status: str, milestone: dict):
-        if milestone["SNAPSHOT"]["status"] == "RUNNING" and status == "running":
-            self._send_event(f"{flow.name}.start")
-            self._send_event(f"{flow.name}.initial_sync.start")
-
-    def _event_initial_sync_end(self, flow: Flow, status: str, milestone: dict):
-        if milestone["SNAPSHOT"]["status"] == "FINISH" and status == "running":
-            self._send_event(f"{flow.name}.start")
-            self._send_event(f"{flow.name}.initial_sync.start")
-            self._send_event(f"{flow.name}.initial_sync.end")
-
-    def _event_cdc_start(self, flow: Flow, status: str, milestone: dict):
-        if milestone["CDC"]["status"] == "FINISH" and status == "running":
-            self._send_event(f"{flow.name}.start")
-            self._send_event(f"{flow.name}.cdc.start")
-
-    def _event_cdc_end(self, flow: Flow, status: str, milestone: dict):
-        if milestone["CDC"]["status"] == "FINISH" and status == "complete":
-            self._send_event(f"{flow.name}.start")
-            self._send_event(f"{flow.name}.cdc.start")
-            self._send_event(f"{flow.name}.cdc.end")
 
     def _start_flow(self, flow: Flow, load_schema: bool=True) -> bool:
         """
@@ -150,9 +129,9 @@ class ProjectScheduler:
         1. 首先需要对前置任务的target进行loadSchema
         2. 然后启动flow并监听事件
         """
-        # if load_schema:
-            # logger.info("Loading schema for flow {}...", flow.name)
-            # flow.target.load_schema()
+        if load_schema:
+            logger.info("Loading schema for flow {}...", flow.name)
+            flow.target.load_schema()
         
         logger.info("Running flow {}...", flow.name)
         if flow.job is None or flow.job.id is None:
@@ -227,7 +206,7 @@ class ProjectScheduler:
             if status == "error":
                 current_events.add(f"{flow.name}.error")
             
-            # 批量发送新的事件
+            # 批量发送��的事件
             new_events = current_events - self._occurred_events
             for event in new_events:
                 self._send_event(event)
@@ -331,58 +310,70 @@ class Project(ProjectInterface):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
-
-    def scan(self, quiet=False) -> List[Flow]:
-        """
-        扫描当前路径下的所有 flow 文件，更新项目配置
-        """
-
-        if not quiet:
-            logger.info("Scanning all python scripts under {}", self.path)
-
-        # 当前目录及子目录中以.py结尾的path数组
-
-
+    
+    @property
+    def flow_files(self):
         flow_files = []
         for root, dirs, files in os.walk(self.path):
             for file in files:
                 if file.endswith(".py") and file not in self.exclude_path:
                     flow_files.append(os.path.join(root, file))
+        return flow_files
+    
+    class MethodOverride:
+        """
+        方法遮蔽
+        1. 禁用Flow和Pipeline的save和start方法
+        2. 禁用Flow和Pipeline的_check_source_exists方法
+        3. 禁用BaseNode的config方法, 防止当read_from不存在的表而报错
+        """
+        def __enter__(self):
+            self.origin_save = Flow.save
+            self.origin_start = Flow.start
+
+            self.origin_check_source_exists = Flow._check_source_exists
+
+            self.origin_config = BaseNode.config
+
+            Flow.save = lambda *args, **kwargs: None
+            Flow.start = lambda *args, **kwargs: None
+            Flow._check_source_exists = lambda *args, **kwargs: True
+
+            Pipeline.save = lambda *args, **kwargs: None
+            Pipeline.start = lambda *args, **kwargs: None
+            Pipeline._check_source_exists = lambda *args, **kwargs: True
+
+            BaseNode.config = lambda *args, **kwargs: True
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            Flow.save = self.origin_save
+            Flow.start = self.origin_start
+            Flow._check_source_exists = self.origin_check_source_exists
+
+            Pipeline.save = self.origin_save
+            Pipeline.start = self.origin_start
+            Pipeline._check_source_exists = self.origin_check_source_exists
+
+            BaseNode.config = self.origin_config
+    
+    def scan(self, quiet=False) -> List[Flow]:
+        """
+        扫描当前路径下的所有 flow 文件，更新项目配置
+        """
+        if not quiet:
+            logger.info("Scanning all python scripts under {}", self.path)
 
         if not quiet:
-            logger.info("{} TapFlow scripts found, running in alphebetic order: ", len(flow_files))
+            logger.info("{} TapFlow scripts found, running in alphebetic order: ", len(self.flow_files))
 
-        def disabled_method(*args, **kwargs):
-            pass
-
-        # 遮蔽 save 和 start 方法
-        original_flow_save = Flow.save
-        original_flow_start = Flow.start
-        original_pipeline_save = Pipeline.save
-        original_pipeline_start = Pipeline.start
-
-        Flow.save = disabled_method
-        Flow.start = disabled_method
-        Pipeline.save = disabled_method
-        Pipeline.start = disabled_method
-
-        try:
+        with self.MethodOverride():
             flows = []
-            for flow_file in flow_files:
+            for flow_file in self.flow_files:
                 if not quiet:
                     logger.info("Scanning {}...", flow_file)
                 module = self.load_module_from_file(flow_file)
-                # 获取module中所有Flow或者Pipeline的实例
                 flows.extend([getattr(module, name) for name in dir(module) if isinstance(getattr(module, name), (Flow, Pipeline))])
-            
             return flows
-
-        finally:
-            # 恢复原始方法
-            Flow.save = original_flow_save
-            Flow.start = original_flow_start
-            Pipeline.save = original_pipeline_save
-            Pipeline.start = original_pipeline_start
 
     @property
     def project_file_path(self):
@@ -473,7 +464,7 @@ class Project(ProjectInterface):
             os.remove(self.project_file_path)
 
     def delete_flows(self, _flows: List[Flow]=None, max_depth: int=5):
-        """删除flow，并检查是否存在未删除的任务，如果存在，递归删除，递归深度为5次"""
+        """删除flow, 并检查是否存在未删除的任务, 如果存在, 递归删除, 递归深度为5次"""
 
         if max_depth == 0:
             return
@@ -622,7 +613,7 @@ class Project(ProjectInterface):
     def save(self, quiet=False):
         """
         保存项目配置
-        根据当前项目配置生成.project文件，如果存在.project文件，则更新文件内容
+        根据当前项目配置生成.project文件, 如果存在.project文件, 则更新文件内容
         """
         self.checkNameNotNull()
         self.checkCronValid()
@@ -655,7 +646,7 @@ class Project(ProjectInterface):
         # 复制一份入度表,避免修改原始数据
         in_degree = self.dag_degree.copy()
         
-        # 使用拓扑排序检测是否存在环
+        # 使用拓��排序检测是否存在环
         queue = []
         # 找出所有入度为0的节点
         for flow_name, degree in in_degree.items():
