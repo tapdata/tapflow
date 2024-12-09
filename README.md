@@ -8,10 +8,19 @@ Currently a Python SDK and interative CLI shell(Tap Shell) is available in Previ
 
 You may use TapFlow for:
 
-- As a Kafka ETL alternative to build real time data pipelines
+- As a Kafka alternative to build real time data pipelines
 - Create a materialized view that is continuously refreshed
 - As Oracle Golden Date alternatie to replicate data between different databases
-- Speed up the query performance of your relational database by serving the data in a high performance data store
+- Feeding data into real time data warehouse / data lake
+- General purpose data ETL 
+
+## Why TapFlow
+
+- A framework designed for real time data pipelines
+- Sub-second low latency experience
+- Easy to develop Python language
+- Javascript UDF for complex processing
+- Built-in CDC connectors for popular databases
 
 
 ## Quick Start
