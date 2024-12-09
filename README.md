@@ -5,32 +5,49 @@ TapFlow is an API framework for TapData Live Data Platform. It provides a progra
 Currently a Python SDK and interative CLI shell(Tap Shell) is available in Preview mode. 
 
 ## Use cases
+
 You may use TapFlow for:
 
+- As a Kafka ETL alternative to build real time data pipelines
+- Create a materialized view that is continuously refreshed
+- As Oracle Golden Date alternatie to replicate data between different databases
 - Speed up the query performance of your relational database by serving the data in a high performance data store
-- Create a materialized view for publishing API
-- Create a wide table in data warehouse for fast analytics
-- As a Kafka ETL alternative to build real time ata pipelines
-- As Oracle Golden Date alternatie to sync data between different databases
+
 
 ## Quick Start
 
-🔔 **Prerequisite:** You have provisioned a TapData cluster. The easiest way is sign up a free cloud account from [TapData Cloud](https://cloud.tapdata.io).
+First, you need to have a TapData cluster ready if not already. You may choose one of the following methods:
+
+- Sign up a free account on [TapData Cloud](https://cloud.tapdata.io) - recommended option. 
+- Following this guide to install [Community Edition](https://docs.tapdata.io/installation/install-tapdata-community).
+- Contact us for an [Enterprise Edition](https://tapdata.mike-x.com/lV5o0?m=KwbD6vkbRUwcRNCo).
 
 
-1. Install the CLI utility Tap Shell, which comes with Python SDK/API
+After installing or sign up, you can install Tap Shell, a CLI utility that comes with Python SDK/API
 
  ```
 pip3 install tapcli
  ```
 
-2. Follow the on-screen instruction to configure the TapData Cluster
+Type 'tap' to enter into Tap Shell:
 
-3. Once you have installed and configured, follow these links to create your data pipelines
+```
+# tap
+```
+
+Follow the on-screen instruction to configure the connection to the TapData Cluster. 
+
+## Docs
+
+Read [TapFlow Docs](https://docs.tapdata.io/tapflow/) to learn more about how TapFlow can be used. 
+
+Here are some of the articles you may find useful:
 
 - [Quick start tutorial](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/quick-start)
 - [Build a continously updated materized view](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/tapflow-tutorial/build-real-time-wide-table)
 - [Tap Shell Command Reference](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/tapcli-reference)
+
+
 
 
 ## Get in touch
@@ -41,9 +58,9 @@ pip3 install tapcli
 
 ## Roadmap
 
-- Project support: where you can define a set of data flows and sequences of running
-- API publishing capability
-- Integration with 3rd party scheduler
+- Project/workflow support: running a set of data pipelines in coordination
+- Publish API 
+- Aggregation support
 - Java API/SDK
 
 
