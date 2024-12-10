@@ -1,77 +1,76 @@
-# TapFlow 命令行客户端使用文档
+## Overview
 
-## 安装
-1. 自行安装 python3, pip3, and ipython3 
-2. 运行 `pip3 install .` 安装客户端
+TapFlow is an API framework for TapData Live Data Platform. It provides a programmable interace to interact with TapData, such as managing replication pipelines, building wide tables/materialized views and perform general data integration tasks. 
 
-## 配置
-1. 编辑 etc/config.ini, 填写地址与鉴权信息, 其中:
+Currently a Python SDK and interative CLI shell(Tap Shell) is available in Preview mode. 
 
-如果访问的是企业版, 请填写两个信息:
-server: 企业版地址, 例如: 192.168.106.1:13030
-access_code: 企业版的鉴权 token
+## Use cases
 
-如果访问的是云版, 只需要填写鉴权信息即可, 包括:
-ak: access key
-sk: secret key
+You may use TapFlow for:
 
-## 运行
-1. 在完成安装后, 运行命令 `tapcli` 即可打开命令行客户端
+- As a Kafka alternative to build real time data pipelines
+- Create a materialized view that is continuously refreshed
+- As Oracle Golden Date alternatie to replicate data between different databases
+- Feeding data into real time data warehouse / data lake
+- General purpose data ETL 
 
-## 命令行模式使用手册
-### 查看基本连接与表信息
-0. 帮助
-`h`
+## Why TapFlow
 
-1. 列出所有数据源
-`show dbs`
-![](./docs/images/show_db.png)
+- A framework designed for real time data pipelines
+- Sub-second low latency experience
+- Easy to develop Python language
+- Javascript UDF for complex processing
+- Built-in CDC connectors for popular databases
 
-2. 切换到某个数据源, 并列出表
-`use $db` 后, `show tables`
-![](./docs/images/show_table.png)
 
-3. 探索表结构与表数据
-`desc $table` 查看表结构, `peek $table` 预览表数据
-![](./docs/images/desc_table.png)
+## Quick Start
 
-### 创建数据源
-1. 创建 MongoDB 数据源
+First, you need to have a TapData cluster ready if not already. You may choose one of the following methods:
+
+- Sign up a free account on [TapData Cloud](https://cloud.tapdata.io) - recommended option. 
+- Following this guide to install [Community Edition](https://docs.tapdata.io/installation/install-tapdata-community).
+- Contact us for an [Enterprise Edition](https://tapdata.mike-x.com/lV5o0?m=KwbD6vkbRUwcRNCo).
+
+
+After installing or sign up, you can install Tap Shell, a CLI utility that comes with Python SDK/API
+
+ ```
+pip3 install tapcli
+ ```
+
+Type 'tap' to enter into Tap Shell:
+
 ```
-m = DataSource("mongodb", name="mdb");
-m.host("127.0.0.1:27017").db("source").username("root").password("Gotapd8!").type("source").props("authSource=admin");
-m.save();
-```
-
-2. 创建 MySQL 数据源
-```
-m = DataSource("mysql", name="sql");
-m.host("127.0.0.1").port(3306).db("source").username("root").password("Gotapd8!");
-m.save();
+# tap
 ```
 
-### 配置与运行建模任务
-```python
-source = Source("qa_mongodb_repl_42240")
-order = Flow("left_join_demo").read_from(source.order).filter("order_time > 2024-01-02")
-def user_mapper(record):
-    record["user_id"] = str(record["user_id"])
-    return record
-order.lookup(source.user, path="user", type=dict, relation=[["user_id", "user_id"]], mapper=user_mapper, filter="user_id > 1", fields=["user_id", "user_name"])
-order.lookup(source.goods, path="goods", type=dict, relation=[["goods_id", "goods_id"]])
-order.write_to(source.order_view)
-order.start()
-```
+Follow the on-screen instruction to configure the connection to the TapData Cluster. 
 
-### 任务查看
-1. 列出任务: `show jobs`
-2. 查看任务状态: `status $job_name`
-3. 查看任务指标: `stats $job_name`
-4. 查看任务日志: `logs $job_name`
-5. 开始任务: `start $job_name`
-6. 停止任务: `stop $job_name`
-7. 删除任务: `delete $job_name`
+## Docs
 
-## 类库模式使用说明
-1. 引入依赖库
-`from tapflow.lib import *`
+Read [TapFlow Docs](https://docs.tapdata.io/tapflow/) to learn more about how TapFlow can be used. 
+
+Here are some of the articles you may find useful:
+
+- [Quick start tutorial](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/quick-start)
+- [Build a continously updated materized view](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/tapflow-tutorial/build-real-time-wide-table)
+- [Tap Shell Command Reference](https://deploy-preview-127--tapdata-en.netlify.app/tapflow/tapcli-reference)
+
+
+
+
+## Get in touch
+
+- [Send Email](mailto:team@tapdata.io)
+- [Slack channel](https://join.slack.com/t/tapdatacommunity/shared_invite/zt-1biraoxpf-NRTsap0YLlAp99PHIVC9eA)
+
+
+## Roadmap
+
+- Project/workflow support: running a set of data pipelines in coordination
+- Publish API 
+- Aggregation support
+- Java API/SDK
+
+
+ 
