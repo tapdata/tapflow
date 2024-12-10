@@ -182,11 +182,6 @@ class DataSourceApi(Api):
     url = "/Connections"
 
 
-class MetadataInstancesApi(Api):
-
-    url = "/MetadataInstances"
-
-
 class DataFlowsApi(Api):
 
     url = "/DataFlows"

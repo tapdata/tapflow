@@ -1,6 +1,7 @@
 import uuid
 import json
 
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.help_decorator import help_decorate
 from tapflow.lib.params.job import node_config, node_config_sync
 from tapflow.lib.utils.log import logger
@@ -159,26 +160,11 @@ class BaseNode:
         self.connection.test()
 
     def _getTableId(self, tableName):
-        payload = {
-            "where": {
-                "source.id": self.connectionId,
-                "meta_type": {"in": ["collection", "table", "view"]},
-                "is_deleted": False,
-                "original_name": tableName
-            },
-            "fields": {"id": True, "original_name": True, "fields": True},
-            "limit": 1
-        }
-        res = req.get("/MetadataInstances", params={"filter": json.dumps(payload)}).json()
-        table_id = None
-        for s in res["data"]["items"]:
-            if s["original_name"] == tableName:
-                table_id = s["id"]
-                break
+        table_id = MetadataInstanceApi(req).get_table_id(tableName, self.connectionId)
         if table_id is not None:
             self.primary_key = []
-            res = req.get("/MetadataInstances/" + table_id).json()
-            for field in res["data"]["fields"]:
+            fields = MetadataInstanceApi(req).get_fields_instance_by_id(table_id)
+            for field in fields:
                 if field.get("primaryKey", False):
                     self.primary_key.append(field["field_name"])
         return table_id

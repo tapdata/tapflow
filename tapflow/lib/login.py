@@ -4,6 +4,8 @@ import requests
 from tapflow.lib.request import set_req
 from tapflow.lib.utils.log import logger
 from tapflow.lib.cache import system_server_conf
+from tapflow.lib.backend_apis.common import LoginApi, UserInfo, LoginResult
+
 
 def login_with_access_code(server, access_code, interactive=True):
     if interactive:
@@ -11,41 +13,32 @@ def login_with_access_code(server, access_code, interactive=True):
         print(f"{datetime.now().strftime('%a %b %d %H:%M:%S CST %Y')} \033[36m Welcome to TapData Live Data Platform, Enjoy Your Data Trip ! \033[0m")
     req = set_req(server)
     api = "http://" + server + "/api"
-    res = req.post("/users/generatetoken", json={"accesscode": access_code})
-    if res.status_code != 200:
-        logger.fwarn("init get token request fail, err is: {}", res)
+    login_api = LoginApi(req)
+    login_result = login_api.login(access_code)
+    if login_result is None:
+        logger.fwarn("init get token request fail, err is: {}", login_result)
         return False
-    data = res.json()["data"]
-    token = data["id"]
-    user_id = data["userId"]
-    req.params = {"access_token": token}
-    res = req.get("/users")
-    if res.status_code != 200:
-        logger.fwarn("get user info by token fail, err is: {}", res.json())
+    user_info = login_api.get_user_info(login_result.token, login_result.user_id)
+    if user_info.username is None:
+        logger.fwarn("init get user info request fail", user_info)
         return False
-    username = None
-    users = res.json()["data"]["items"]
-    for user in users:
-        if user["id"] == user_id:
-            username = user.get("username", "")
-            break
-    if token is None:
-        return False
-    cookies = {"user_id": user_id}
+    req.params = {"access_token": login_result.token}
+    cookies = {"user_id": login_result.user_id}
     req.cookies = requests.cookies.cookiejar_from_dict(cookies)
-    ws_uri = "ws://" + server + "/ws/agent?access_token=" + token
+    ws_uri = "ws://" + server + "/ws/agent?access_token=" + login_result.token
     conf = {
         "api": api,
         "access_code": access_code,
-        "token": token,
-        "user_id": user_id,
-        "username": username,
+        "token": login_result.token,
+        "user_id": login_result.user_id,
+        "username": user_info.username,
         "cookies": cookies,
         "ws_uri": ws_uri,
-        "auth_param": "?access_token=" + token
+        "auth_param": "?access_token=" + login_result.token
     }
     system_server_conf.update(conf)
     return True
+
 
 def login_with_ak_sk(ak, sk, server=None, interactive=True):
     global req

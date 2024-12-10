@@ -4,6 +4,7 @@ from enum import Enum
 
 from requests import delete
 
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.request import req
 from tapflow.lib.cache import system_server_conf
 
@@ -352,7 +353,7 @@ class Job:
         job.update(self.dag.to_dict())
         # load schema
         if self.pipeline.target is not None:
-            res = req.get(f"/MetadataInstances/node/schema", params={"nodeId": self.pipeline.target.id}).json()
+            MetadataInstanceApi(req).load_schema(self.pipeline.target.id)
         if self.id is None:
             self._get()
         body = {
@@ -406,10 +407,10 @@ class Job:
                             })
                             time.sleep(10)
                             break
-                    schema_res = req.get("/MetadataInstances/node/schema?nodeId=" + s.id).json()
+                    schema = MetadataInstanceApi(req).load_schema(s.id)
                     node_schema = []
-                    if len(schema_res["data"]) > 0:
-                        fields = schema_res["data"][0]["fields"]
+                    if len(schema) > 0:
+                        fields = schema[0]["fields"]
                         for field in fields:
                             node_schema.append({
                                 "indicesUnique": field["unique"],
@@ -429,8 +430,8 @@ class Job:
                             "id": self.id,
                             "dag": self.job["dag"]
                         })
-                    res = req.get("/MetadataInstances/node/schemaPage?nodeId=" + s.id).json()
-                    if res["data"]["total"] == 1:
+                    res = MetadataInstanceApi(req).schema_page(s.id)
+                    if res["total"] == 1:
                         break
                     else:
                         logger.fwarn("discover schema failed for {} times, retrying, most 10 times", i)

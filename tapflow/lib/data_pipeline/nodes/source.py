@@ -4,6 +4,7 @@ import json
 import time
 
 import websockets
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.help_decorator import help_decorate
 from tapflow.lib.op_object import show_connections, show_tables
 from tapflow.lib.request import req
@@ -46,13 +47,7 @@ class Source(BaseNode):
         super().__init__(connection, table, table_re, mode=mode)
         try:
             if mode == "sync":
-                res = req.post("/MetadataInstances/metadata/v3", json={
-                    self.connectionId: {
-                        "metaType": "table",
-                        "tableNames": [table]
-                    }
-                }).json()
-                meta = list(res["data"].items())[0][1][0]
+                meta = MetadataInstanceApi(req).get_table_metadata(self.connectionId, table)
                 self.setting.update({
                     "previewQualifiedName": meta["qualifiedName"],
                     "previewTapTable": meta["tapTable"]

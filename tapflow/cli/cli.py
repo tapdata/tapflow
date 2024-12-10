@@ -4,6 +4,7 @@ import shlex
 import os, sys
 from os.path import expanduser
 
+from tapflow.lib.backend_apis.common import MdbInstanceAssignedApi
 from tapflow.lib.commands.api_command import ApiCommand
 from tapflow.lib.commands.op_object_command import OpObjectCommand
 from tapflow.lib.configuration.config import get_configuration_path, ConfigParser
@@ -23,9 +24,11 @@ from tapflow.lib.utils.log import logger
 from tapflow.lib.request import req
 from tapflow.lib.cache import client_cache
 from tapflow.lib.data_pipeline.nodes.sink import Sink
-
+from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.op_object import *
 from tapflow.lib.commands.show_command import ShowCommand
+from tapflow.lib.data_pipeline.pipeline import Pipeline, MView, Flow, _flows
+from tapflow.lib.data_pipeline.data_source import DataSource
 
 if not python_version().startswith("3"):
     print("python version must be 3.x, please install python3 before using tapdata cli")
@@ -37,14 +40,14 @@ os.environ["PROJECT_PATH"] = os.sep.join([os.path.dirname(os.path.abspath(__file
 
 
 def get_default_sink():
-    res = req.get("/mdb-instance-assigned")
-    if not res.status_code == 200 or not res.json().get("code") == "ok":
-        res = req.post("/mdb-instance-assigned/connection")
-        show_connections(quiet=True)
-        if not res.status_code == 200 or not res.json().get("code") == "ok":
+    mdb_instance_assigned_api = MdbInstanceAssignedApi(req)
+    connection_id = mdb_instance_assigned_api.get_mdb_instance_assigned()
+    if not connection_id:
+        connection_id = mdb_instance_assigned_api.create_mdb_instance_assigned()
+        if not connection_id:
             logger.fwarn("{}", "Failed to create default sink")
             return
-    connection_id = res.json().get("data", {}).get("connectionId")
+        show_connections(quiet=True)
     default_connection_name = client_cache["connections"]["id_index"][connection_id]["name"]
     global DEFAULT_SINK
     DEFAULT_SINK = Sink(default_connection_name)

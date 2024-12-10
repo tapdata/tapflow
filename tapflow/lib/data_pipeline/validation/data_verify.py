@@ -3,32 +3,18 @@ import uuid
 import time
 import urllib
 
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.request import req
 from tapflow.lib.cache import system_server_conf
 
 
 def get_table_pk(connection_id, table_name):
-    payload = {
-        "where": {
-            "source.id": connection_id,
-            "meta_type": {"in": ["collection", "table", "view"]},
-            "is_deleted": False,
-            "original_name": table_name
-        },
-        "fields": {"id": True, "original_name": True, "fields": True},
-        "limit": 1
-    }
-    res = req.get("/MetadataInstances", params={"filter": json.dumps(payload)}).json()
-    table_id = None
-    for s in res["data"]["items"]:
-        if s["original_name"] == table_name:
-            table_id = s["id"]
-            break
+    table_id = MetadataInstanceApi(req).get_table_id(table_name, connection_id)
     primary_key = []
     if table_id is not None:
-        res = req.get("/MetadataInstances/" + table_id).json()
-        for field in res["data"]["fields"]:
+        fields = MetadataInstanceApi(req).get_fields_value(table_id)
+        for field in fields:
             if field.get("primaryKey", False):
                 primary_key.append(field["field_name"])
     return primary_key

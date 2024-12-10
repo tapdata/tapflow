@@ -1,5 +1,8 @@
 import json
 
+from tapflow.lib.backend_apis.common import AgentApi
+from tapflow.lib.backend_apis.connections import ConnectionsApi
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.help_decorator import pad
 
@@ -208,9 +211,7 @@ def show_tables(source=None, quiet=False):
         )
         return
     source_name = client_cache["connections"]["id_index"][source]["name"]
-    f = {"where": {"source.id": source, "sourceType": "SOURCE", "is_deleted": False}, "limit": 999999}
-    res = req.get("/MetadataInstances", params={"filter": json.dumps(f)})
-    data = res.json()["data"]["items"]
+    data = MetadataInstanceApi(req).get_metadata_instance(source)
     client_cache["tables"][source] = {"name_index": {}, "id_index": {}, "number_index": {}}
     tables = []
     each_line_table_count = 5
@@ -250,20 +251,15 @@ def show_datasources():
     show_connections()
 
 def show_agents(quiet=True):
-    res = req.get("/agent").json()["data"]
-    total = 0
-    items = res["items"]
-    running_item = []
-    if not quiet:
-        for item in items:
-            if str(item["status"]).lower() == "running":
-                running_item.append(item)
+    running_agents = AgentApi(req).get_running_agents()
     print("="*120)
-    logger.info("TapData Cloud Service Running Agent: {}", len(running_item))
-    for item in running_item:
-        systeminfo = item.get("metric", {}).get("systemInfo", {})
+    if not quiet:
+        logger.info("TapData Cloud Service Running Agent: {}", len(running_agents))
+    for agent in running_agents:
+        systeminfo = agent.get("metric", {}).get("systemInfo", {})
         ip = systeminfo.get("ips", [""])[0]
-        logger.info("Agent name: {}, ip: {}, cpu usage: {}%", item["name"], ip, systeminfo.get("cpus"))
+        if not quiet:
+            logger.info("Agent name: {}, ip: {}, cpu usage: {}%", agent["name"], ip, systeminfo.get("cpus"))
 
 show_connections_last_time = 0
 # show connections
@@ -273,9 +269,7 @@ def show_connections(f=None, quiet=False):
     if show_connections_last_time + 1 > int(time.time()):
         return {}
     show_connections_last_time = int(time.time())
-    f = {"limit": 10000}
-    res = req.get("/Connections", params={"filter": json.dumps(f)})
-    data = res.json()["data"]["items"]
+    data = ConnectionsApi(req).get_connections(limit=10000)
     client_cache["connections"] = {"name_index": {}, "id_index": {}, "number_index": {}}
     if not quiet:
         logger.log(
