@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Tuple
 
 from .common import BaseBackendApi
@@ -106,7 +107,10 @@ class TaskApi(BaseBackendApi):
     
     def confirm_task(self, task_id: str, task: dict) -> Tuple[dict, bool]:
         res = self.req.patch(f"/Task/confirm/{task_id}", json=task)
-        return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"
+        ok = res.status_code == 200 and res.json()["code"] == "ok"
+        if ok:
+            return res.json()["data"], True
+        return None, False
 
     def start_task(self, task_id: str) -> Tuple[dict, bool]:
         res = self.req.put("/Task/batchStart", params={"taskIds": task_id})
@@ -114,4 +118,121 @@ class TaskApi(BaseBackendApi):
 
     def rename_task(self, task_id: str, new_name: str) -> Tuple[dict, bool]:
         res = self.req.patch(f"/Task/rename/{task_id}", params={"newName": new_name})
+        return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"
+    
+    def model_deduction(self, node_id: str, connection_id: str, node_config: dict) -> Tuple[dict, bool]:
+        """
+        模型推演
+        :param node_id: 节点id
+        :param connection_id: 连接id
+        :param node_config: 节点配置
+        :return: 推演结果, 是否成功
+        """
+        res = self.req.post("/proxy/call", json={
+            "className": "DiscoverSchemaService",
+            "method": "discoverSchema",
+            "nodeId": node_id,
+            "args": [
+                connection_id,
+                node_config,
+            ]
+        })
+        return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"
+    
+    def get_task_measurement(self, task_id: str, task_record_id: str) -> dict:
+        payload = {
+            "totalData": {
+                "uri": "/api/measurement/query/v2",
+                "param": {
+                    "startAt": int(time.time() * 1000)-300000,
+                    "endAt": int(time.time() * 1000),
+                    "samples": {
+                        "data": {
+                            "endAt": int(time.time() * 1000),
+                            "fields": [
+                                "inputInsertTotal",
+                                "inputUpdateTotal",
+                                "inputDeleteTotal",
+                                "inputDdlTotal",
+                                "inputOthersTotal",
+                                "outputInsertTotal",
+                                "outputUpdateTotal",
+                                "outputDeleteTotal",
+                                "outputDdlTotal",
+                                "outputOthersTotal",
+                                "tableTotal",
+                                "createTableTotal",
+                                "snapshotTableTotal",
+                                "initialCompleteTime",
+                                "sourceConnection",
+                                "targetConnection",
+                                "snapshotDoneAt",
+                                "snapshotRowTotal",
+                                "snapshotInsertRowTotal",
+                                "inputQps",
+                                "outputQps",
+                                "currentSnapshotTableRowTotal",
+                                "currentSnapshotTableInsertRowTotal",
+                                "replicateLag",
+                                "snapshotStartAt",
+                                "snapshotTableTotal",
+                                "currentEventTimestamp",
+                                "snapshotDoneCost",
+                                "outputQpsMax",
+                                "outputQpsAvg",
+                                "lastFiveMinutesQps"
+                            ],
+                            "tags": {
+                                "taskId": task_id,
+                                "taskRecordId": task_record_id,
+                                "type": "task"
+                            },
+                            "type": "instant",
+                        }
+                    }
+                }
+            }
+        }
+        res = self.req.post("/measurement/batch", json=payload, timeout=3)
+        return res.json()["data"] if res.status_code == 200 and res.json()["code"] == "ok" else None
+    
+    def get_task_logs(self, level: str, limit: int, task_id: str, task_record_id: str, start: int, end: int) -> Tuple[list, bool]:
+        """
+        获取任务日志
+        :param level: 日志级别
+        :param limit: 日志数量
+        :param task_id: 任务id
+        :param task_record_id: 任务记录id
+        :param start: 开始时间
+        :param end: 结束时间
+        :return: 日志列表, 是否成功
+        """
+        payload = {
+            "levels": [level],
+            "order": "desc",
+            "page": 1,
+            "pageSize": limit,
+            "taskId": task_id,
+            "taskRecordId": task_record_id,
+            "start": start,
+            "end": end
+        }
+        res = self.req.post("/MonitoringLogs/query", json=payload)
+        return res.json()["data"] if res.status_code == 200 and res.json()["code"] == "ok" else [], res.status_code == 200 and res.json()["code"] == "ok"
+    
+    def task_preview(self, task: dict) -> Tuple[dict, bool]:
+        """
+        任务预览
+        :param task: 任务
+        :return: 预览结果, 是否成功
+        """
+        res = self.req.post("/proxy/call", json={
+            "className": "TaskPreviewService",
+            "method": "preview",
+            "args": [
+                json.dumps(task),
+                None,
+                1
+            ]
+        })
         return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"

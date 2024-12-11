@@ -322,15 +322,7 @@ class Job:
                 for i in range(10):
                     nodeConfig = s.setting["nodeConfig"]
                     nodeConfig["nodeId"] = s.id
-                    res = req.post("/proxy/call", json={
-                        "className": "DiscoverSchemaService",
-                        "method": "discoverSchema",
-                        "nodeId": s.id,
-                        "args": [
-                            s.connectionId,
-                            nodeConfig,
-                        ]
-                    })
+                    self.task_api.model_deduction(s.id, s.connectionId, nodeConfig)
                     new_dag = self.job["dag"]
                     for node in new_dag["nodes"]:
                         if node["id"] == s.id:
@@ -540,69 +532,16 @@ class Job:
             finally:
                 return None
 
-        payload = {
-            "totalData": {
-                "uri": "/api/measurement/query/v2",
-                "param": {
-                    "startAt": int(time.time() * 1000)-300000,
-                    "endAt": int(time.time() * 1000),
-                    "samples": {
-                        "data": {
-                            "endAt": int(time.time() * 1000),
-                            "fields": [
-                                "inputInsertTotal",
-                                "inputUpdateTotal",
-                                "inputDeleteTotal",
-                                "inputDdlTotal",
-                                "inputOthersTotal",
-                                "outputInsertTotal",
-                                "outputUpdateTotal",
-                                "outputDeleteTotal",
-                                "outputDdlTotal",
-                                "outputOthersTotal",
-                                "tableTotal",
-                                "createTableTotal",
-                                "snapshotTableTotal",
-                                "initialCompleteTime",
-                                "sourceConnection",
-                                "targetConnection",
-                                "snapshotDoneAt",
-                                "snapshotRowTotal",
-                                "snapshotInsertRowTotal",
-                                "inputQps",
-                                "outputQps",
-                                "currentSnapshotTableRowTotal",
-                                "currentSnapshotTableInsertRowTotal",
-                                "replicateLag",
-                                "snapshotStartAt",
-                                "snapshotTableTotal",
-                                "currentEventTimestamp",
-                                "snapshotDoneCost",
-                                "outputQpsMax",
-                                "outputQpsAvg",
-                                "lastFiveMinutesQps"
-                            ],
-                            "tags": {
-                                "taskId": self.id,
-                                "taskRecordId": data["taskRecordId"],
-                                "type": "task"
-                            },
-                            "type": "instant",
-                        }
-                    }
-                }
-            }
-        }
-        for i in range(5):
+        for _ in range(5):
             try:
-                res = req.post("/measurement/batch", json=payload, timeout=3).json()
+                measurement = self.task_api.get_task_measurement(self.id, data["taskRecordId"])
                 break
             except Exception as e:
                 time.sleep(1)
         job_stats = JobStats()
         try:
-            if len(res["data"]["totalData"]["data"]["samples"]["data"]) > 0:
-                stats = res["data"]["totalData"]["data"]["samples"]["data"][0]
+            if len(measurement["totalData"]["data"]["samples"]["data"]) > 0:
+                stats = measurement["totalData"]["data"]["samples"]["data"][0]
                 job_stats.qps = stats.get("outputQps", 0)
                 job_stats.total = stats.get("tableTotal", 0)
                 job_stats.input_insert = stats.get("inputInsertTotal", 0)
@@ -639,24 +578,13 @@ class Job:
     def logs(self, res=None, limit=100, level="info", t=30, tail=False, quiet=True):
         logs = []
         data = self.task_api.get_task_by_id(self.id)
-        res = req.post("/MonitoringLogs/query", json={
-            "levels": [level],
-            "order": "desc",
-            "page": 1,
-            "pageSize": limit,
-            "taskId": self.id,
-            "taskRecordId": data["taskRecordId"],
-            "start": int(time.time()*1000)-3600*100000,
-            "end": int(time.time()*1000)
-        })
-        if res.status_code != 200:
-            return logs
-        if res.json()["code"] != "ok":
+        logs, ok = self.task_api.get_task_logs(level, limit, self.id, data["taskRecordId"], int(time.time()*1000)-3600*100000, int(time.time()*1000))
+        if not ok:
             return logs
         if not quiet:
-            for item in res.json()["data"]["items"]:
+            for item in logs["items"]:
                 print(item)
-        return res.json()["data"]["items"]
+        return logs["items"]
 
     def find_final_target(self):
         targets = []
@@ -685,31 +613,24 @@ class Job:
 
 
     def preview(self, quiet=True):
-        final_target = self.find_final_target()
+        final_target = self.dag.get_target_node()
+        final_target_ids = [] if final_target is None else [final_target.id]
         start_time = time.time()
         self.job.update({"id": self.id})
-        res = req.post("/proxy/call", json={
-            "className": "TaskPreviewService",
-            "method": "preview",
-            "args": [
-                json.dumps(self.job),
-                None,
-                1
-            ]
-        }).json()
+        data, ok = self.task_api.task_preview(self.job)
+        if not ok:
+            logger.warn("{}", "preview failed")
+            return
         if not quiet:
             logger.info("preview view took {} ms", int((time.time() - start_time)*1000))
-        if "code" not in res or res["code"] != "ok":
-            return
 
-        data = res["data"]
         nodeResult = data.get("nodeResult", {})
         if not quiet:
             for k, v in nodeResult.items():
-                if len(self.dag.node_map) == 1:
+                if len(nodeResult) == 1 or len(self.dag.node_map) == 1:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
                     continue
-                if k in final_target:
+                if k in final_target_ids:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
         return nodeResult
 

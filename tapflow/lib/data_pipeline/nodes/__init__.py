@@ -49,7 +49,8 @@ def get_node_instance(node_dict: dict) -> BaseNode:
             batchReadThreadSize = node_dict.get("nodeConfig", {}).get("batchReadThreadSize")
             maximumQueueSize = node_dict.get("nodeConfig", {}).get("maximumQueueSize")
             writeBatchSize = node_dict.get("writeBatchSize")
-            if skipDeletedEventsOnFilling is None and batchReadThreadSize is None and maximumQueueSize is None and writeBatchSize is not None:
+            updateConditionFields = node_dict.get("updateConditionFields")
+            if updateConditionFields is not None or (skipDeletedEventsOnFilling is None and batchReadThreadSize is None and maximumQueueSize is None and writeBatchSize is not None):
                 return Sink.to_instance(node_dict)
             else:
                 return Source.to_instance(node_dict)
