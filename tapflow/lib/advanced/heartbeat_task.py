@@ -1,13 +1,12 @@
 import json
 
+from tapflow.lib.backend_apis.task import TaskApi
 from tapflow.lib.request import req
 from tapflow.lib.data_pipeline.pipeline import Pipeline
 
 
 def list_heartbeat_tasks():
-    filter_param = {"order": "createTime DESC", "limit": 1000, "skip": 0, "where": {"syncType": "connHeartbeat"}}
-    res = req.get("/Task", params={"filter": json.dumps(filter_param)})
-    return res.json()["data"]["items"]
+    return TaskApi(req).list_heartbeat_tasks()
 
 
 def reset_heartbeat_tasks():

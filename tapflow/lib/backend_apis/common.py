@@ -1,3 +1,4 @@
+import json
 from tapflow.lib.request import RequestSession
 from tapflow.lib.utils.log import logger
 
@@ -72,3 +73,29 @@ class AgentApi(BaseBackendApi):
     def get_running_agents(self) -> list:
         agents = self.get_all_agents()
         return [agent for agent in agents if str(agent.get("status")).lower() == "running"]
+    
+
+class DatabaseTypesApi(BaseBackendApi):
+
+    def get_all_connectors(self) -> list:
+        res = self.req.get("/DatabaseTypes/getDatabases", params={"filter": json.dumps({"where":{"tag":"All","authentication":"All"},"order":"name ASC"})})
+        return res.json().get("data", {})
+
+
+class LogCollectorApi(BaseBackendApi):
+
+    def get_all_log_collectors(self) -> list:
+        res = self.req.get("/logcollector")
+        items = res.json().get("data", {}).get("items", [])
+        return items
+
+
+class ShareCacheApi(BaseBackendApi):
+
+    def get_all_share_caches(self) -> list:
+        res = self.req.get("/shareCache")
+        return res.json().get("data", {}).get("items", [])
+    
+    def create_share_cache(self, data: dict) -> dict:
+        res = self.req.post("/shareCache", json=data)
+        return res.json().get("data", {})

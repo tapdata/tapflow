@@ -1,8 +1,9 @@
 import json
 
-from tapflow.lib.backend_apis.common import AgentApi
+from tapflow.lib.backend_apis.common import AgentApi, DatabaseTypesApi
 from tapflow.lib.backend_apis.connections import ConnectionsApi
 from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
+from tapflow.lib.backend_apis.task import TaskApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.help_decorator import pad
 
@@ -313,8 +314,7 @@ def show_connections(f=None, quiet=False):
 
 # show all connectors
 def show_connectors(quiet=True):
-    res = req.get("/DatabaseTypes/getDatabases", params={"filter": json.dumps({"where":{"tag":"All","authentication":"All"},"order":"name ASC"})})
-    data = res.json()["data"]
+    data = DatabaseTypesApi(req).get_all_connectors()
     o=0
     for i in range(len(data)):
         o += 1
@@ -336,26 +336,7 @@ def show_connectors(quiet=True):
 
 
 def get_all_jobs():
-    f = {
-        "limit": 10000,
-        "fields": {
-            "syncType": True,
-            "id": True,
-            "name": True,
-            "status": True,
-            "last_updated": True,
-            "createTime": True,
-            "user_id": True,
-            "startTime": True,
-            "agentId": True,
-            "statuses": True,
-            "type": True,
-            "desc": True
-        }
-    }
-    res = req.get("/Task", params={"filter": json.dumps(f)})
-    data = res.json()["data"]["items"]
-    return data
+    return TaskApi(req).get_all_tasks()
 
 
 # show all jobs

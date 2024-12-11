@@ -183,7 +183,7 @@ class Connection:
     @help_decorate("get a connection, by it's id or name", args="id or name, using kargs",
                    res="a connection/None if not exists, Connection")
     def get(id=None, name=None):
-        return ConnectionsApi(req).get_connection(id=id, name=name)
+        return ConnectionsApi(req).get_connection(connection_id=id, connection_name=name)
 
     @help_decorate("test a connection", res="whether connection valid, bool")
     def test(self):

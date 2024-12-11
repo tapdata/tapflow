@@ -1,3 +1,4 @@
+from tapflow.lib.backend_apis.common import ShareCacheApi
 from tapflow.lib.request import req
 from tapflow.lib.connections.connection import get_table_fields
 from tapflow.lib.op_object import get_connection
@@ -7,10 +8,7 @@ from tapflow.lib.data_pipeline.pipeline import Pipeline
 
 
 def list_share_cache_tasks():
-    res = req.get("/shareCache")
-    data = res.json()["data"]
-    items = data["items"] if "items" in data else []  # oss 版本返回没有items
-    return items
+    return ShareCacheApi(req).get_all_share_caches()
 
 
 def clean_share_cache_tasks():
@@ -26,8 +24,7 @@ def clean_share_cache_tasks():
 
 class ShareCache:
     def list(self):
-        res = req.get("/shareCache")
-        return res.json()["data"]["items"]
+        return ShareCacheApi(req).get_all_share_caches()
 
     def __init__(self, name, connection_name, table_name, fields, cache_keys, max_memory, external_storage_type):
         caches = self.list()
@@ -86,10 +83,10 @@ class ShareCache:
     def save(self):
         if self.id is not None:
             return True
-        res = req.post("/shareCache", json=self.data)
-        if res.status_code != 200:
+        res = ShareCacheApi(req).create_share_cache(self.data)
+        if not res:
             return False
-        self.id = res.json()["data"]["id"]
+        self.id = res.get("id")
         self.job = Job(id=self.id)
         return True
 
