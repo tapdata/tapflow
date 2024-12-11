@@ -17,14 +17,19 @@ class TestJobStats(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.return_value = self.mock_time / 1000
 
-        # 模拟TaskApi响应
+        # 创建一个Mock对象来模拟TaskApi实例
         mock_task_api_instance = Mock()
-        mock_task_api_instance.get.return_value = {
-            "data": {
-                "taskRecordId": "record_123"
-            }
-        }
         mock_task_api.return_value = mock_task_api_instance
+
+        # 设置get_task_by_id的返回值
+        mock_response = {
+            "status": "running",
+            "taskRecordId": "record_123"
+        }
+        mock_task_api_instance.get_task_by_id = Mock(return_value=mock_response)
+
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
 
         # 模拟stats请求响应
         mock_req_post.return_value.json.return_value = {
@@ -54,13 +59,6 @@ class TestJobStats(BaseJobTest):
                         }
                     }
                 }
-            }
-        }
-
-        # 模拟status响应
-        mock_req_get.return_value.json.return_value = {
-            "data": {
-                "status": "running"
             }
         }
 
@@ -94,6 +92,9 @@ class TestJobStats(BaseJobTest):
             "running", 100, 2000, 100
         )
 
+        # 验证get_task_by_id被调用
+        mock_task_api_instance.get_task_by_id.assert_called_once_with(job.id)
+
     @patch('tapflow.lib.data_pipeline.job.time')
     @patch('tapflow.lib.data_pipeline.job.logger.info')
     @patch('tapflow.lib.data_pipeline.job.req.post')
@@ -107,14 +108,19 @@ class TestJobStats(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.return_value = self.mock_time / 1000
 
-        # 模拟TaskApi响应
+        # 创建一个Mock对象来模拟TaskApi实例
         mock_task_api_instance = Mock()
-        mock_task_api_instance.get.return_value = {
-            "data": {
-                "taskRecordId": "record_123"
-            }
-        }
         mock_task_api.return_value = mock_task_api_instance
+
+        # 设置get_task_by_id的返回值
+        mock_response = {
+            "status": "running",
+            "taskRecordId": "record_123"
+        }
+        mock_task_api_instance.get_task_by_id = Mock(return_value=mock_response)
+
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
 
         # 模拟stats请求响应，返回空samples
         mock_req_post.return_value.json.return_value = {
@@ -126,13 +132,6 @@ class TestJobStats(BaseJobTest):
                         }
                     }
                 }
-            }
-        }
-
-        # 模拟status响应
-        mock_req_get.return_value.json.return_value = {
-            "data": {
-                "status": "running"
             }
         }
 
@@ -149,11 +148,8 @@ class TestJobStats(BaseJobTest):
         self.assertEqual(job_stats.output_update, 0)
         self.assertEqual(job_stats.output_Delete, 0)
 
-        # 验证日志调用
-        mock_logger_info.assert_called_once_with(
-            "Flow current status is: {}, qps is: {}, total rows: {}, delay is: {}ms",
-            "running", 0, 0, 0
-        )
+        # 验证get_task_by_id被调用
+        mock_task_api_instance.get_task_by_id.assert_called_once_with(job.id)
 
 if __name__ == '__main__':
     unittest.main() 

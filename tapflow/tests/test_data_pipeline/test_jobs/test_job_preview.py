@@ -16,6 +16,20 @@ class TestJobPreview(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.side_effect = [0, 1]  # 开始时间和结束时间
 
+        # 设置job的必要属性
+        job.job = {
+            "id": "test_job_id",
+            "name": "test_job",
+            "dag": {"nodes": [], "edges": []},
+            "syncType": "migrate"
+        }
+        
+        # 创建mock dag对象
+        mock_dag = Mock()
+        mock_dag.node_map = {"node1": {"id": "node1"}}
+        mock_dag.dag = {"nodes": [], "edges": []}
+        job.dag = mock_dag
+
         # 模拟find_final_target返回值
         job.find_final_target = Mock(return_value=["target_node_1"])
 
@@ -76,6 +90,20 @@ class TestJobPreview(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.side_effect = [0, 1]
 
+        # 设置job的必要属性
+        job.job = {
+            "id": "test_job_id",
+            "name": "test_job",
+            "dag": {"nodes": [], "edges": []},
+            "syncType": "migrate"
+        }
+        
+        # 创建mock dag对象
+        mock_dag = Mock()
+        mock_dag.node_map = {"node1": {"id": "node1"}}
+        mock_dag.dag = {"nodes": [], "edges": []}
+        job.dag = mock_dag
+
         # 模拟find_final_target返回值
         job.find_final_target = Mock(return_value=["target_node_1"])
 
@@ -104,6 +132,20 @@ class TestJobPreview(BaseJobTest):
         # 创建Job实例
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.side_effect = [0, 1]
+
+        # 设置job的必要属性
+        job.job = {
+            "id": "test_job_id",
+            "name": "test_job",
+            "dag": {"nodes": [], "edges": []},
+            "syncType": "migrate"
+        }
+        
+        # 创建mock dag对象
+        mock_dag = Mock()
+        mock_dag.node_map = {"node1": {"id": "node1"}}
+        mock_dag.dag = {"nodes": [], "edges": []}
+        job.dag = mock_dag
 
         # 模拟find_final_target返回值
         job.find_final_target = Mock(return_value=["target_node_1"])

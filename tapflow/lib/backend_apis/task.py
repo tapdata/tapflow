@@ -103,4 +103,15 @@ class TaskApi(BaseBackendApi):
                 task["id"] = task_id
                 return self.update_task(task), True
         return res.json(), False
+    
+    def confirm_task(self, task_id: str, task: dict) -> Tuple[dict, bool]:
+        res = self.req.patch(f"/Task/confirm/{task_id}", json=task)
+        return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"
 
+    def start_task(self, task_id: str) -> Tuple[dict, bool]:
+        res = self.req.put("/Task/batchStart", params={"taskIds": task_id})
+        return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"
+
+    def rename_task(self, task_id: str, new_name: str) -> Tuple[dict, bool]:
+        res = self.req.patch(f"/Task/rename/{task_id}", params={"newName": new_name})
+        return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"

@@ -17,12 +17,15 @@ class TestJobLogs(BaseJobTest):
 
         # 模拟TaskApi响应
         mock_task_api_instance = Mock()
-        mock_task_api_instance.get.return_value = {
-            "data": {
-                "taskRecordId": "record_123"
-            }
+        mock_task_api_instance.get_task_by_id.return_value = {
+            "id": "test_job_id",
+            "taskRecordId": "record_123"
         }
         mock_task_api.return_value = mock_task_api_instance
+
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
+        job.id = "test_job_id"  # 确保设置了正确的 id
 
         # 模拟logs请求响应
         mock_req_post.return_value.status_code = 200

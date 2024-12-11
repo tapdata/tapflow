@@ -47,6 +47,7 @@ class TestJobOperations(BaseJobTest):
         mock_status.return_value = "stopped"
         
         # 模拟patch请求成功
+        mock_patch.return_value.status_code = 200
         mock_patch.return_value.json.return_value = {"code": "ok"}
         
         result = job.reset(quiet=False)
@@ -188,7 +189,7 @@ class TestJobOperations(BaseJobTest):
         mock_time.time.side_effect = [0, 1]  # 确保不会超时
         
         # 模拟任务状态
-        mock_status.side_effect = ["running", "stopping"]  # 第一次是running，第二���是stopping
+        mock_status.side_effect = ["running", "stopping"]  # 第一次是running，第二次是stopping
         
         result = job.stop(sync=False, quiet=False)  # 设置sync=False
         

@@ -4,6 +4,7 @@ from enum import Enum
 
 from requests import delete
 
+from tapflow.lib.backend_apis.common import AgentApi
 from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.request import req
 from tapflow.lib.cache import system_server_conf
@@ -81,6 +82,8 @@ class Job:
         self.validateConfig = None
         self.id = None
         self.pipeline = pipeline
+        self.task_api = TaskApi(req)
+        
         # 如果id是24位, 则认为是短id, 否则认为是长id, 短id直接获取, 长id通过op_object获取
         # 如果name不为空, 则通过name获取id, dataflow -> job
         if id is not None and len(id) == 24:
@@ -99,7 +102,7 @@ class Job:
         else:
             self.dag = pipeline.dag
         self.name = name
-        self.task_api = TaskApi(req)
+        self.agent_api = AgentApi(req)
 
     @staticmethod
     def list():
@@ -379,13 +382,12 @@ class Job:
                         break
                     else:
                         logger.fwarn("discover schema failed for {} times, retrying, most 10 times", i)
-        res = req.patch(f"/Task/confirm/{self.id}", json=self.job)
-        res = res.json()
-        if res["code"] != "ok":
-            logger.fwarn("save failed {}", res)
+        data, ok = self.task_api.confirm_task(self.id, self.job)
+        if not ok:
+            logger.warn("save failed {}", data)
             return False
-        self.job = res["data"]
-        self.setting = res["data"]
+        self.job = data
+        self.setting = data
         return True
 
     def start(self, quiet=True):
@@ -407,14 +409,14 @@ class Job:
             return False
         # 等推演, 10s
         time.sleep(3)
-        res = req.put("/Task/batchStart", params={"taskIds": self.id}).json()
-        if res["code"] != "ok":
+        data, ok = self.task_api.start_task(self.id)
+        if not ok:
             if not quiet:
                 logger.warn("{}", "Task start failed")
             return False
         try:
-            if res["data"][0]["code"] == "Task.ScheduleLimit":
-                logger.warn("{}", res["data"][0]["message"])
+            if isinstance(data, list) and len(data) > 0 and data[0].get("code") == "Task.ScheduleLimit":
+                logger.warn("{}", data[0].get("message", "Schedule limit reached"))
                 return False
         except Exception as e:
             pass
@@ -427,18 +429,24 @@ class Job:
 
     def status(self, res=None, quiet=True):
         if res is None:
-            res = req.get("/Task/" + self.id).json()
-        status = res["data"]["status"]
+            data = self.task_api.get_task_by_id(self.id)
+            if data is None:
+                logger.warn("failed to get job status")
+                return None
+        else:
+            data = res
+        
+        status = data["status"]
         if not quiet:
             logger.info("job status is: {}", status)
         return status
 
     def get_milestone_step(self, res=None, quiet=True):
         if res is None:
-            res = req.get("/Task/" + self.id).json()
-        data: dict = res.get("data")
+            data = self.task_api.get_task_by_id(self.id)
+            if data is None:
+                return None
         status = data.get("status")
-        # status = res["data"]["status"]
         if status not in [JobStatus.running, JobStatus.scheduled, JobStatus.wait_run]:
             raise ValueError(f"Task status error: {status}")
         sync_status = data.get("syncStatus")
@@ -510,25 +518,28 @@ class Job:
 
     def get_sub_task_ids(self):
         sub_task_ids = []
-        res = req.get("/Task/" + self.id).json()
-        statuses = res["data"]["statuses"]
+        data = self.task_api.get_task_by_id(self.id)
+        statuses = data["data"]["statuses"]
         jobStats = JobStats()
         for subTask in statuses:
             sub_task_ids.append(subTask["id"])
         return sub_task_ids
 
     def stats(self, res=None, quiet=True):
-        data = TaskApi().get(self.id)["data"]
+        data = self.task_api.get_task_by_id(self.id)
+        if data is None:
+            logger.warn("failed to get job stats")
+            return None
         if data.get("taskRecordId") is None:
             try:
-                res = req.get("/agent").json()
-                if res.get("code") == "ok":
-                    if res["data"]["total"] == 0 or "Running" not in [item["status"] for item in res["data"]["items"]]:
-                        logger.warn("No agent {}, skip stats", "Running")
+                agents = self.agent_api.get_running_agents()
+                if len(agents) == 0:
+                    logger.warn("No agent {}, skip stats", "Running")
             except Exception as e:
                 pass
             finally:
                 return None
+
         payload = {
             "totalData": {
                 "uri": "/api/measurement/query/v2",
@@ -617,16 +628,17 @@ class Job:
         except Exception as e:
             print(__file__, e)
             pass
-
-        job_status = self.status(quiet=True)
+        
+        job_status = data["status"]
         if not quiet:
-            logger.info("Flow current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
+            logger.info("Flow current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", 
+                       job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
 
         return job_stats
 
     def logs(self, res=None, limit=100, level="info", t=30, tail=False, quiet=True):
         logs = []
-        data = TaskApi().get(self.id)["data"]
+        data = self.task_api.get_task_by_id(self.id)
         res = req.post("/MonitoringLogs/query", json={
             "levels": [level],
             "order": "desc",
@@ -801,8 +813,8 @@ class Job:
     def rename(self, new_name=None):
         if new_name is None:
             raise ValueError("The new name cannot be empty")
-        response = req.patch("/task/rename/"+self.id+"?newName=" + new_name).json()
-        if response["code"] != "ok":
-            logger.ferror("Task rename failed: {}", response)
+        data, ok = self.task_api.rename_task(self.id, new_name)
+        if not ok:
+            logger.ferror("Task rename failed: {}", data)
             return
-        logger.finfo("Task rename succeed: {}", response)
+        logger.finfo("Task rename to {} succeed", new_name)
