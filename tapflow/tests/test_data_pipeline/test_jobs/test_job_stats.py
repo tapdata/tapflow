@@ -28,39 +28,38 @@ class TestJobStats(BaseJobTest):
         }
         mock_task_api_instance.get_task_by_id = Mock(return_value=mock_response)
 
-        # 重新设置job的task_api
-        job.task_api = mock_task_api_instance
-
-        # 模拟stats请求响应
-        mock_req_post.return_value.json.return_value = {
-            "data": {
-                "totalData": {
-                    "data": {
-                        "samples": {
-                            "data": [{
-                                "outputQps": 100,
-                                "tableTotal": 10,
-                                "inputInsertTotal": 1000,
-                                "inputUpdateTotal": 200,
-                                "inputDeleteTotal": 50,
-                                "outputInsertTotal": 1000,
-                                "outputUpdateTotal": 200,
-                                "outputDeleteTotal": 50,
-                                "snapshotDoneAt": 1234567890,
-                                "snapshotStartAt": 1234567000,
-                                "inputQps": 90,
-                                "outputQpsAvg": 95,
-                                "outputQpsMax": 150,
-                                "snapshotRowTotal": 2000,
-                                "replicateLag": 100,
-                                "snapshotTableTotal": 8,
-                                "lastFiveMinutesQps": 98
-                            }]
-                        }
+        # 设置get_task_measurement的返回值
+        mock_measurement = {
+            "totalData": {
+                "data": {
+                    "samples": {
+                        "data": [{
+                            "outputQps": 100,
+                            "tableTotal": 10,
+                            "inputInsertTotal": 1000,
+                            "inputUpdateTotal": 200,
+                            "inputDeleteTotal": 50,
+                            "outputInsertTotal": 1000,
+                            "outputUpdateTotal": 200,
+                            "outputDeleteTotal": 50,
+                            "snapshotDoneAt": 1234567890,
+                            "snapshotStartAt": 1234567000,
+                            "inputQps": 90,
+                            "outputQpsAvg": 95,
+                            "outputQpsMax": 150,
+                            "snapshotRowTotal": 2000,
+                            "replicateLag": 100,
+                            "snapshotTableTotal": 8,
+                            "lastFiveMinutesQps": 98
+                        }]
                     }
                 }
             }
         }
+        mock_task_api_instance.get_task_measurement = Mock(return_value=mock_measurement)
+
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
 
         job_stats = job.stats(quiet=False)
 
@@ -92,8 +91,9 @@ class TestJobStats(BaseJobTest):
             "running", 100, 2000, 100
         )
 
-        # 验证get_task_by_id被调用
+        # 验证get_task_by_id和get_task_measurement被调用
         mock_task_api_instance.get_task_by_id.assert_called_once_with(job.id)
+        mock_task_api_instance.get_task_measurement.assert_called_once_with(job.id, "record_123")
 
     @patch('tapflow.lib.data_pipeline.job.time')
     @patch('tapflow.lib.data_pipeline.job.logger.info')

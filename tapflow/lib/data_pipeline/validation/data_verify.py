@@ -3,6 +3,7 @@ import uuid
 import time
 import urllib
 
+from tapflow.lib.backend_apis.dataVerify import DataVerifyApi
 from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.request import req
@@ -133,9 +134,8 @@ class DataVerify:
             }
             tasks.append(t)
         verify_job["tasks"] = tasks
-        res = req.post("/Inspects", json=verify_job)
-        res = res.json()
-        if res["code"] == "ok":
+        res, ok = DataVerifyApi(req).create_data_verify(verify_job)
+        if ok:
             self.id = res["data"]["id"]
             return True
         else:
@@ -145,12 +145,8 @@ class DataVerify:
 
 
     def start(self):
-        where = str({"id": self.id})
-        res = req.post("/Inspects/update?where="+urllib.parse.quote_plus(where), json={"status": "scheduling"})
-        res = res.json()
-        if res["code"] == "ok":
-            return True
-        return False
+        _, ok = DataVerifyApi(req).update_data_verify(self.id, "scheduling")
+        return ok
 
 
     def wait_finish(self, t=100):
@@ -184,10 +180,8 @@ class DataVerify:
         return last_result["status"]
 
     def result(self):
-        query = str({"where": {"inspect_id": self.id}})
-        res = req.get("/InspectResults?filter="+urllib.parse.quote_plus(query))
-        res = res.json()
-        if res["code"] == "ok":
+        res, ok = DataVerifyApi(req).get_data_verify_results(self.id)
+        if ok:
             return res["data"]["items"]
         return []
 
@@ -210,5 +204,5 @@ class DataVerify:
         return False
 
     def delete(self):
-        req.delete("/Inspects/" + self.id)
-        return True
+        _, ok = DataVerifyApi(req).delete_data_verify(self.id)
+        return ok

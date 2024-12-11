@@ -3,6 +3,7 @@ import json
 from tapflow.lib.backend_apis.common import AgentApi, DatabaseTypesApi
 from tapflow.lib.backend_apis.connections import ConnectionsApi
 from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
+from tapflow.lib.backend_apis.apiServers import ApiServersApi
 from tapflow.lib.backend_apis.task import TaskApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.help_decorator import pad
@@ -366,8 +367,7 @@ def show_flows(*args, **kwargs):
 
 # show all apis
 def show_apis(quiet=False):
-    res = req.get("/Modules", params={"order": "createAt DESC", "limit": 20, "skip": 0, "where": {}})
-    data = res.json()["data"]["items"]
+    data = ApiServersApi(req).get_all_api_servers()
     client_cache["apis"]["name_index"] = {}
     if not quiet:
         logger.log(

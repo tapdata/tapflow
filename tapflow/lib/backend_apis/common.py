@@ -1,4 +1,5 @@
 import json
+from typing import Tuple
 from tapflow.lib.request import RequestSession
 from tapflow.lib.utils.log import logger
 
@@ -74,6 +75,12 @@ class AgentApi(BaseBackendApi):
         agents = self.get_all_agents()
         return [agent for agent in agents if str(agent.get("status")).lower() == "running"]
     
+    def get_agent_count(self) -> Tuple[int, bool]:
+        res = self.req.get("/agent/agentCount")
+        if res.status_code == 200 and res.json().get("code") == "ok":
+            return res.json().get("data", {}).get("agentRunningCount", 0), True
+        return res.json(), False
+    
 
 class DatabaseTypesApi(BaseBackendApi):
 
@@ -99,3 +106,19 @@ class ShareCacheApi(BaseBackendApi):
     def create_share_cache(self, data: dict) -> dict:
         res = self.req.post("/shareCache", json=data)
         return res.json().get("data", {})
+    
+
+class ExternalStorageApi(BaseBackendApi):
+
+    def get_all_external_storages(self) -> Tuple[dict, bool]:
+        res = self.req.get("/ExternalStorage/list")
+        if res.status_code == 200 and res.json().get("code") == "ok":
+            return res.json(), True
+        return res.json(), False
+    
+    def create_external_storage(self, data: dict) -> Tuple[dict, bool]:
+        res = self.req.post("/ExternalStorage", json=data)
+        if res.status_code == 200 and res.json().get("code") == "ok":
+            return res.json(), True
+        return res.json(), False
+

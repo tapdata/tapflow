@@ -3,7 +3,7 @@ import copy
 from tapflow.lib.request import req
 from tapflow.lib.cache import client_cache
 from tapflow.lib.utils.log import logger
-
+from tapflow.lib.backend_apis.apiServers import ApiServersApi
 
 
 class Api:
@@ -108,38 +108,33 @@ class Api:
 
     def publish(self):
         if self.id is None:
-            res = req.post("/Modules", json=self.payload).json()  # save
-            id = res["data"]["id"]
+            data, ok = ApiServersApi(req).publish_with_payload(self.payload)
+            id = data["id"]
             payload = copy.deepcopy(self.payload)
             payload.update({
-                "id": res["data"]["id"],
+                "id": data["id"],
                 "status": "pending"
             })
-            res = req.patch("/Modules", json=payload).json()["data"]
-            res = req.patch("/Modules", json={
-                "id": res["id"],
-                "status": "active",
-                "tableName": res["tableName"],
-            }).json()  # publish
-            if res["code"] == "ok":
+            data, ok = ApiServersApi(req).update_with_payload(payload)
+            data, ok = ApiServersApi(req).activate(data["id"], data["tableName"])
+            if ok:
                 #logger.finfo("publish api {} success, you can test it by: {}", self.base_path,
                 #            "http://" + server + "#/apiDocAndTest?id=" + self.base_path + "_v1")
-                self.id = res["data"]["id"]
+                self.id = data["id"]
             else:
-                logger.fwarn("publish api {} fail, err is: {}", self.base_path, res["message"])
+                logger.fwarn("publish api {} fail, err is: {}", self.base_path, data["message"])
         else:
             payload = {
                 "id": self.id,
                 "status": "active",
                 "tableName": self.tablename,
             }
-            res = req.patch("/Modules", json=payload)
-            res = res.json()
-            if res["code"] == "ok":
+            data, ok = ApiServersApi(req).update_with_payload(payload)
+            if ok:
                 pass
                 #logger.finfo("publish {} success", self.name)
             else:
-                logger.fwarn("publish {} fail, err is: {}", self.name, res["message"])
+                logger.fwarn("publish {} fail, err is: {}", self.name, data["message"])
 
     def get(self, name):
         if len(client_cache.get("apis", {}).get("name_index")) == 0:
@@ -155,8 +150,7 @@ class Api:
         return True
 
     def status(self, name):
-        res = req.get("/Modules")
-        data = res.json()["data"]["items"]
+        data, ok = ApiServersApi(req).get_all_api_servers()
         for i in data:
             if i["name"] == name:
                 return i["status"]
@@ -165,27 +159,20 @@ class Api:
     def unpublish(self):
         if self.id is None:
             return
-        payload = {
-            "id": self.id,
-            "status": "pending",
-            "tableName": self.tablename,
-        }
-        res = req.patch("/Modules", json=payload)
-        res = res.json()
-        if res["code"] == "ok":
+        data, ok = ApiServersApi(req).unpublish(self.id, self.tablename)
+        if ok:
             pass
             #logger.finfo("unpublish {} success", self.id)
         else:
-            logger.fwarn("unpublish {} fail, err is: {}", self.id, res["message"])
+            logger.fwarn("unpublish {} fail, err is: {}", self.id, data["message"])
 
     def delete(self):
         if self.id is None:
             logger.fwarn("delete api {} fail, err is: {}", self.name, "api not find")
             return
-        res = req.delete("/Modules/" + self.id)
-        res = res.json()
-        if res["code"] == "ok":
+        data, ok = ApiServersApi(req).delete_api_server(self.id)
+        if ok:
             pass
             #logger.finfo("delete api {} success", self.name)
         else:
-            logger.fwarn("delete api {} fail, err is: {}", self.name, res["message"])
+            logger.fwarn("delete api {} fail, err is: {}", self.name, data["message"])

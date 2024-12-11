@@ -301,16 +301,7 @@ class ShowCommand(Magics):
             return False
         table_name = table["original_name"]
 
-        body = {
-            "className": "QueryDataBaseDataService",
-            "method": "getData",
-            "args": [
-                connection_id,
-                table_name
-            ]
-        }
-        res = req.post("/proxy/call", json=body).json()
-        return res
+        return TaskApi(req).preview_task(connection_id, table_name)
 
 
     @line_magic

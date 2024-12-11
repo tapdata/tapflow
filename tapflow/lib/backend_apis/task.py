@@ -2,6 +2,8 @@ import json
 import time
 from typing import Tuple
 
+import requests
+
 from .common import BaseBackendApi
 
 
@@ -236,3 +238,14 @@ class TaskApi(BaseBackendApi):
             ]
         })
         return res.json()["data"], res.status_code == 200 and res.json()["code"] == "ok"
+    
+    def preview_task(self, connection_id: str, table_name: str) -> requests.Response:
+        res = self.req.post("/proxy/call", json={
+            "className": "QueryDataBaseDataService",
+            "method": "getData",
+            "args": [
+                connection_id,
+                table_name
+            ]
+        })
+        return res.json()

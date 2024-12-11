@@ -2,6 +2,7 @@ import time
 import urllib
 import uuid
 
+from tapflow.lib.backend_apis.dataVerify import DataVerifyApi
 from tapflow.lib.request import req
 from tapflow.lib.utils.log import logger
 
@@ -64,16 +65,13 @@ class AnyTableDataVeryfy:
         verify_job["name"] = name + " - 校验"
         verify_job["inspectMethod"] = mode
         verify_job["tasks"] = tasks
-        res = req.post("/Inspects", json=verify_job)
-        res = res.json()
-        if res["code"] == "ok":
+        res, ok = DataVerifyApi(req).create_data_verify(verify_job)
+        if ok:
             self.id = res["data"]["id"]
 
     def start(self):
-        where = str({"id": self.id})
-        res = req.post("/Inspects/update?where=" + urllib.parse.quote_plus(where), json={"status": "scheduling"})
-        res = res.json()
-        if res["code"] == "ok":
+        _, ok = DataVerifyApi(req).update_data_verify(self.id, "scheduling")
+        if ok:
             return True
         return False
 
@@ -108,10 +106,8 @@ class AnyTableDataVeryfy:
         return last_result["status"]
 
     def result(self):
-        query = str({"where": {"inspect_id": self.id}})
-        res = req.get("/InspectResults?filter=" + urllib.parse.quote_plus(query))
-        res = res.json()
-        if res["code"] == "ok":
+        res, ok = DataVerifyApi(req).get_data_verify_results(self.id)
+        if ok:
             return res["data"]["items"]
         return []
 
@@ -136,8 +132,8 @@ class AnyTableDataVeryfy:
         return last_result
 
     def delete(self):
-        req.delete("/Inspects/" + self.id)
-        return True
+        _, ok = DataVerifyApi(req).delete_data_verify(self.id)
+        return ok
 
 
 class ConnectionDataVerify:

@@ -10,6 +10,7 @@ from typing import List, Dict, Set, Union
 
 import yaml
 
+from tapflow.lib.backend_apis.task import TaskApi
 from tapflow.lib.data_pipeline.base_node import BaseNode
 from tapflow.lib.op_object import show_jobs
 from .projectInterface import ProjectInterface
@@ -147,8 +148,8 @@ class ProjectScheduler:
         while True:
 
             try:
-                res = req.get("/Task/{}".format(flow.id)).json()
-                status = res["data"]["status"]
+                data = TaskApi(req).get_task_by_id(flow.id)
+                status = data["status"]
             except KeyError as e:
                 key_error_times += 1
                 if key_error_times > key_error_times_limit:
@@ -165,7 +166,7 @@ class ProjectScheduler:
                 break
 
             try:
-                milestone = res["data"]["attrs"].get("milestone", "")
+                milestone = data["attrs"].get("milestone", "")
             except KeyError as e:
                 key_error_times += 1
                 if key_error_times > 5:
@@ -182,7 +183,7 @@ class ProjectScheduler:
                 current_events.add("{}.start".format(flow.name))
             
             if milestone:
-                flow_type = res["data"]["type"]
+                flow_type = data["type"]
                 snapshot_status = milestone.get("SNAPSHOT", {}).get("status", "")
                 cdc_status = milestone.get("CDC", {}).get("status", "")
                 
