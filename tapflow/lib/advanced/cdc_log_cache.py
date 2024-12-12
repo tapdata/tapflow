@@ -1,11 +1,10 @@
+from tapflow.lib.backend_apis.common import LogCollectorApi
 from tapflow.lib.request import req
 
 from tapflow.lib.data_pipeline.pipeline import Pipeline
 
 def list_share_cdc_tasks():
-    res = req.get("/logcollector")
-    data = res.json()["data"]
-    items = data["items"] if "items" in data else []  # oss 版本返回没有items
+    items = LogCollectorApi(req).get_all_log_collectors()
     return items
 
 def reset_share_cdc_tasks():

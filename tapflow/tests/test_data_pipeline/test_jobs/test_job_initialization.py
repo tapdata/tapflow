@@ -1,6 +1,6 @@
 import unittest
 from tapflow.tests.test_data_pipeline.test_jobs import BaseJobTest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, call
 from tapflow.lib.data_pipeline.job import Job
 
 class TestJobInitialization(BaseJobTest):
@@ -64,7 +64,7 @@ class TestJobInitialization(BaseJobTest):
             }
         }
 
-        # 创建Job实例
+        # ���建Job实例
         job = Job(id="short_test_id")
         job.job = mock_req_get.return_value.json()["data"]  # 显式设置job属性
         
@@ -142,7 +142,7 @@ class TestJobInitialization(BaseJobTest):
             }
         }
 
-        # 模拟API响应
+        # 模拟TaskApi.get_all_tasks的响应
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -169,6 +169,8 @@ class TestJobInitialization(BaseJobTest):
                 ]
             }
         }
+
+        # 设置mock_req_get的返回值
         mock_req_get.return_value = mock_response
 
         # 设置mock_get_obj的返回值
@@ -177,49 +179,51 @@ class TestJobInitialization(BaseJobTest):
             Mock(id="job_id_2")
         ]
 
-        # 设置每个任务的详细信息响应
-        mock_req_get.side_effect = [
-            mock_response,  # 第一个响应是任务列表
-            # 后续响应是每个任务的详细信息
-            Mock(status_code=200, json=lambda: {
-                "data": {
+        # 模拟TaskApi.get_task_by_id的返回值
+        with patch('tapflow.lib.backend_apis.task.TaskApi.get_task_by_id') as mock_get_task:
+            mock_get_task.side_effect = [
+                {
                     "id": "job_id_1",
                     "name": "job1",
                     "status": "running",
-                    "agentId": "agent1",
-                    "stats": {},
                     "dag": {"nodes": [], "edges": []},
                     "syncType": "migrate"
-                }
-            }),
-            Mock(status_code=200, json=lambda: {
-                "data": {
+                },
+                {
                     "id": "job_id_2",
                     "name": "job2",
                     "status": "stopped",
-                    "agentId": "agent2",
-                    "stats": {},
                     "dag": {"nodes": [], "edges": []},
                     "syncType": "migrate"
                 }
-            })
-        ]
+            ]
 
-        # 调用list方法
-        jobs = Job.list()
+            # 调用list方法
+            with patch('tapflow.lib.backend_apis.task.TaskApi.get_all_tasks') as mock_get_all_tasks:
+                mock_get_all_tasks.return_value = mock_response.json()["data"]["items"]
+                jobs = Job.list()
 
-        # 验证API调用
-        mock_req_get.assert_any_call(
-            "/Task",
-            params={"filter": '{"fields":{"id":true,"name":true,"status":true,"agentId":true,"stats":true}}'}
-        )
+            # 验证返回结果
+            self.assertEqual(len(jobs), 2)
+            self.assertIsInstance(jobs[0], Job)
+            self.assertIsInstance(jobs[1], Job)
+            self.assertEqual(jobs[0].id, "job_id_1")
+            self.assertEqual(jobs[1].id, "job_id_2")
 
-        # 验证返回结果
-        self.assertEqual(len(jobs), 2)
-        self.assertIsInstance(jobs[0], Job)
-        self.assertIsInstance(jobs[1], Job)
-        self.assertEqual(jobs[0].id, "job_id_1")
-        self.assertEqual(jobs[1].id, "job_id_2")
+            # 验证get_all_tasks被调用
+            mock_get_all_tasks.assert_called_once()
+
+            # 验证get_obj被正确调用
+            mock_get_obj.assert_has_calls([
+                call("job", "job_id_1"),
+                call("job", "job_id_2")
+            ])
+
+            # 验证get_task_by_id被正确调用
+            mock_get_task.assert_has_calls([
+                call("job_id_1"),
+                call("job_id_2")
+            ])
 
 if __name__ == '__main__':
     unittest.main() 

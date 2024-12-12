@@ -3,7 +3,7 @@ import uuid
 import time
 import copy
 import datetime
-from typing import Iterable, Tuple, Sequence, List, Dict
+from typing import Iterable, Tuple, Sequence, List, Dict, Union
 
 from tapflow.lib.data_pipeline.nodes import get_node_instance
 from tapflow.lib.data_pipeline.nodes.field_add_del import FieldAddDel
@@ -60,7 +60,7 @@ class VerifyMode:
 
 def is_tapcli():
     try:
-        get_ipython
+        get_ipython # type: ignore
         return True
     except NameError:
         return False
@@ -110,7 +110,7 @@ class Pipeline:
         self.depends_on = []
         self.get()
 
-    def depend(self, depends_on: str or List[str]):
+    def depend(self, depends_on: Union[str, List[str]]):
         if isinstance(depends_on, str):
             self.depends_on.append(depends_on)
         else:
@@ -230,6 +230,12 @@ class Pipeline:
                 "unit": "DAY"
             })
         return conditions
+    
+    def _check_source_exists(self, source: Source) -> bool:
+        """
+        检查source是否存在
+        """
+        return source.exists()
 
     @help_decorate("read data from source", args="p.readFrom($source)")
     def readFrom(self, source, setting={}, query=None, filter=None, quiet=False):
@@ -248,7 +254,7 @@ class Pipeline:
         table_or_db = "table" if source.mode == JobType.sync else "database"
         source_name = f"{source.connection.c.get('name', '')}.{source.table_name}" if source.mode == JobType.sync else source.connection.c.get("name", "")
         # check if table exists
-        if not source.exists():
+        if not self._check_source_exists(source):
             raise SourceNotExistError(f"Cannot read from the non-existent table {source_name}")
         # check if the table is a target table
         if source.connection_type() == "target":

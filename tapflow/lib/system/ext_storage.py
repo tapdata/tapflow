@@ -1,11 +1,12 @@
+from tapflow.lib.backend_apis.common import ExternalStorageApi
 from tapflow.lib.request import req
 
 default_external_storage_id = None
 
 
 def list_external_storages():
-    res = req.get("/ExternalStorage/list").json()
-    if res["code"] != "ok":
+    res, ok = ExternalStorageApi(req).get_all_external_storages()
+    if not ok:
         return []
     return res["data"]["items"]
 
@@ -14,8 +15,8 @@ def get_default_external_storage_id():
     global default_external_storage_id
     if default_external_storage_id:
         return default_external_storage_id
-    res = req.get("/ExternalStorage/list").json()
-    if res["code"] != "ok":
+    res, ok = ExternalStorageApi(req).get_all_external_storages()
+    if not ok:
         return None
     for i in res["data"]["items"]:
         if i["defaultStorage"]:
@@ -30,7 +31,7 @@ def set_default_external_storage_id():
 
 
 def create_rocksdb_cache():
-    req.post("/ExternalStorage", json={
+    ExternalStorageApi(req).create_external_storage({
         "name": "taptest-rocksdb",
         "type": "rocksdb",
         "uri": "/tmp/taptest",

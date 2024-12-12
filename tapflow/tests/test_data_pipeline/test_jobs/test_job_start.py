@@ -24,17 +24,23 @@ class TestJobStart(BaseJobTest):
         # 模拟save方法返回True
         mock_save.return_value = True
 
-        # 模拟start请求成功
-        mock_req_put.return_value.json.return_value = {"code": "ok"}
+        # 模拟start_task的响应
+        with patch('tapflow.lib.backend_apis.task.TaskApi.start_task') as mock_start_task:
+            mock_start_task.return_value = (
+                {"id": "test_job_id", "status": "running"},  # data
+                True  # ok
+            )
 
-        result = job.start(quiet=False)
+            result = job.start(quiet=False)
 
-        # 验证结果
-        self.assertTrue(result)
-        # 验证save方法被调用
-        mock_save.assert_called_once()
-        # 验证put请求被正确调用
-        mock_req_put.assert_called_once_with("/Task/batchStart", params={"taskIds": "test_job_id"})
+            # 验证结果
+            self.assertTrue(result)
+            # 验证save方法被调用
+            mock_save.assert_called_once()
+            # 验证start_task被调用
+            mock_start_task.assert_called_once_with(job.id)
+            # 验证成功日志被调用
+            mock_logger_info.assert_called_once_with("{}", "Task start succeed")
 
     @patch('tapflow.lib.data_pipeline.job.logger.warn')
     @patch('tapflow.lib.data_pipeline.job.req.put')
@@ -76,7 +82,7 @@ class TestJobStart(BaseJobTest):
 
         result = job.start()
 
-        # 验证结果
+        # 验��结果
         self.assertFalse(result)
         # 验证错误日志被调用
         mock_logger_fwarn.assert_called_once_with("save job fail")
@@ -99,18 +105,21 @@ class TestJobStart(BaseJobTest):
         # 模拟任务状态为edit
         mock_status.return_value = "edit"
 
-        # 模拟start请求返回调度限制错误
-        mock_req_put.return_value.json.return_value = {
-            "code": "ok",
-            "data": [{"code": "Task.ScheduleLimit", "message": "Schedule limit reached"}]
-        }
+        # 模拟start_task的响应
+        with patch('tapflow.lib.backend_apis.task.TaskApi.start_task') as mock_start_task:
+            mock_start_task.return_value = (
+                [{"code": "Task.ScheduleLimit", "message": "Schedule limit reached"}],  # data
+                True  # ok
+            )
 
-        result = job.start(quiet=False)
+            result = job.start(quiet=False)
 
-        # 验证结果
-        self.assertFalse(result)
-        # 验证警告日志被调用
-        mock_logger_warn.assert_called_once_with("{}", "Schedule limit reached")
+            # 验证结果
+            self.assertFalse(result)
+            # 验证警告日志被调用
+            mock_logger_warn.assert_called_once_with("{}", "Schedule limit reached")
+            # 验证start_task被调用
+            mock_start_task.assert_called_once_with(job.id)
 
 if __name__ == '__main__':
     unittest.main() 

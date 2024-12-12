@@ -5,6 +5,7 @@ import traceback
 
 from requests import delete
 
+from tapflow.lib.backend_apis.common import AgentApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.check import ConfigCheck
 from tapflow.lib.help_decorator import help_decorate
@@ -215,11 +216,11 @@ class DataSource:
     def save(self):
         # check agent running
         if req.mode == "cloud":
-            res = req.get("/agent/agentCount")
-            if res.status_code != 200:
-                logger.warn("Failed to check agent running, err is: {}", res.json())
+            agent_count, ok = AgentApi(req).get_agent_count()
+            if not ok:
+                logger.warn("Failed to check agent running, err is: {}", agent_count)
                 return False
-            if res.json().get("data", {}).get("agentRunningCount", 0) == 0:
+            if agent_count == 0:
                 logger.warn("{}", "No agent running, please check agent status")
                 return False
         if not self.config_changed:

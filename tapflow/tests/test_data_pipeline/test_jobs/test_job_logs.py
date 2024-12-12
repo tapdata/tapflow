@@ -15,26 +15,28 @@ class TestJobLogs(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.return_value = self.mock_time / 1000
 
-        # 模拟TaskApi响应
-        mock_task_api_instance = Mock()
-        mock_task_api_instance.get.return_value = {
-            "data": {
-                "taskRecordId": "record_123"
-            }
-        }
-        mock_task_api.return_value = mock_task_api_instance
+        # 设置job的id
+        job.id = "test_job_id"
 
-        # 模拟logs请求响应
-        mock_req_post.return_value.status_code = 200
-        mock_req_post.return_value.json.return_value = {
-            "code": "ok",
-            "data": {
+        # 创建一个Mock对象来模拟TaskApi实例
+        mock_task_api_instance = Mock()
+        mock_task_api_instance.get_task_by_id.return_value = {
+            "id": "test_job_id",
+            "taskRecordId": "record_123"
+        }
+        mock_task_api_instance.get_task_logs.return_value = (
+            {
                 "items": [
                     {"message": "log1", "level": "info", "timestamp": 1234567890},
                     {"message": "log2", "level": "warn", "timestamp": 1234567891}
                 ]
-            }
-        }
+            },
+            True  # ok
+        )
+        mock_task_api.return_value = mock_task_api_instance
+
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
 
         # 调用logs方法
         logs = job.logs(limit=2, level="info", quiet=True)
@@ -44,19 +46,14 @@ class TestJobLogs(BaseJobTest):
         self.assertEqual(logs[0]["message"], "log1")
         self.assertEqual(logs[1]["message"], "log2")
 
-        # 验证请求参数
-        mock_req_post.assert_called_once_with(
-            "/MonitoringLogs/query",
-            json={
-                "levels": ["info"],
-                "order": "desc",
-                "page": 1,
-                "pageSize": 2,
-                "taskId": "test_job_id",
-                "taskRecordId": "record_123",
-                "start": int(self.mock_time/1000*1000)-3600*100000,
-                "end": int(self.mock_time/1000*1000)
-            }
+        # 验证get_task_logs被正确调用
+        mock_task_api_instance.get_task_logs.assert_called_once_with(
+            "info",  # level
+            2,      # limit
+            "test_job_id",  # task_id
+            "record_123",   # task_record_id
+            int(self.mock_time/1000*1000)-3600*100000,  # start
+            int(self.mock_time/1000*1000)  # end
         )
 
     @patch('tapflow.lib.data_pipeline.job.time')
@@ -71,17 +68,21 @@ class TestJobLogs(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.return_value = self.mock_time / 1000
 
+        # 设置job的id
+        job.id = "test_job_id"
+
         # 模拟TaskApi响应
         mock_task_api_instance = Mock()
-        mock_task_api_instance.get.return_value = {
-            "data": {
-                "taskRecordId": "record_123"
-            }
+        mock_task_api_instance.get_task_by_id.return_value = {
+            "id": "test_job_id",
+            "taskRecordId": "record_123"
         }
+        # 模拟请求失败
+        mock_task_api_instance.get_task_logs.return_value = ([], False)  # 返回空列表和失败状态
         mock_task_api.return_value = mock_task_api_instance
 
-        # 模拟请求失败
-        mock_req_post.return_value.status_code = 500
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
 
         # 调用logs方法
         logs = job.logs()
@@ -101,18 +102,21 @@ class TestJobLogs(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.return_value = self.mock_time / 1000
 
+        # 设置job的id
+        job.id = "test_job_id"
+
         # 模拟TaskApi响应
         mock_task_api_instance = Mock()
-        mock_task_api_instance.get.return_value = {
-            "data": {
-                "taskRecordId": "record_123"
-            }
+        mock_task_api_instance.get_task_by_id.return_value = {
+            "id": "test_job_id",
+            "taskRecordId": "record_123"
         }
+        # 模拟响应code不是ok
+        mock_task_api_instance.get_task_logs.return_value = ([], False)  # 返回空列表和失败状态
         mock_task_api.return_value = mock_task_api_instance
 
-        # 模拟响应code不是ok
-        mock_req_post.return_value.status_code = 200
-        mock_req_post.return_value.json.return_value = {"code": "error"}
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
 
         # 调用logs方法
         logs = job.logs()
@@ -132,26 +136,28 @@ class TestJobLogs(BaseJobTest):
         job = self.create_job(mock_client_cache, mock_get_obj, mock_req_get)
         mock_time.time.return_value = self.mock_time / 1000
 
+        # 设置job的id
+        job.id = "test_job_id"  # 显式设置job.id
+
         # 模拟TaskApi响应
         mock_task_api_instance = Mock()
-        mock_task_api_instance.get.return_value = {
-            "data": {
-                "taskRecordId": "record_123"
-            }
+        mock_task_api_instance.get_task_by_id.return_value = {
+            "id": "test_job_id",
+            "taskRecordId": "record_123"
         }
-        mock_task_api.return_value = mock_task_api_instance
-
-        # 模拟logs请求响应
-        mock_req_post.return_value.status_code = 200
-        mock_req_post.return_value.json.return_value = {
-            "code": "ok",
-            "data": {
+        mock_task_api_instance.get_task_logs.return_value = (
+            {
                 "items": [
                     {"message": "log1", "level": "info", "timestamp": 1234567890},
                     {"message": "log2", "level": "warn", "timestamp": 1234567891}
                 ]
-            }
-        }
+            },
+            True  # ok
+        )
+        mock_task_api.return_value = mock_task_api_instance
+
+        # 重新设置job的task_api
+        job.task_api = mock_task_api_instance
 
         # 调用logs方法，quiet=False以打印日志
         logs = job.logs(quiet=False)
@@ -160,6 +166,16 @@ class TestJobLogs(BaseJobTest):
         self.assertEqual(len(logs), 2)
         self.assertEqual(logs[0]["message"], "log1")
         self.assertEqual(logs[1]["message"], "log2")
+
+        # 验证get_task_logs被正确调用
+        mock_task_api_instance.get_task_logs.assert_called_once_with(
+            "info",  # level
+            100,    # limit
+            "test_job_id",  # task_id
+            "record_123",   # task_record_id
+            int(self.mock_time/1000*1000)-3600*100000,  # start
+            int(self.mock_time/1000*1000)  # end
+        )
 
 if __name__ == '__main__':
     unittest.main() 

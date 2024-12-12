@@ -1,5 +1,10 @@
 import json
 
+from tapflow.lib.backend_apis.common import AgentApi, DatabaseTypesApi
+from tapflow.lib.backend_apis.connections import ConnectionsApi
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
+from tapflow.lib.backend_apis.apiServers import ApiServersApi
+from tapflow.lib.backend_apis.task import TaskApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.help_decorator import pad
 
@@ -69,13 +74,10 @@ class QuickDataSourceMigrateJob:
 
     def delete(self):
         ds = get_obj("datasource", self.__db__)
-        if ds is not None:
-            if ds.delete():
-                pass
-            else:
-                logger.fwarn("delete datasource {} fail, maybe some job is still use it", self.__db__)
-            return
-        logger.fwarn("datasource {} not found", self.__db__)
+        if ds and not ds.delete():
+            logger.fwarn("delete datasource {} fail, maybe some job is still use it", self.__db__)
+        elif not ds:
+            logger.fwarn("datasource {} not found", self.__db__)
 
 # object that can be operated by command
 op_object_command_class = {
@@ -211,45 +213,33 @@ def show_tables(source=None, quiet=False):
         )
         return
     source_name = client_cache["connections"]["id_index"][source]["name"]
-    f = {"where": {"source.id": source, "sourceType": "SOURCE", "is_deleted": False}, "limit": 999999}
-    res = req.get("/MetadataInstances", params={"filter": json.dumps(f)})
-    data = res.json()["data"]["items"]
+    data = MetadataInstanceApi(req).get_metadata_instance(source)
     client_cache["tables"][source] = {"name_index": {}, "id_index": {}, "number_index": {}}
     tables = []
     each_line_table_count = 5
     each_line_tables = []
-    max_table_name_len = 0
-    for i in range(len(data)):
-        if "original_name" not in data[i]:
-            continue
-        if len(data[i]["original_name"]) > max_table_name_len:
-            max_table_name_len = len(data[i]["original_name"])
+    max_table_name_len = max(len(item["original_name"]) for item in data if "original_name" in item)
 
-    for i in range(len(data)):
-        if data[i]["meta_type"] == "database":
+    for i, item in enumerate(data):
+        if item.get("meta_type") == "database" or "original_name" not in item:
             continue
-        if "original_name" not in data[i]:
-            continue
-        tables.append(data[i])
-        client_cache["tables"][source]["name_index"][data[i]["original_name"]] = data[i]
-        client_cache["tables"][source]["id_index"][data[i]["id"]] = data[i]
-        client_cache["tables"][source]["number_index"][str(i)] = data[i]
+        tables.append(item)
+        client_cache["tables"][source]["name_index"][item["original_name"]] = item
+        client_cache["tables"][source]["id_index"][item["id"]] = item
+        client_cache["tables"][source]["number_index"][str(i)] = item
 
-        statement = source_name + "." + data[i]["original_name"] + "=" + '"' + source_name + "." + data[i][
-                "original_name"] + '"'
+        statement = f'{source_name}.{item["original_name"]}="{source_name}.{item["original_name"]}"'
         try:
             exec(statement, globals())
-        except Exception as e:
+        except Exception:
             pass
         if not quiet:
+            each_line_tables.append(pad(item["original_name"], max_table_name_len))
             if len(each_line_tables) == each_line_table_count:
-                logger.log("{} " * each_line_table_count, *each_line_tables,
-                           *["notice" for i in range(each_line_table_count)])
+                logger.log("{} " * each_line_table_count, *each_line_tables, *["notice"] * each_line_table_count)
                 each_line_tables = []
-            each_line_tables.append(pad(data[i]["original_name"], max_table_name_len))
-    if not quiet and len(each_line_tables) > 0:
-        logger.log("{} " * len(each_line_tables), *each_line_tables,
-                   *["notice" for i in range(len(each_line_tables))])
+    if not quiet and each_line_tables:
+        logger.log("{} " * len(each_line_tables), *each_line_tables, *["notice"] * len(each_line_tables))
     return tables
 
 
@@ -263,20 +253,15 @@ def show_datasources():
     show_connections()
 
 def show_agents(quiet=True):
-    res = req.get("/agent").json()["data"]
-    total = 0
-    items = res["items"]
-    running_item = []
-    if not quiet:
-        for item in items:
-            if str(item["status"]).lower() == "running":
-                running_item.append(item)
+    running_agents = AgentApi(req).get_running_agents()
     print("="*120)
-    logger.info("TapData Cloud Service Running Agent: {}", len(running_item))
-    for item in running_item:
-        systeminfo = item.get("metric", {}).get("systemInfo", {})
+    if not quiet:
+        logger.info("TapData Cloud Service Running Agent: {}", len(running_agents))
+    for agent in running_agents:
+        systeminfo = agent.get("metric", {}).get("systemInfo", {})
         ip = systeminfo.get("ips", [""])[0]
-        logger.info("Agent name: {}, ip: {}, cpu usage: {}%", item["name"], ip, systeminfo.get("cpus"))
+        if not quiet:
+            logger.info("Agent name: {}, ip: {}, cpu usage: {}%", agent["name"], ip, systeminfo.get("cpus"))
 
 show_connections_last_time = 0
 # show connections
@@ -286,9 +271,7 @@ def show_connections(f=None, quiet=False):
     if show_connections_last_time + 1 > int(time.time()):
         return {}
     show_connections_last_time = int(time.time())
-    f = {"limit": 10000}
-    res = req.get("/Connections", params={"filter": json.dumps(f)})
-    data = res.json()["data"]["items"]
+    data = ConnectionsApi(req).get_connections(limit=10000)
     client_cache["connections"] = {"name_index": {}, "id_index": {}, "number_index": {}}
     if not quiet:
         logger.log(
@@ -332,8 +315,7 @@ def show_connections(f=None, quiet=False):
 
 # show all connectors
 def show_connectors(quiet=True):
-    res = req.get("/DatabaseTypes/getDatabases", params={"filter": json.dumps({"where":{"tag":"All","authentication":"All"},"order":"name ASC"})})
-    data = res.json()["data"]
+    data = DatabaseTypesApi(req).get_all_connectors()
     o=0
     for i in range(len(data)):
         o += 1
@@ -355,26 +337,7 @@ def show_connectors(quiet=True):
 
 
 def get_all_jobs():
-    f = {
-        "limit": 10000,
-        "fields": {
-            "syncType": True,
-            "id": True,
-            "name": True,
-            "status": True,
-            "last_updated": True,
-            "createTime": True,
-            "user_id": True,
-            "startTime": True,
-            "agentId": True,
-            "statuses": True,
-            "type": True,
-            "desc": True
-        }
-    }
-    res = req.get("/Task", params={"filter": json.dumps(f)})
-    data = res.json()["data"]["items"]
-    return data
+    return TaskApi(req).get_all_tasks()
 
 
 # show all jobs
@@ -404,8 +367,7 @@ def show_flows(*args, **kwargs):
 
 # show all apis
 def show_apis(quiet=False):
-    res = req.get("/Modules", params={"order": "createAt DESC", "limit": 20, "skip": 0, "where": {}})
-    data = res.json()["data"]["items"]
+    data = ApiServersApi(req).get_all_api_servers()
     client_cache["apis"]["name_index"] = {}
     if not quiet:
         logger.log(

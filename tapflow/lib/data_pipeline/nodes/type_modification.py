@@ -1,5 +1,6 @@
 import requests
 
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.utils.log import logger
 
 from tapflow.lib.data_pipeline.base_obj import BaseObj
@@ -28,36 +29,17 @@ class TypeAdjust(BaseObj):
 
     def get(self, pre_connection_id, pre_table_name):
         # 获取table id
-        params = {
-            "access_token": system_server_conf["token"],
-            "connectionId": pre_connection_id,
-        }
-        res = req.get(f"/MetadataInstances/tablesValue", params=params)
-        if res.status_code != 200:
-            logger.error("get table id failed, err is: {}", res.json())
-            return False
-        elif res.json()["code"] != "ok":
-            logger.error("get table id failed, err is: {}", res.json())
-            return False
+        tables = MetadataInstanceApi(req).get_table_value(pre_connection_id)
         table_id = None
-        for t in res.json()["data"]:
+        for t in tables:
             if t["tableName"] == pre_table_name:
                 table_id = t["tableId"]
         if table_id is None:
             logger.error("table {} not found", pre_table_name)
             return False
         # 根据table id获取字段
-        res = req.get(f"/discovery/storage/overview/{table_id}", params={
-            "access_token": system_server_conf["token"]
-        })
-        if res.status_code != 200:
-            logger.error("get table fields failed, err is: {}", res.json())
-            return False
-        elif res.json()["code"] != "ok":
-            logger.error("get table fields failed, err is: {}", res.json())
-            return False
-        data = res.json()["data"]
-        for field in data["fields"]:
+        fields = MetadataInstanceApi(req).get_fields_value(table_id)
+        for field in fields:
             self.fields[field["name"]] = field
         self.pre_connection_id, self.pre_table_name = pre_connection_id, pre_table_name
         return True

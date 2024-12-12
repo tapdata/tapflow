@@ -4,12 +4,14 @@ from enum import Enum
 
 from requests import delete
 
+from tapflow.lib.backend_apis.common import AgentApi
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.request import req
 from tapflow.lib.cache import system_server_conf
 
 from tapflow.lib.help_decorator import help_decorate
 from tapflow.lib.utils.log import logger
-from tapflow.lib.request import TaskApi
+from tapflow.lib.backend_apis.task import TaskApi
 from tapflow.lib.graph import Node, Graph
 from tapflow.lib.cache import client_cache
 
@@ -80,6 +82,8 @@ class Job:
         self.validateConfig = None
         self.id = None
         self.pipeline = pipeline
+        self.task_api = TaskApi(req)
+        
         # 如果id是24位, 则认为是短id, 否则认为是长id, 短id直接获取, 长id通过op_object获取
         # 如果name不为空, 则通过name获取id, dataflow -> job
         if id is not None and len(id) == 24:
@@ -98,18 +102,13 @@ class Job:
         else:
             self.dag = pipeline.dag
         self.name = name
+        self.agent_api = AgentApi(req)
 
     @staticmethod
     def list():
-        res = req.get(
-            "/Task",
-            params={"filter": '{"fields":{"id":true,"name":true,"status":true,"agentId":true,"stats":true}}'}
-        )
-        if res.status_code != 200:
-            return None
-        res = res.json()
+        tasks = TaskApi(req).get_all_tasks()
         jobs = []
-        for i in res["data"]['items']:
+        for i in tasks:
             jobs.append(Job(id=i["id"]))
         return jobs
 
@@ -119,8 +118,8 @@ class Job:
             if not quiet:
                 logger.warn("Task status is {}, can not reset, please stop it first", status)
                 return False
-        res = req.patch("/Task/batchRenew", params={"taskIds": self.id}).json()
-        if res["code"] == "ok":
+        res = self.task_api.reset_task(self.id)
+        if res:
             if not quiet:
                 logger.info("{}", "Task reset success")
             return True
@@ -128,36 +127,14 @@ class Job:
         return False
 
     def _get_by_name(self):
-        import urllib.parse
-        param = '{"where":{"name":{"like":"%s"}}}' % (self.name)
-        param = urllib.parse.quote(param, safe="().")
-        param = param.replace(".", "%5C%5C.")
-        param = param.replace("(", "%5C%5C(")
-        param = param.replace(")", "%5C%5C)")
-        res = req.get("/Task?filter=" + param)
-        if res.status_code != 200:
-            return None
-        res = res.json()
-        for j in res["data"]["items"]:
-            if "name" not in j:
-                continue
-            if j["name"] == self.name:
-                self.id = j["id"]
-                self.job = j
-                return
+        task = self.task_api.get_task_by_name(self.name)
+        if task is None:
+            return
+        self.id = task["id"]
+        self.job = task
 
     def _get_id_by_name(self):
-        param = {"filter": json.dumps({"where":{"name":{"like":self.name}}})}
-        res = req.get("/Task", params=param)
-        if res.status_code != 200:
-            return None
-        res = res.json()
-        for j in res["data"]["items"]:
-            if "name" not in j:
-                continue
-            if j["name"] == self.name:
-                return j["id"]
-        return None
+        return self.task_api.get_task_id_by_name(self.name)
 
     def _get(self):
         pipeline_id = ''
@@ -166,10 +143,9 @@ class Job:
         else:
             return
         
-        res = req.get(f"/Task/{pipeline_id}")
-        if res.status_code != 200:
+        data = self.task_api.get_task_by_id(pipeline_id)
+        if data is None:
             return
-        data = res.json()["data"]
         self.name = data["name"]
         self.job = data
         self.id = data["id"]
@@ -183,7 +159,7 @@ class Job:
             return False
         if self.id is None:
             return False
-        req.put('/Task/batchStop', params={'taskIds': self.id, 'force': force})
+        self.task_api.stop_task(self.id, force)
         s = time.time()
         while True:
             if time.time() - s > t:
@@ -207,13 +183,8 @@ class Job:
             if not quiet:
                 logger.warn("job status is {}, please stop it first before delete it", self.status())
             return
-        res = req.delete("/Task/batchDelete", params={"taskIds": self.id})
-        if res.status_code != 200:
-            if not quiet:
-                logger.warn("{}", "Task delete failed")
-            return False
-        res = res.json()
-        if res["code"] != "ok":
+        ok = self.task_api.delete_task(self.id)
+        if not ok:
             if not quiet:
                 logger.warn("{}", "Task delete failed")
             return False
@@ -222,20 +193,16 @@ class Job:
         return True
     
     def copy(self, quiet=False):
-        res = req.put(f"/Task/copy/{self.id}")
-        if res.status_code != 200:
+        task, ok = self.task_api.copy_task(self.id)
+        if not ok:
             logger.warn("{}", "Task copy failed")
             return False
-        res = res.json()
-        if res["code"] != "ok":
-            logger.warn("{}", "Task copy failed")
-            return False
-        client_cache["jobs"]["id_index"][res["data"]["id"]] = res["data"]
-        client_cache["jobs"]["name_index"][res["data"]["name"]] = res["data"]
-        client_cache["jobs"]["number_index"][str(len(client_cache["jobs"]["number_index"]))] = res["data"]
-        copy_id = res["data"]["id"]
+        client_cache["jobs"]["id_index"][task["id"]] = task
+        client_cache["jobs"]["name_index"][task["name"]] = task
+        client_cache["jobs"]["number_index"][str(len(client_cache["jobs"]["number_index"]))] = task
+        copy_id = task["id"]
         job = Job(id=copy_id)
-        job.name = res["data"]["name"]
+        job.name = task["name"]
         if not quiet:
             logger.info("{}", f"Copy task '{self.name}' to '{job.name}' success")
         return job
@@ -243,13 +210,7 @@ class Job:
     def relations(self):
         if self.id is None:
             return False
-        res = req.post("/task-console/relations", json={"taskId": self.id})
-        if res.status_code != 200:
-            return []
-        res = res.json()
-        if res["code"] != "ok":
-            return []
-        return res["data"]
+        return self.task_api.get_task_relations(self.id)
 
     def heartbeat_id(self):
         if self.id is None:
@@ -329,30 +290,19 @@ class Job:
 
         self.job.update(self.setting)
         if self.id is None:
-            res = req.post("/Task", json=self.job)
-            res = res.json()
-            if res["code"] != "ok":
-                if "Task.RepeatName" == res["code"]:
-                    self.id = self._get_id_by_name()
-                    if self.id is None:
-                        logger.warn("save task failed {}", res)
-                        return False
-                    self.job["id"] = self.id
-                    res = req.patch("/Task", json=self.job).json()
-                    if res["code"] != "ok":
-                        logger.warn("patch task failed {}", res)
-                        return False
-                else:
-                    logger.warn("save failed {}", res)
-                    return False
-            else:
-                self.id = res["data"]["id"]
+            task, ok = self.task_api.create_task(self.job)
+            if not ok:
+                logger.warn("save failed {}", task)
+                return False
+            self.id = task["id"]
+            self.job["id"] = self.id
+
         job = self.job
         job.update(self.setting)
         job.update(self.dag.to_dict())
         # load schema
         if self.pipeline.target is not None:
-            res = req.get(f"/MetadataInstances/node/schema", params={"nodeId": self.pipeline.target.id}).json()
+            MetadataInstanceApi(req).load_schema(self.pipeline.target.id)
         if self.id is None:
             self._get()
         body = {
@@ -363,26 +313,16 @@ class Job:
             "editVersion": int(time.time() * 1000),
             "id": self.id,
         }
-        res = req.patch("/Task", json=body)
-        if res.status_code != 200 or res.json().get("code") != "ok":
-            logger.fwarn("start failed {}", res.json())
-            logger.fdebug("res: {}", res.json())
-            return False
+        res, ok = self.task_api.update_task(body)
+        if not ok:
+            logger.fwarn("start failed {}", res)
         # 如果源有文件类型, 调用下推演
         for s in self.pipeline.sources:
             if str(s.databaseType).lower() in ["csv"]:
                 for i in range(10):
                     nodeConfig = s.setting["nodeConfig"]
                     nodeConfig["nodeId"] = s.id
-                    res = req.post("/proxy/call", json={
-                        "className": "DiscoverSchemaService",
-                        "method": "discoverSchema",
-                        "nodeId": s.id,
-                        "args": [
-                            s.connectionId,
-                            nodeConfig,
-                        ]
-                    })
+                    self.task_api.model_deduction(s.id, s.connectionId, nodeConfig)
                     new_dag = self.job["dag"]
                     for node in new_dag["nodes"]:
                         if node["id"] == s.id:
@@ -390,26 +330,25 @@ class Job:
 
                             node["tableName"] = "tapdata"
 
-                            res = req.patch("/Task", json={
+                            payload = {
                                 "editVersion": int(time.time() * 1000),
                                 "id": self.id,
                                 "dag": new_dag
-                            })
+                            }
+
+                            task, ok = self.task_api.update_task(payload)
+
                             time.sleep(10)
 
                             node["tableName"] = old_table_name
 
-                            res = req.patch("/Task", json={
-                                "editVersion": int(time.time() * 1000),
-                                "id": self.id,
-                                "dag": new_dag
-                            })
+                            task, ok = self.task_api.update_task(payload)
                             time.sleep(10)
                             break
-                    schema_res = req.get("/MetadataInstances/node/schema?nodeId=" + s.id).json()
+                    schema = MetadataInstanceApi(req).load_schema(s.id)
                     node_schema = []
-                    if len(schema_res["data"]) > 0:
-                        fields = schema_res["data"][0]["fields"]
+                    if len(schema) > 0:
+                        fields = schema[0]["fields"]
                         for field in fields:
                             node_schema.append({
                                 "indicesUnique": field["unique"],
@@ -424,23 +363,23 @@ class Job:
                                 if node["id"] == s.id:
                                     node["schema"] = node_schema
                                     break
-                        req.patch("/Task", json={
+                        payload = {
                             "editVersion": int(time.time() * 1000),
                             "id": self.id,
                             "dag": self.job["dag"]
-                        })
-                    res = req.get("/MetadataInstances/node/schemaPage?nodeId=" + s.id).json()
-                    if res["data"]["total"] == 1:
+                        }
+                        task, ok = self.task_api.update_task(payload)
+                    res = MetadataInstanceApi(req).schema_page(s.id)
+                    if res["total"] == 1:
                         break
                     else:
                         logger.fwarn("discover schema failed for {} times, retrying, most 10 times", i)
-        res = req.patch(f"/Task/confirm/{self.id}", json=self.job)
-        res = res.json()
-        if res["code"] != "ok":
-            logger.fwarn("save failed {}", res)
+        data, ok = self.task_api.confirm_task(self.id, self.job)
+        if not ok:
+            logger.warn("save failed {}", data)
             return False
-        self.job = res["data"]
-        self.setting = res["data"]
+        self.job = data
+        self.setting = data
         return True
 
     def start(self, quiet=True):
@@ -462,14 +401,14 @@ class Job:
             return False
         # 等推演, 10s
         time.sleep(3)
-        res = req.put("/Task/batchStart", params={"taskIds": self.id}).json()
-        if res["code"] != "ok":
+        data, ok = self.task_api.start_task(self.id)
+        if not ok:
             if not quiet:
                 logger.warn("{}", "Task start failed")
             return False
         try:
-            if res["data"][0]["code"] == "Task.ScheduleLimit":
-                logger.warn("{}", res["data"][0]["message"])
+            if isinstance(data, list) and len(data) > 0 and data[0].get("code") == "Task.ScheduleLimit":
+                logger.warn("{}", data[0].get("message", "Schedule limit reached"))
                 return False
         except Exception as e:
             pass
@@ -482,18 +421,24 @@ class Job:
 
     def status(self, res=None, quiet=True):
         if res is None:
-            res = req.get("/Task/" + self.id).json()
-        status = res["data"]["status"]
+            data = self.task_api.get_task_by_id(self.id)
+            if data is None:
+                logger.warn("failed to get job status")
+                return None
+        else:
+            data = res
+        
+        status = data["status"]
         if not quiet:
             logger.info("job status is: {}", status)
         return status
 
     def get_milestone_step(self, res=None, quiet=True):
         if res is None:
-            res = req.get("/Task/" + self.id).json()
-        data: dict = res.get("data")
+            data = self.task_api.get_task_by_id(self.id)
+            if data is None:
+                return None
         status = data.get("status")
-        # status = res["data"]["status"]
         if status not in [JobStatus.running, JobStatus.scheduled, JobStatus.wait_run]:
             raise ValueError(f"Task status error: {status}")
         sync_status = data.get("syncStatus")
@@ -565,88 +510,38 @@ class Job:
 
     def get_sub_task_ids(self):
         sub_task_ids = []
-        res = req.get("/Task/" + self.id).json()
-        statuses = res["data"]["statuses"]
+        data = self.task_api.get_task_by_id(self.id)
+        statuses = data["data"]["statuses"]
         jobStats = JobStats()
         for subTask in statuses:
             sub_task_ids.append(subTask["id"])
         return sub_task_ids
 
     def stats(self, res=None, quiet=True):
-        data = TaskApi().get(self.id)["data"]
+        data = self.task_api.get_task_by_id(self.id)
+        if data is None:
+            logger.warn("failed to get job stats")
+            return None
         if data.get("taskRecordId") is None:
             try:
-                res = req.get("/agent").json()
-                if res.get("code") == "ok":
-                    if res["data"]["total"] == 0 or "Running" not in [item["status"] for item in res["data"]["items"]]:
-                        logger.warn("No agent {}, skip stats", "Running")
+                agents = self.agent_api.get_running_agents()
+                if len(agents) == 0:
+                    logger.warn("No agent {}, skip stats", "Running")
             except Exception as e:
                 pass
             finally:
                 return None
-        payload = {
-            "totalData": {
-                "uri": "/api/measurement/query/v2",
-                "param": {
-                    "startAt": int(time.time() * 1000)-300000,
-                    "endAt": int(time.time() * 1000),
-                    "samples": {
-                        "data": {
-                            "endAt": int(time.time() * 1000),
-                            "fields": [
-                                "inputInsertTotal",
-                                "inputUpdateTotal",
-                                "inputDeleteTotal",
-                                "inputDdlTotal",
-                                "inputOthersTotal",
-                                "outputInsertTotal",
-                                "outputUpdateTotal",
-                                "outputDeleteTotal",
-                                "outputDdlTotal",
-                                "outputOthersTotal",
-                                "tableTotal",
-                                "createTableTotal",
-                                "snapshotTableTotal",
-                                "initialCompleteTime",
-                                "sourceConnection",
-                                "targetConnection",
-                                "snapshotDoneAt",
-                                "snapshotRowTotal",
-                                "snapshotInsertRowTotal",
-                                "inputQps",
-                                "outputQps",
-                                "currentSnapshotTableRowTotal",
-                                "currentSnapshotTableInsertRowTotal",
-                                "replicateLag",
-                                "snapshotStartAt",
-                                "snapshotTableTotal",
-                                "currentEventTimestamp",
-                                "snapshotDoneCost",
-                                "outputQpsMax",
-                                "outputQpsAvg",
-                                "lastFiveMinutesQps"
-                            ],
-                            "tags": {
-                                "taskId": self.id,
-                                "taskRecordId": data["taskRecordId"],
-                                "type": "task"
-                            },
-                            "type": "instant",
-                        }
-                    }
-                }
-            }
-        }
-        for i in range(5):
+
+        for _ in range(5):
             try:
-                res = req.post("/measurement/batch", json=payload, timeout=3).json()
+                measurement = self.task_api.get_task_measurement(self.id, data["taskRecordId"])
                 break
             except Exception as e:
                 time.sleep(1)
         job_stats = JobStats()
         try:
-            if len(res["data"]["totalData"]["data"]["samples"]["data"]) > 0:
-                stats = res["data"]["totalData"]["data"]["samples"]["data"][0]
+            if len(measurement["totalData"]["data"]["samples"]["data"]) > 0:
+                stats = measurement["totalData"]["data"]["samples"]["data"][0]
                 job_stats.qps = stats.get("outputQps", 0)
                 job_stats.total = stats.get("tableTotal", 0)
                 job_stats.input_insert = stats.get("inputInsertTotal", 0)
@@ -672,34 +567,24 @@ class Job:
         except Exception as e:
             print(__file__, e)
             pass
-
-        job_status = self.status(quiet=True)
+        
+        job_status = data["status"]
         if not quiet:
-            logger.info("Flow current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
+            logger.info("Flow current status is: {}, qps is: {}, total rows: {}, delay is: {}ms", 
+                       job_status, job_stats.qps, job_stats.snapshot_row_total, job_stats.replicate_lag)
 
         return job_stats
 
     def logs(self, res=None, limit=100, level="info", t=30, tail=False, quiet=True):
         logs = []
-        data = TaskApi().get(self.id)["data"]
-        res = req.post("/MonitoringLogs/query", json={
-            "levels": [level],
-            "order": "desc",
-            "page": 1,
-            "pageSize": limit,
-            "taskId": self.id,
-            "taskRecordId": data["taskRecordId"],
-            "start": int(time.time()*1000)-3600*100000,
-            "end": int(time.time()*1000)
-        })
-        if res.status_code != 200:
-            return logs
-        if res.json()["code"] != "ok":
+        data = self.task_api.get_task_by_id(self.id)
+        logs, ok = self.task_api.get_task_logs(level, limit, self.id, data["taskRecordId"], int(time.time()*1000)-3600*100000, int(time.time()*1000))
+        if not ok:
             return logs
         if not quiet:
-            for item in res.json()["data"]["items"]:
+            for item in logs["items"]:
                 print(item)
-        return res.json()["data"]["items"]
+        return logs["items"]
 
     def find_final_target(self):
         targets = []
@@ -728,31 +613,24 @@ class Job:
 
 
     def preview(self, quiet=True):
-        final_target = self.find_final_target()
+        final_target = self.dag.get_target_node()
+        final_target_ids = [] if final_target is None else [final_target.id]
         start_time = time.time()
         self.job.update({"id": self.id})
-        res = req.post("/proxy/call", json={
-            "className": "TaskPreviewService",
-            "method": "preview",
-            "args": [
-                json.dumps(self.job),
-                None,
-                1
-            ]
-        }).json()
+        data, ok = self.task_api.task_preview(self.job)
+        if not ok:
+            logger.warn("{}", "preview failed")
+            return
         if not quiet:
             logger.info("preview view took {} ms", int((time.time() - start_time)*1000))
-        if "code" not in res or res["code"] != "ok":
-            return
 
-        data = res["data"]
         nodeResult = data.get("nodeResult", {})
         if not quiet:
             for k, v in nodeResult.items():
-                if len(self.dag.node_map) == 1:
+                if len(nodeResult) == 1 or len(self.dag.node_map) == 1:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
                     continue
-                if k in final_target:
+                if k in final_target_ids:
                     print(json.dumps(v.get("data", [{}])[0], indent=2))
         return nodeResult
 
@@ -856,8 +734,8 @@ class Job:
     def rename(self, new_name=None):
         if new_name is None:
             raise ValueError("The new name cannot be empty")
-        response = req.patch("/task/rename/"+self.id+"?newName=" + new_name).json()
-        if response["code"] != "ok":
-            logger.ferror("Task rename failed: {}", response)
+        data, ok = self.task_api.rename_task(self.id, new_name)
+        if not ok:
+            logger.ferror("Task rename failed: {}", data)
             return
-        logger.finfo("Task rename succeed: {}", response)
+        logger.finfo("Task rename to {} succeed", new_name)

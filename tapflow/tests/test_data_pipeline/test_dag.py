@@ -122,6 +122,9 @@ class TestDag(unittest.TestCase):
 
         # 获取目标节点
         target = self.dag.get_target_node()
+        print("target", target)
+        print("sink_node", self.sink_node)
+        print(self.dag.graph)
         self.assertEqual(target, self.sink_node)
 
     def test_to_dict(self):

@@ -4,6 +4,8 @@ import time
 import asyncio
 import websockets
 
+from tapflow.lib.backend_apis.connections import ConnectionsApi
+from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.help_decorator import help_decorate
 from tapflow.lib.utils.log import logger
 
@@ -52,11 +54,8 @@ def get_table_fields(t, whole=False, source=None, cache=True):
         return
 
     table_id = table["id"]
-    table_name = table["original_name"]
-    res = req.get("/MetadataInstances/" + table_id)
 
-    data = res.json()["data"]
-    fields = data["fields"]
+    fields = MetadataInstanceApi(req).get_fields_instance_by_id(table_id)
     if whole:
         return fields
     display_fields = {}
@@ -74,6 +73,35 @@ def get_table_fields(t, whole=False, source=None, cache=True):
                 continue
             node[field_name] = f["data_type"]
     return display_fields
+
+
+def desc_table(line, quiet=True):
+    connection_id = client_cache.get("connection")
+    db = connection_id
+    if "." in line:
+        db = line.split(".")[0]
+        line = line.split(".")[1]
+    index_type = get_index_type(db)
+    if index_type == "short_id_index":
+        db = match_line(client_cache["connections"]["id_index"], db)
+        index_type = "id_index"
+    if index_type == "id_index":
+        client_cache["connection"] = db
+    if client_cache.get("connections") is None:
+        show_connections(quiet=True)
+    if db is None:
+        logger.warn("please {} before desc table, or {} to get a valid result", "use db", "use db.table")
+        return
+
+    connection = client_cache["connections"][index_type][db]
+    connection_id = connection["id"]
+
+    if connection_id is None:
+        return
+
+    display_fields = get_table_fields(line, source=connection_id)
+    if not quiet:
+        print(json.dumps(display_fields, indent=2))
 
 
 class Connection:
@@ -105,10 +133,12 @@ class Connection:
         else:
             self.id = self.c["id"]
 
+        self.connections_api = ConnectionsApi(req)
+
     @help_decorate("save a connection in idaas system")
     def save(self):
         # self.load_schema(quiet=False)
-        res = req.post("/Connections", json=self.c)
+        res = self.connections_api.save_connection(self.c)
         show_connections(quiet=True)
         if res.status_code == 200 and res.json()["code"] == "ok":
             self.id = res.json()["data"]["id"]
@@ -120,8 +150,8 @@ class Connection:
         return False
 
     def delete(self):
-        res = req.delete("/Connections/" + self.id, json=self.c)
-        if res.status_code == 200 and res.json()["code"] == "ok":
+        res = ConnectionsApi(req).delete_connection(self.id)
+        if res:
             # logger.finfo("delete {} Connection success", self.id)
             return True
         else:
@@ -147,29 +177,13 @@ class Connection:
     @staticmethod
     @help_decorate("static method, used to list all connections", res="connection list, list")
     def list():
-        return req.get("/Connections").json()["data"]
+        return ConnectionsApi(req).list_connections()
 
     @staticmethod
     @help_decorate("get a connection, by it's id or name", args="id or name, using kargs",
                    res="a connection/None if not exists, Connection")
     def get(id=None, name=None):
-        if id is not None:
-            f = {
-                "where": {
-                    "id": id,
-                }
-            }
-        else:
-            f = {
-                "where": {
-                    "name": name,
-                }
-            }
-
-        data = req.get("/Connections", params={"filter": json.dumps(f)}).json()["data"]
-        if len(data["items"]) == 0:
-            return None
-        return data["items"][0]
+        return ConnectionsApi(req).get_connection(connection_id=id, connection_name=name)
 
     @help_decorate("test a connection", res="whether connection valid, bool")
     def test(self):
@@ -236,7 +250,7 @@ class Connection:
         while True:
             try:
                 time.sleep(1)
-                res = req.get("/Connections/" + self.id).json()
+                res = self.connections_api.get_connection_by_id(self.id)
                 if res["data"] is None:
                     break
                 if "loadFieldsStatus" not in res["data"]:
