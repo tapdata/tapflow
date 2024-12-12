@@ -341,24 +341,36 @@ def get_all_jobs():
 
 
 # show all jobs
-def show_jobs(quiet=False):
-    data = get_all_jobs()
-    jobs = {"name_index": {}, "id_index": {}, "number_index": {}}
-    # logger.finfo("system has {} jobs", len(data))
-    for i in range(len(data)):
-        if "name" not in data[i]:
-            continue
-        if not quiet:
-            logger.log(
-                "{}: " + pad(data[i]["name"], 42) + " {} {}", data[i]["id"][-6:],
-                pad(data[i].get("status", "unkownn"), 12),
-                data[i].get("syncType", "unknown") + "/" + data[i].get("type", "unknown"),
-                "debug", "info" if data[i].get("status", "unkownn") != "error" else "error", "notice"
-            )
-        jobs["name_index"][data[i]["name"]] = data[i]
-        jobs["id_index"][data[i]["id"]] = data[i]
-        jobs["number_index"][str(i)] = data[i]
-    client_cache["jobs"] = jobs
+def show_jobs(query=None, quiet=False):
+
+    def print_job(job):
+        logger.log(
+            "{}: " + pad(job["name"], 42) + " {} {}", job["id"][-6:],
+            pad(job.get("status", "unkownn"), 12),
+            job.get("syncType", "unknown") + "/" + job.get("type", "unknown"),
+            "debug", "info" if job.get("status", "unkownn") != "error" else "error", "notice"
+        )
+
+    if query is None:
+        data = get_all_jobs()
+        jobs = {"name_index": {}, "id_index": {}, "number_index": {}}
+        # logger.finfo("system has {} jobs", len(data))
+        for i in range(len(data)):
+            if "name" not in data[i]:
+                continue
+            if not quiet:
+                print_job(data[i])
+            jobs["name_index"][data[i]["name"]] = data[i]
+            jobs["id_index"][data[i]["id"]] = data[i]
+            jobs["number_index"][str(i)] = data[i]
+        client_cache["jobs"] = jobs
+    else:
+        data = TaskApi(req).filter_tasks_by_name(query)
+        for i in range(len(data)):
+            if "name" not in data[i]:
+                continue
+            if not quiet:
+                print_job(data[i])
 
 
 def show_flows(*args, **kwargs):

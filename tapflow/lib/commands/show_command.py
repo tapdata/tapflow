@@ -26,8 +26,16 @@ class ShowCommand(Magics):
             if "dbs" == line:
                 globals().update(show_dbs(quiet=False))
                 return
-            eval("show_" + line + "(quiet=False)")
-        except Exception as e:
+            elif line.split(" ")[0] in ["jobs", "flows"]:
+                if len(line.split(" ")) > 1:
+                    arg = line.split(" ")[1:]
+                    show_jobs(*arg)
+                else:
+                    show_jobs()
+                return
+            else:
+                eval("show_" + line + "(quiet=False)")
+        except Exception:
             # by default show pipeline
             obj = get_signature_v("pipeline", line)
             if obj is None:
