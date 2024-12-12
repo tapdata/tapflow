@@ -38,12 +38,11 @@ class Source(BaseNode):
         except KeyError as e:
             raise ValueError(f"Invalid node_dict, {e}")
 
-    def __init__(self, connection, table=None, table_re=None, mode=None):
-        if mode is None:
-            if table is not None:
-                mode = "sync"
-            else:
-                mode = "migrate"
+    def __init__(self, connection, table=None, table_re=None):
+        if table_re or isinstance(table, list) or isinstance(table, tuple):
+            mode = "migrate"
+        else:
+            mode = "sync"
         super().__init__(connection, table, table_re, mode=mode)
         try:
             if mode == "sync":

@@ -6,13 +6,8 @@ from tapflow.lib.data_pipeline.job import JobType
 
 @help_decorate("sink is end of a pipeline", "sink = Sink($Datasource, $table)")
 class Sink(Source):
-    def __init__(self, connection, table=None, mode=None):
-        if mode is None:
-            if table is not None:
-                mode = JobType.sync
-            else:
-                mode = JobType.migrate
-        super().__init__(connection, table, mode=mode)
+    def __init__(self, connection, table=None):
+        super().__init__(connection, table)
         self.update_node_config({
             "syncIndex": False,
             "enableSaveDeleteData": False,
@@ -22,7 +17,6 @@ class Sink(Source):
         })
 
         if self.mode == JobType.sync:
-            self.config_type = node_config_sync
             self.config_type = node_config_sync
             _ = self._getTableId(table)  # to set self.primary_key, don't delete this line
             self.setting.update({

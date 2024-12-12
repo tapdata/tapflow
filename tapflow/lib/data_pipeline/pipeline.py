@@ -260,8 +260,9 @@ class Pipeline:
         if source.connection_type() == "target":
             raise SourceNotExistError(f"Cannot read from {source_name}, because it is a {table_or_db}")
         if source.mode is not None:
-            self.mode = source.mode
-        source.mode = self.mode
+            self.dag.jobType = source.mode
+        else:
+            source.mode = self.dag.jobType
         source.setting.update(setting)
         if query is not None:
             source.setting.update({"customCommand":{
@@ -279,7 +280,7 @@ class Pipeline:
         self.dag.add_node(source)
         if is_tapcli() and not quiet:
             print("Flow updated: source added")
-        if self.mode == JobType.sync:
+        if self.dag.jobType == JobType.sync:
             self.command.append(["read_from", source.connection.c.get("name", "")+"."+source.table_name])
         else:
             self.command.append(["read_from", source.connection.c.get("name", "")])
@@ -312,7 +313,7 @@ class Pipeline:
             else:
                 sink = Sink(sink, mode=self.dag.jobType)
 
-        sink.mode = self.mode
+        sink.mode = self.dag.jobType
         if self.dag.jobType == JobType.sync:
             if pk is None:
                 try:
@@ -330,7 +331,7 @@ class Pipeline:
         self.lines.append(sink)
         if is_tapcli():
             print("Flow updated: sink added")
-        if self.mode == JobType.sync:
+        if self.dag.jobType == JobType.sync:
             self.command.append(["write_to", sink.connection.c.get("name", "")+"."+sink.table_name])
         else:
             self.command.append(["write_to", sink.connection.c.get("name", "")])
