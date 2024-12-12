@@ -35,7 +35,6 @@ class Sink(Source):
             s = cls(
                 node_dict["attrs"]["connectionName"],
                 node_dict["tableName"],
-                mode=JobType.sync if node_dict["type"] == "table" else JobType.migrate
             )
             s.id = node_dict["id"]
             s.setting["id"] = node_dict["id"]

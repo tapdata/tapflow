@@ -248,9 +248,9 @@ class Pipeline:
         elif isinstance(source, str):
             if "." in source:
                 db, table = source.split(".")
-                source = Source(db, table, mode=self.dag.jobType)
+                source = Source(db, table)
             else:
-                source = Source(source, mode=self.dag.jobType)
+                source = Source(source)
         table_or_db = "table" if source.mode == JobType.sync else "database"
         source_name = f"{source.connection.c.get('name', '')}.{source.table_name}" if source.mode == JobType.sync else source.connection.c.get("name", "")
         # check if table exists

@@ -29,7 +29,6 @@ class Source(BaseNode):
             s = cls(
                 node_dict["attrs"]["connectionName"],
                 node_dict["tableName"],
-                mode="sync" if node_dict["type"] == "table" else "migrate"
             )
             s.id = node_dict["id"]
             s.setting["id"] = node_dict["id"]
