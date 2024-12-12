@@ -31,6 +31,63 @@ class TaskApi(BaseBackendApi):
         res = self.req.get("/Task", params={"filter": json.dumps(payload)})
         return res.json()["data"]["items"]
     
+    def filter_tasks_by_name(self, name: str, limit: int = 20, skip: int = 0) -> list:
+        """
+        根据任务名称过滤任务,过滤模式为LIKE
+        :param name: 任务名称
+        :param limit: 限制数量, 默认20
+        :param skip: 跳过数量, 默认0
+        :return: 任务列表
+        """
+        payload = {
+            "order": "last_updated DESC",
+            "limit": limit,
+            "fields": {
+                "id": True,
+                "name": True,
+                "status": True,
+                "last_updated": True,
+                "createTime": True,
+                "user_id": True,
+                "startTime": True,
+                "agentId": True,
+                "statuses": True,
+                "type": True,
+                "desc": True,
+                "listtags": True,
+                "syncType": True,
+                "stoppingTime": True,
+                "pingTime": True,
+                "canForceStopping": True,
+                "currentEventTimestamp": True,
+                "crontabExpressionFlag": True,
+                "crontabExpression": True,
+                "crontabScheduleMsg": True,
+                "lastStartDate": True,
+                "functionRetryStatus": True,
+                "taskRetryStatus": True,
+                "shareCdcStop": True,
+                "shareCdcStopMessage": True,
+                "taskRetryStartTime": True,
+                "errorEvents": True,
+                "syncStatus": True,
+                "restartFlag": True,
+                "attrs": True
+            },
+            "skip": skip,
+            "where": {
+                "syncType": "sync",
+                "name": {
+                    "like": name,
+                    "options": "i"
+                }
+            }
+        }
+        res = self.req.get("/Task", params={"filter": json.dumps(payload)})
+        if res.status_code != 200 or res.json()["code"] != "ok":
+            return []
+        return res.json()["data"]["items"]
+    
     def list_heartbeat_tasks(self) -> list:
         filter_param = {"order": "createTime DESC", "limit": 1000, "skip": 0, "where": {"syncType": "connHeartbeat"}}
         res = self.req.get("/Task", params={"filter": json.dumps(filter_param)})

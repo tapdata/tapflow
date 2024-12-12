@@ -26,7 +26,7 @@ class LoginApi(BaseBackendApi):
             logger.warn("init get token request fail, err is: {}", res)
             return res.json()
         data = res.json()["data"]
-        login_result = self.LoginResult()
+        login_result = LoginResult()
         login_result.token = data["id"]
         login_result.user_id = data["userId"]
         return login_result
