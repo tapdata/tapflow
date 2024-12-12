@@ -50,7 +50,8 @@ def get_default_sink():
         show_connections(quiet=True)
     default_connection_name = client_cache["connections"]["id_index"][connection_id]["name"]
     global DEFAULT_SINK
-    DEFAULT_SINK = Sink(default_connection_name)
+    DEFAULT_SINK = QuickDataSourceMigrateJob()
+    DEFAULT_SINK.__db__ = default_connection_name
     client_cache["default_sink"] = DEFAULT_SINK
 
 
