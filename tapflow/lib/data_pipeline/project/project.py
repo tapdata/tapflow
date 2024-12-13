@@ -4,6 +4,7 @@ import os
 import queue
 import re
 import shutil
+import sys
 import time
 import traceback
 from typing import List, Dict, Set, Union
@@ -356,6 +357,29 @@ class Project(ProjectInterface):
             Pipeline._check_source_exists = self.origin_check_source_exists
 
             BaseNode.config = self.origin_config
+
+    class AddPythonPath:
+        """
+        添加pythonPath
+        """
+
+        def __init__(self, path: str):
+            self.path = path
+            self.origin_path = sys.path.copy()
+            super().__init__()
+
+        def __enter__(self):
+            """
+            1. 添加self.path到sys.path
+            2. 添加self.path的父级目录，如果存在，则添加到sys.path，
+            """
+            sys.path.append(self.path)
+            parent_path = os.path.abspath(os.path.join(self.path, ".."))
+            if os.path.exists(parent_path):
+                sys.path.append(parent_path)
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            sys.path = self.origin_path
     
     def scan(self, quiet=False) -> List[Flow]:
         """
@@ -368,13 +392,14 @@ class Project(ProjectInterface):
             logger.info("{} TapFlow scripts found, running in alphebetic order: ", len(self.flow_files))
 
         with self.MethodOverride():
-            flows = []
-            for flow_file in self.flow_files:
-                if not quiet:
-                    logger.info("Scanning {}...", flow_file)
-                module = self.load_module_from_file(flow_file)
-                flows.extend([getattr(module, name) for name in dir(module) if isinstance(getattr(module, name), (Flow, Pipeline))])
-            return flows
+            with self.AddPythonPath(self.path):
+                flows = []
+                for flow_file in self.flow_files:
+                    if not quiet:
+                        logger.info("Scanning {}...", flow_file)
+                    module = self.load_module_from_file(flow_file)
+                    flows.extend([getattr(module, name) for name in dir(module) if isinstance(getattr(module, name), (Flow, Pipeline))])
+                return flows
 
     @property
     def project_file_path(self):
@@ -563,7 +588,7 @@ class Project(ProjectInterface):
             "depended_flows": {flow["name"]: flow["depends_on"] for flow in flows},
         }
 
-        result.update(config)
+        result.update({"config": config})
 
         return result
 

@@ -259,7 +259,7 @@ class Pipeline:
             raise SourceNotExistError(f"Cannot read from the non-existent table {source_name}")
         # check if the table is a target table
         if source.connection_type() == "target":
-            raise SourceNotExistError(f"Cannot read from {source_name}, because it is a {table_or_db}")
+            raise SourceNotExistError(f"Cannot read from {source_name}, because it is a target {table_or_db}")
         if source.mode is not None:
             self.dag.jobType = source.mode
         else:
@@ -314,7 +314,6 @@ class Pipeline:
             else:
                 sink = Sink(sink)
             sink.mode = self.dag.jobType
-
         sink.mode = self.dag.jobType
         if self.dag.jobType == JobType.sync:
             if pk is None:

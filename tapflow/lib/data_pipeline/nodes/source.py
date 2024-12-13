@@ -16,7 +16,7 @@ from tapflow.lib.cache import client_cache
 @help_decorate("source is start of a pipeline", "source = Source($Datasource, $table)")
 class Source(BaseNode):
     def __getattr__(self, name):
-        return Source(self.connection, table=name, mode="sync")
+        return Source(self.connection, table=name)
     
     @classmethod
     def to_instance(cls, node_dict: dict) -> "Source":
