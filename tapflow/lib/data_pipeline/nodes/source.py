@@ -3,6 +3,7 @@ import copy
 import json
 import time
 
+import requests
 import websockets
 from tapflow.lib.backend_apis.metadataInstance import MetadataInstanceApi
 from tapflow.lib.help_decorator import help_decorate
@@ -10,7 +11,7 @@ from tapflow.lib.op_object import show_connections, show_tables
 from tapflow.lib.request import req
 
 from tapflow.lib.data_pipeline.base_node import BaseNode, node_config, node_config_sync
-from tapflow.lib.cache import client_cache
+from tapflow.lib.cache import client_cache, system_server_conf
 
 
 @help_decorate("source is start of a pipeline", "source = Source($Datasource, $table)")
@@ -174,8 +175,12 @@ class Source(BaseNode):
         })
         
         async def load():
-            ws_uri = f"{req.server.replace('https://', 'wss://')}/tm/ws/agent?id={self.id}"
-            cookies = req.cookies.get_dict()
+            if req.mode == "cloud":
+                ws_uri = f"{req.server.replace('https://', 'wss://')}/ws/agent?id={self.id}"
+                cookies = req.cookies.get_dict()
+            else:
+                ws_uri = system_server_conf["ws_uri"]
+                cookies = system_server_conf["cookies"]
             cookies_header = "; ".join([f"{key}={value}" for key, value in cookies.items()])
             async with websockets.connect(ws_uri, extra_headers=[("Cookie", cookies_header)]) as websocket:
                 payload = {
