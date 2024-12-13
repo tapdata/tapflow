@@ -9,6 +9,11 @@ from tapflow.lib.op_object import get_signature_v, get_index_type, match_line, s
 from tapflow.lib.op_object import *  # 不可注释/删除，主要用于ShowCommand.show()中的eval("show_" + line + "(quiet=False)")
 
 
+def get_like_query(line):
+    if len(line.split("like")) > 1:
+        return " ".join([a.strip() for a in line.split("like")[1:]])
+    return None
+
 @magics_class
 class ShowCommand(Magics):
     @line_magic
@@ -27,11 +32,18 @@ class ShowCommand(Magics):
                 globals().update(show_dbs(quiet=False))
                 return
             elif line.split(" ")[0] in ["jobs", "flows"]:
-                if len(line.split("like")) > 1:
-                    arg = [a.strip() for a in line.split("like")[1:]]
-                    show_jobs(query=" ".join(arg))
+                query = get_like_query(line)
+                if query is not None:
+                    show_jobs(query=query)
                 else:
                     show_jobs()
+                return
+            elif line.split(" ")[0] == "tables":
+                query = get_like_query(line)
+                if query is not None:
+                    show_tables(query=query)
+                else:
+                    show_tables()
                 return
             else:
                 eval("show_" + line + "(quiet=False)")
