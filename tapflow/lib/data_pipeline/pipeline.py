@@ -248,9 +248,9 @@ class Pipeline:
         elif isinstance(source, str):
             if "." in source:
                 db, table = source.split(".")
-                source = Source(db, table, mode=self.dag.jobType)
+                source = Source(db, table)
             else:
-                source = Source(source, mode=self.dag.jobType)
+                source = Source(source)
         table_or_db = "table" if source.mode == JobType.sync else "database"
         source_name = f"{source.connection.c.get('name', '')}.{source.table_name}" if source.mode == JobType.sync else source.connection.c.get("name", "")
         # check if table exists
@@ -258,7 +258,7 @@ class Pipeline:
             raise SourceNotExistError(f"Cannot read from the non-existent table {source_name}")
         # check if the table is a target table
         if source.connection_type() == "target":
-            raise SourceNotExistError(f"Cannot read from {source_name}, because it is a {table_or_db}")
+            raise SourceNotExistError(f"Cannot read from {source_name}, because it is a target {table_or_db}")
         if source.mode is not None:
             self.dag.jobType = source.mode
         else:
@@ -309,9 +309,9 @@ class Pipeline:
         elif isinstance(sink, str):
             if "." in sink:
                 db, table = sink.split(".")
-                sink = Sink(db, table, mode=self.dag.jobType)
+                sink = Sink(db, table)
             else:
-                sink = Sink(sink, mode=self.dag.jobType)
+                sink = Sink(sink)
 
         sink.mode = self.dag.jobType
         if self.dag.jobType == JobType.sync:
