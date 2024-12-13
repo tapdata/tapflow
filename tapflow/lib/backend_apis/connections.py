@@ -7,13 +7,14 @@ from tapflow.lib.backend_apis.common import BaseBackendApi
 
 class ConnectionsApi(BaseBackendApi):
 
-    def get_connections(self, limit: int = 10000) -> list:
+    def get_connections(self, limit: int = 10000, skip: int = 0) -> list:
         """
         Get connections
         :param limit: int, default 10000
+        :param skip: int, default 0
         :return: list, connections
         """
-        res = self.req.get("/Connections", params={"limit": limit})
+        res = self.req.get("/Connections", params={"filter": json.dumps({"limit": limit, "skip": skip, "order":"last_updated DESC","noSchema":1,"where":{"createType":{"$ne":"System"}}})})
         return res.json().get("data", {}).get("items", [])
     
     def save_connection(self, connection: dict):
