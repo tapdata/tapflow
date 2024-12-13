@@ -71,7 +71,12 @@ def get_table_fields(t, whole=False, source=None, cache=True):
                 continue
             if f["data_type"] == "DOCUMENT":
                 continue
-            node[field_name] = f["data_type"]
+            data_type = f["data_type"]
+            if f.get("primaryKey", False):
+                data_type = " ".join([data_type, "primary_key"])
+            if f.get("unique", False):
+                data_type = " ".join([data_type, "unique"])
+            node[field_name] = data_type
     return display_fields
 
 
