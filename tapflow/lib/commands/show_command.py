@@ -27,9 +27,9 @@ class ShowCommand(Magics):
                 globals().update(show_dbs(quiet=False))
                 return
             elif line.split(" ")[0] in ["jobs", "flows"]:
-                if len(line.split(" ")) > 1:
-                    arg = line.split(" ")[1:]
-                    show_jobs(*arg)
+                if len(line.split("like")) > 1:
+                    arg = [a.strip() for a in line.split("like")[1:]]
+                    show_jobs(query=" ".join(arg))
                 else:
                     show_jobs()
                 return
