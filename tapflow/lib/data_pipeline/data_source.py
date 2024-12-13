@@ -6,10 +6,10 @@ import traceback
 from requests import delete
 
 from tapflow.lib.backend_apis.common import AgentApi
+from tapflow.lib.backend_apis.dataSource import DataSourceApi
 from tapflow.lib.utils.log import logger
 from tapflow.lib.check import ConfigCheck
 from tapflow.lib.help_decorator import help_decorate
-from tapflow.lib.request import DataSourceApi
 from tapflow.lib.params.datasource import pdk_config, DATASOURCE_CONFIG
 
 from tapflow.lib.cache import client_cache
@@ -31,6 +31,7 @@ class DataSource:
         self.config_changed = True
         self.pdk_setting = {}
         self.setting = {}
+        self.datasource_api = DataSourceApi(req)
         # get datasource config
         if id is not None:
             self.id = id
@@ -109,7 +110,7 @@ class DataSource:
     @staticmethod
     @help_decorate("static method, used to list all datasources", res="datasource list, list")
     def list():
-        return DataSourceApi().list()["data"]
+        return DataSourceApi(req).get_all_data_sources_ignore_error()
 
     @help_decorate("desc a datasource, display readable struct", res="datasource struct")
     def desc(self, quiet=True):
@@ -192,26 +193,14 @@ class DataSource:
     @help_decorate("get a datasource by it's id or name", args="id or name, using kargs", res="a DataSource Object")
     def get(connector_id=None, connector_name=None):
         if connector_id is not None:
-            f = {
-                "where": {
-                    "id": connector_id,
-                }
-            }
-        else:
-            f = {
-                "where": {
-                    "name": connector_name,
-                }
-            }
-        params = {
-            "filter": json.dumps(f)
-        }
-        data = DataSourceApi().list(params=params)
-        if not data:
-            return None
-        if len(data["data"]["items"]) == 0:
-            return None
-        return data["data"]["items"][0]
+            data, ok = DataSourceApi(req).get_data_source(connector_id)
+            if ok:
+                return data
+        elif connector_name is not None:
+            data, ok = DataSourceApi(req).filter_data_sources_ignore_error(connector_name)
+            if ok:
+                return data["items"][0]
+        return None
 
     def save(self):
         # check agent running
@@ -228,29 +217,29 @@ class DataSource:
             return True
         data = self.to_dict()
         if data.get("id") is not None:
-            data = DataSourceApi().patch(url_after="/"+data.get("id"), data=data)
+            data, ok = DataSourceApi(req).update_data_source(data)
         else:
             logger.info("datasource {} creating, please wait...", self.setting.get("name"))
-            data = DataSourceApi().post(data)
+            data, ok = DataSourceApi(req).create_data_source(data)
 
         from tapflow.lib.op_object import show_connections
         show_connections(quiet=True)
-        if data["code"] == "ok":
-            self.id = data["data"]["id"]
+        if ok:
+            self.id = data["id"]
             self.setting = DataSource.get(self.id)
             logger.info("save datasource {} success, will load schema, please wait...", self.setting.get("name"))
             self.validate(quiet=False, load_schema=True)
             return True
         else:
             self.validate(quiet=False, load_schema=True)
-            logger.fwarn("save Connection fail, err is: {}", data["message"])
+            logger.fwarn("save Connection fail, err is: {}", data)
         return False
 
     def delete(self):
         if self.id is None:
-            return
-        data = DataSourceApi().delete(self.id, self.setting)
-        if data["code"] == "ok":
+            return False
+        data, ok = DataSourceApi(req).delete_data_source(self.id)
+        if ok:
             #logger.finfo("delete {} Connection success", self.id)
             return True
         else:
@@ -319,18 +308,18 @@ class DataSource:
             for _ in range(96):
                 try:
                     time.sleep(5)
-                    res = DataSourceApi().get(self.id)
-                    if res.get("data") is None:
+                    data, ok = DataSourceApi(req).get_data_source(self.id)
+                    if not ok:
                         logger.fwarn("No data on load schema response")
                         break
-                    if res.get("data").get("loadFieldsStatus") in ["invalid", "finished", "error"]:
-                        print(f"load schema status: {res.get('data').get('loadFieldsStatus')}")
+                    if data.get("loadFieldsStatus") in ["invalid", "finished", "error"]:
+                        print(f"load schema status: {data.get('loadFieldsStatus')}")
                         break
-                    if "loadFieldsStatus" not in res.get("data"):
+                    if "loadFieldsStatus" not in data:
                         logger.fwarn("No loadFieldsStatus on load schema response data")
                         continue
-                    loadCount = res["data"].get("loadCount", 0)
-                    tableCount = res["data"].get("tableCount", 1)
+                    loadCount = data.get("loadCount", 0)
+                    tableCount = data.get("tableCount", 1)
                     #logger.finfo("table schema check percent is: {}%", int(loadCount / tableCount * 100), wrap=False)
                 except Exception as e:
                     print(traceback.format_exc())
