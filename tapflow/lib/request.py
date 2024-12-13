@@ -177,26 +177,6 @@ class Api:
         return data
 
 
-class DataSourceApi(Api):
-
-    url = "/Connections"
-
-
-class DataFlowsApi(Api):
-
-    url = "/DataFlows"
-
-
-class TaskApi(Api):
-
-    url = "/Task"
-
-
-class MeasurementApi(Api):
-
-    url = "/measurement"
-
-
 class InspectApi(Api):
 
     url = "/task/auto-inspect-totals"
