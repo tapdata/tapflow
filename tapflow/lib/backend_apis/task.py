@@ -76,13 +76,13 @@ class TaskApi(BaseBackendApi):
             },
             "skip": skip,
             "where": {
-                "syncType": "sync",
                 "name": {
                     "like": name,
                     "options": "i"
                 }
             }
         }
+        
         res = self.req.get("/Task", params={"filter": json.dumps(payload)})
         if res.status_code != 200 or res.json()["code"] != "ok":
             return []

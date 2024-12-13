@@ -199,7 +199,7 @@ def get_table(source, t):
 
 
 # show tables, must be used after use command
-def show_tables(source=None, quiet=False):
+def show_tables(source=None, quiet=False, query=None):
     if source is None:
         source = client_cache.get("connection")
     if source is None:
@@ -222,6 +222,8 @@ def show_tables(source=None, quiet=False):
 
     for i, item in enumerate(data):
         if item.get("meta_type") == "database" or "original_name" not in item:
+            continue
+        if query is not None and query not in item["original_name"]:
             continue
         tables.append(item)
         client_cache["tables"][source]["name_index"][item["original_name"]] = item
