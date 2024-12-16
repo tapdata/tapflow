@@ -39,7 +39,7 @@ class LoginApi(BaseBackendApi):
         user_info = UserInfo()
         for user in res.json()["data"]["items"]:
             if user["id"] == user_id:
-                user_info.username = user["username"]
+                user_info.username = user.get("username", "")
                 break
         return user_info
     
