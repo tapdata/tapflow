@@ -62,7 +62,7 @@ class MdbInstanceAssignedApi(BaseBackendApi):
             str: connectionId
         """
         res = self.req.post("/mdb-instance-assigned/connection")
-        return res.json().get("data", {}).get("connectionId", "")
+        return res.json().get("data", "")
 
 
 class AgentApi(BaseBackendApi):
