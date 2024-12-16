@@ -1,19 +1,22 @@
 from concurrent.futures import ThreadPoolExecutor
+import copy
 import importlib
 import os
 import queue
 import re
 import shutil
 import sys
+import threading
 import time
 import traceback
-from typing import List, Dict, Set, Union
+from typing import List, Dict, Set, Tuple, Union
 
 import yaml
 
 from tapflow.lib.backend_apis.task import TaskApi
 from tapflow.lib.data_pipeline.base_node import BaseNode
 from tapflow.lib.op_object import show_jobs
+from tapflow.lib.utils.boolean_parser import BooleanParser
 from .projectInterface import ProjectInterface
 from tapflow.lib.utils.log import logger
 from tapflow.lib.data_pipeline.pipeline import Flow, Pipeline
@@ -70,11 +73,30 @@ class ProjectScheduler:
         self.executor = ThreadPoolExecutor(max_workers=project.parallelism)
         # 消息队列
         self._event_queue: queue.Queue = queue.Queue()
-        self._queue: List[queue.Queue] = [queue.Queue() for _ in range(max(project.dag_degree.values()) + 1)]
+        # 运行队列
+        self._running_queue: queue.Queue = queue.Queue()
+        # 等待的flow
+        self._waiting_flows: Dict[str, Flow] = {}
         # 已发生的事件集合
         self._occurred_events: Set[str] = set()
-        # 任务等待的事件映射 {flow_name: set(waiting_events)}
-        self._waiting_events: Dict[str, Set[str]] = {}
+        # 任务等待的事件映射
+        # 结构为 {flow_name: {if: condition}} 或者 {flow_name: { depends_on: condition }}
+        # condition为描述，如flow.cdc.start && flow.initial_sync.start等
+        self._waiting_events: Dict[str, Dict[str, Tuple[str, Set[str]]]] = {}
+        # _waiting_events的锁
+        self._waiting_events_lock: threading.Lock = threading.Lock()
+
+    def _lock_waiting_events(self):
+        """
+        锁定_waiting_events
+        """
+        self._waiting_events_lock.acquire()
+
+    def _unlock_waiting_events(self):
+        """
+        解锁_waiting_events
+        """
+        self._waiting_events_lock.release()
 
     def _send_event(self, event: str):
         """
@@ -85,45 +107,71 @@ class ProjectScheduler:
         self._occurred_events.add(event)
         self._check_waiting_flows()
 
+    def _check_if_condition_met(self, condition: str) -> bool:
+        """
+        检查condition是否满足
+        """
+        parser = BooleanParser(condition)
+        ast = parser.parse()
+        variables = parser.variables
+        variable_values = {var: var in self._occurred_events for var in variables}
+        print(f"condition: {condition}, ast: {ast}, variables: {variables}, variable_values: {variable_values}")
+        print(f"if condition met: {parser.evaluate(ast, variable_values)}")
+        return parser.evaluate(ast, variable_values)
+    
+    def _check_depends_on_condition(self, condition: Set[str]) -> bool:
+        """
+        检查depends_on条件是否满足
+        """
+        return condition.issubset(self._occurred_events)
+    
+    def _operate_flow(self, flow_name: str):
+        """
+        所有等待的事件都已发生, 将flow移动到执行队列, 并从其他优先级队列中移除
+        """
+        flow = next(f for f in self.project.flows if f.name == flow_name)
+        self._add_queue(flow, 0, if_condition=None)
+        del self._waiting_flows[flow_name]
+        del self._waiting_events[flow_name]
+
     def _check_waiting_flows(self):
         """
         检查等待事件的flow是否可以执行
         """
-        ready_flows = []
-        for flow_name, waiting_events in self._waiting_events.items():
-            if waiting_events.issubset(self._occurred_events):
-                # 所有等待的事件都已发生，将flow移动到执行队列
-                flow = next(f for f in self.project.flows if f.name == flow_name)
-                self._add_queue(flow, 0)  # 移动到优先级最高的队列
-
-                # Start of Selection
-                # 从其他优先级队列中移除
-                depth = self.project.dag_degree[flow_name]
-                self._queue[depth].queue.remove(flow)
-
-                ready_flows.append(flow_name)
+        self._lock_waiting_events()
+        waiting_events = copy.deepcopy(self._waiting_events)
+        for flow_name, condition_dict in waiting_events.items():
+            print(f"waiting_events: {waiting_events}")
+            if "if" in condition_dict and self._check_if_condition_met(condition_dict["if"]):
+                self._operate_flow(flow_name)
+            elif "depends_on" in condition_dict and self._check_depends_on_condition(condition_dict["depends_on"]):
+                self._operate_flow(flow_name)
+        self._unlock_waiting_events()
         
-        # 从waiting_events中移除已经准备好的flow
-        for flow_name in ready_flows:
-            del self._waiting_events[flow_name]
-
-    def _add_queue(self, flow: Flow, depth: int):
+    def _add_queue(self, flow: Flow, depth: int, if_condition: str=None):
         """
         添加加任务到队列
         :param flow: 任务对应的flow
         :param depth: 任务所在的队列深度, 从0开始, 0为最优先
         """
-        if depth == 0:
+        if depth == 0 and not if_condition:
             # 优先队列直接加入
-            self._queue[depth].put(flow)
+            self._running_queue.put(flow)
         else:
-            # 其他队列需要注册等待事件
-            waiting_events = set()
-            for dep in self.project.depended_flows.get(flow.name, []):
-                waiting_events.add(dep)
-            
-            self._waiting_events[flow.name] = waiting_events
-            self._queue[depth].put(flow)
+            self._lock_waiting_events()
+            # 如果flow有if条件, 则直接注册if条件
+            # 如果flow没有if条件, 则注册depends_on条件
+            if if_condition:
+                self._waiting_events[flow.name] = {"if": if_condition}
+            else:
+                # 其他队列需要注册等待事件
+                waiting_events = set()
+                for dep in self.project.depended_flows.get(flow.name, []):
+                    waiting_events.add(dep)
+                self._waiting_events[flow.name] = {"depends_on": waiting_events}
+            # 将flow添加到_waiting_flows
+            self._waiting_flows[flow.name] = flow
+            self._unlock_waiting_events()
 
     def _start_flow(self, flow: Flow, load_schema: bool=True) -> bool:
         """
@@ -199,6 +247,8 @@ class ProjectScheduler:
                     if cdc_status == "FINISH":
                         if status == "running":
                             current_events.add(f"{flow.name}.cdc.start")
+                        current_events.add(f"{flow.name}.cdc.end")
+                        current_events.add(f"{flow.name}.end")
             
             # 任务结束事件
             if status == "complete":
@@ -250,17 +300,18 @@ class ProjectScheduler:
             # 初始化各级队列
             for flow in self.project.flows:
                 depth = self.project.dag_degree[flow.name]
-                self._add_queue(flow, depth)
+                if_condition = self.project.if_conditions.get(flow.name, None)
+                self._add_queue(flow, depth, if_condition)
 
             # 开始执行优先队列中的任务
             while True:
                 # 检查是否所有队列都为空且所有任务都已完成
-                if all(q.empty() for q in self._queue) and len(self._waiting_events) == 0:
+                if self._running_queue.empty() and len(self._waiting_flows) == 0:
                     break
 
                 # 执行优先队列中的任务
-                while not self._queue[0].empty():
-                    flow = self._queue[0].get()
+                while not self._running_queue.empty():
+                    flow = self._running_queue.get()
                     logger.info("Submitting flow {}...", flow.name)
                     self.executor.submit(self.execute_flow, flow)
                 
@@ -295,6 +346,7 @@ class Project(ProjectInterface):
         self.exclude_path = []
         self.flows = []
         self.depended_flows = {}
+        self.if_conditions = {}
         self.parallelism = parallelism  # 并行度，默认5
         # 记录dag的出度
         self.dag_degree = {}
@@ -571,6 +623,7 @@ class Project(ProjectInterface):
         return yaml.dump(project_dict, sort_keys=False)
 
     def load_project(self) -> dict:
+        # TODO: 这里无法解析if条件中的!符号，可能需要写一个自定义解析yaml的函数
         with open(self.project_file_path, "r") as f:
             project_dict = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -585,7 +638,8 @@ class Project(ProjectInterface):
                 "cron": project_info["cron"]
             },
             "flows": flows,
-            "depended_flows": {flow["name"]: flow["depends_on"] for flow in flows},
+            "depended_flows":  {flow["name"]: flow["depends_on"] for flow in flows if flow.get("depends_on", None) is not None},
+            "if_conditions": {flow["name"]: flow["if"] for flow in flows if flow.get("if", None) is not None},
         }
 
         result.update({"config": config})
@@ -612,6 +666,7 @@ class Project(ProjectInterface):
 
         self.flows = flow_in_dict
         self.depended_flows = project_dict["depended_flows"]
+        self.if_conditions = project_dict["if_conditions"]
         # 设置dag的出度
         for flow in self.flows:
             self.dag_degree[flow.name] = len(self.depended_flows.get(flow.name, []))
