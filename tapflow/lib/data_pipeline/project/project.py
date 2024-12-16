@@ -208,7 +208,7 @@ class ProjectScheduler:
             if status == "error":
                 current_events.add(f"{flow.name}.error")
             
-            # 批量发送��的事件
+            # 批量发送新的事件
             new_events = current_events - self._occurred_events
             for event in new_events:
                 self._send_event(event)
