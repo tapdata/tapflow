@@ -814,11 +814,13 @@ class Pipeline:
             Source: lambda node: { "source": f"{node.connection.c.get('name', '')}.{node.table_name}" if node.mode == JobType.sync else node.connection.c.get("name", "")},
             Sink: lambda node: { "sink": f"{node.connection.c.get('name', '')}.{node.table_name}" if node.mode == JobType.sync else node.connection.c.get("name", "")},
             UnionNode: lambda node: { "name": node.name },
+            RowFilter: lambda node: { "expression": node.expression, "rowFilterType": node.rowFilterType }
         }
 
         _process_func_map = {
             Filter: self.filter,
             FieldRename: self.rename_fields,
+            RowFilter: self.rowFilter,
             Js: self.js,
             Python: self.py,
             TimeAdjust: self.adjust_time,

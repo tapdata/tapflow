@@ -29,6 +29,9 @@ from tapflow.lib.op_object import *
 from tapflow.lib.commands.show_command import ShowCommand
 from tapflow.lib.data_pipeline.pipeline import Pipeline, MView, Flow, _flows
 from tapflow.lib.data_pipeline.data_source import DataSource
+from tapflow.lib.data_pipeline.base_node import WriteMode, upsert, update, SyncType, DropType, no_drop, drop_data, drop_schema, FilterMode, FilterType
+from tapflow.lib.data_pipeline.nodes.row_filter import RowFilterType
+
 
 if not python_version().startswith("3"):
     print("python version must be 3.x, please install python3 before using tapdata cli")
