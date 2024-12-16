@@ -672,7 +672,7 @@ class Project(ProjectInterface):
         # 复制一份入度表,避免修改原始数据
         in_degree = self.dag_degree.copy()
         
-        # 使用拓��排序检测是否存在环
+        # 使用拓扑排序检测是否存在环
         queue = []
         # 找出所有入度为0的节点
         for flow_name, degree in in_degree.items():
