@@ -15,6 +15,7 @@ from tapflow.lib.params.datasource import pdk_config, DATASOURCE_CONFIG
 from tapflow.lib.cache import client_cache
 from tapflow.lib.system.ext_storage import get_default_external_storage_id
 from tapflow.lib.request import req
+from tapflow.lib.utils.datasource_field_map import reverse_datasource_field_map
 
 
 @help_decorate("Data Source, you can see it as database",
@@ -85,6 +86,9 @@ class DataSource:
             if key == "type" and value:
                 self.setting["connection_type"] = value
                 return self
+            if reverse_datasource_field_map.get(key, None):
+                self.pdk_setting[reverse_datasource_field_map[key]] = value
+                return self
             self.pdk_setting.update({key: value})
             return self
 
@@ -103,6 +107,8 @@ class DataSource:
         """
 
         try:
+            if reverse_datasource_field_map.get(item, None):
+                item = reverse_datasource_field_map[item]
             return object.__getattribute__(self, item)
         except AttributeError:
             return self._set_pdk_setting(item)
