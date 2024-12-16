@@ -2,6 +2,7 @@ from IPython.core.magic import Magics, magics_class, line_magic
 
 from tapflow.lib.data_pipeline.pipeline import Pipeline, _flows, Flow
 from tapflow.lib.help_decorator import pad
+from tapflow.lib.utils.datasource_field_map import datasource_field_map
 from tapflow.lib.utils.log import logger
 from tapflow.lib.cache import client_cache
 from tapflow.lib.request import req
@@ -187,6 +188,12 @@ class ShowCommand(Magics):
                         else:
                             field_name = r.get("name", "")
                             field_info = r
+                        
+                        # 后端提供的字段名存在不合适展示的情况，在这里做一个映射
+                        if datasource_field_map.get(field_name):
+                            field_name = datasource_field_map.get(field_name)
+                        if datasource_field_map.get(field_info.get('apiServerKey', '')):
+                            field_info['apiServerKey'] = datasource_field_map.get(field_info.get('apiServerKey', ''))
                         
                         # 将数据类型信息附加在字段描述后面
                         desc = f": {field_info.get('apiServerKey', '')} (Type: {field_info.get('type', '')})"
