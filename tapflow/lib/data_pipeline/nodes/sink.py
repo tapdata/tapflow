@@ -43,10 +43,13 @@ class Sink(Source):
             raise ValueError(f"Invalid node_dict, {e}")
 
     def keepData(self):
+        """如果目标表存在：保留目标端原有表结构和数据"""
         self.setting.update({
             "existDataProcessMode": "keepData"
         })
+    
     def keep_data(self):
+        """如果目标表存在：保留目标端原有表结构和数据"""
         self.setting.update({
             "existDataProcessMode": "keepData"
         })
@@ -65,6 +68,7 @@ class Sink(Source):
         })
 
     def set_cdc_threads(self, t=1):
+        """增量多线程写入线程数"""
         if t > 1:
             self.setting.update({
                 "cdcConcurrent": True
@@ -79,7 +83,9 @@ class Sink(Source):
             "cdcConcurrentWriteNum": t,
         })
         return self
+    
     def set_init_thread(self, t):
+        """全量多线程写入线程数"""
         if t > 1:
             self.setting.update({
                 "initialConcurrent": True
@@ -94,12 +100,14 @@ class Sink(Source):
         return self
 
     def set_write_batch(self, batch=500):
+        """每批次写入条数"""
         self.setting.update({
             "writeBatchSize": batch
         })
         return self
 
     def set_write_wait(self, t=500):
+        """每批次写入等待时间"""
         self.setting.update({
             "writeBatchWaitMs": t
         })
