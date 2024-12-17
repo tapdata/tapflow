@@ -112,4 +112,14 @@ class Sink(Source):
             "writeBatchWaitMs": t
         })
         return self
-
+    
+    def custom_message_body_format(self, js: str):
+        """
+        注意: 专属于 Kafka 数据源, 用于自定义消息体格式
+        :param js: javascript 代码
+        """
+        self.update_node_config({
+            "script": js,
+            "enableScript": True,
+        })
+        return self
