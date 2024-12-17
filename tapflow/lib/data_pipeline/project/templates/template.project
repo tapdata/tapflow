@@ -17,16 +17,18 @@ flows:
 
   - name: "flow 3"                    # Third flow name
     depends_on:
-      - flow 1.initial_sync.end       # Waits for flow 1's initial sync to complete
+      - flow 1.end                    # Waits for flow 1 end
       - flow 2.cdc.start              # Waits for flow 2's CDC to start
+    
+  - name: "flow 4"
+    if: flow 2.end && flow 3.cdc.start
 
 # Available dependency status points:
 # - flow.start                : When the flow starts
 # - flow.initial_sync.start   : When the initial sync phase starts
 # - flow.initial_sync.end     : When the initial sync phase completes
 # - flow.cdc.start            : When the CDC (Change Data Capture) phase starts
-# - flow.cdc.end              : When the CDC phase completes
-# - flow.end                  : When the entire flow completes
+# - flow.end                  : When the entire flow completes, if CDC is enabled, this point is the same as flow.cdc.start, if CDC is disabled, this point is the same as flow.initial_sync.end
 # - flow.error                : When the flow encounters an error
 
 config:

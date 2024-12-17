@@ -176,7 +176,7 @@ class Source(BaseNode):
         
         async def load():
             if req.mode == "cloud":
-                ws_uri = f"{req.server.replace('https://', 'wss://')}/ws/agent?id={self.id}"
+                ws_uri = f"{req.server.replace('https://', 'wss://')}/tm/ws/agent?id={self.id}"
                 cookies = req.cookies.get_dict()
             else:
                 ws_uri = system_server_conf["ws_uri"]

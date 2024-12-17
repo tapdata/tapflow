@@ -108,7 +108,12 @@ class Pipeline:
         self._lookup_ed = False
         self._union_node = None
         self.depends_on = []
+        self.if_condition = None
         self.get()
+
+    def if_condition(self, condition):
+        self.if_condition = condition
+        return self
 
     def depend(self, depends_on: Union[str, List[str]]):
         if isinstance(depends_on, str):
