@@ -6,6 +6,9 @@
 
 import re
 
+class BooleanParserError(Exception):
+    """布尔解析器异常"""
+    message = "Boolean expression parsing error"
 
 class BooleanParser:
     def __init__(self, expression):
@@ -23,6 +26,31 @@ class BooleanParser:
             cleaned_token = token.strip()
             if cleaned_token:  # 只添加非空token
                 tokens.append(cleaned_token)
+        
+        # 验证表达式的有效性
+        if not tokens:
+            raise BooleanParserError("Empty expression")
+            
+        # 验证第一个token不是操作符
+        if tokens[0] in {'&&', '||'}:
+            raise BooleanParserError("Expression cannot start with && or ||")
+            
+        # 验证最后一个token不是操作符
+        if tokens[-1] in {'&&', '||'}:
+            raise BooleanParserError("Expression cannot end with && or ||")
+            
+        # 验证括号匹配
+        bracket_count = 0
+        for token in tokens:
+            if token == '(':
+                bracket_count += 1
+            elif token == ')':
+                bracket_count -= 1
+            if bracket_count < 0:
+                raise BooleanParserError("Unmatched closing bracket")
+        if bracket_count > 0:
+            raise BooleanParserError("Unclosed bracket")
+            
         self.tokens = tokens
         
         # 提取变量时，排除运算符
@@ -30,8 +58,15 @@ class BooleanParser:
         self.variables = {token for token in self.tokens if token not in operators}
 
     def parse(self):
-        # 从第一个token开始解析
-        return self.parse_or()
+        if not self.tokens:
+            raise BooleanParserError("No tokens to parse")
+        try:
+            result = self.parse_or()
+            if self.pos < len(self.tokens):
+                raise BooleanParserError("Unexpected tokens after parsing")
+            return result
+        except IndexError:
+            raise BooleanParserError("Unexpected end of expression")
 
     def parse_or(self):
         # 处理 OR 操作 (||)
