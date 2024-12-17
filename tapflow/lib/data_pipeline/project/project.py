@@ -621,11 +621,16 @@ class Project(ProjectInterface):
         """
         project_dict = self.to_dict()
         return yaml.dump(project_dict, sort_keys=False)
+    
+    def _process_yaml(self, yaml_content: str):
+        """预处理yaml, 防止!符号无法解析"""
+        processed_content = re.sub(r'(?<=if:\s)(.*)', r'"\1"', yaml_content)
+        return processed_content
 
     def load_project(self) -> dict:
-        # TODO: 这里无法解析if条件中的!符号，可能需要写一个自定义解析yaml的函数
         with open(self.project_file_path, "r") as f:
-            project_dict = yaml.load(f, Loader=yaml.FullLoader)
+            content = self._process_yaml(f.read())
+            project_dict = yaml.load(content, Loader=yaml.FullLoader)
 
         project_info = project_dict.get("project", {})
         flows = project_dict.get("flows", [])
