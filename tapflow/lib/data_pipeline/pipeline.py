@@ -135,9 +135,9 @@ class Pipeline:
         if isinstance(source, str):
             if "." in source:
                 db, table = source.split(".")
-                source = Source(db, table, mode=self.dag.jobType)
+                source = Source(db, table)
             else:
-                source = Source(source, mode=self.dag.jobType)
+                source = Source(source)
         cache_key = "%s_%s_%s" % (source.table_name, path, type)
         self.merge_node_childs.append(source)
         if cache_key not in self._lookup_cache:
@@ -465,9 +465,9 @@ class Pipeline:
             elif isinstance(source, str):
                 if "." in source:
                     db, table = source.split(".")
-                    source = Source(db, table, mode=self.dag.jobType)
+                    source = Source(db, table)
                 else:
-                    source = Source(source, mode=self.dag.jobType)
+                    source = Source(source)
             elif isinstance(source, Source):
                 source = source
             self.union(self._union_node)
@@ -774,7 +774,7 @@ class Pipeline:
         if cache_key not in self._lookup_cache:
             child_p = Pipeline(mode=self.dag.jobType)
             conn = f"{node['attrs']['connectionName']}.{node['tableName']}"
-            source = Source(conn, mode=self.dag.jobType)
+            source = Source(conn)
             child_p.read_from(source, quiet=True)
             self._lookup_cache[cache_key] = child_p
             self._lookup_path_cache[path] = child_p
