@@ -11,6 +11,7 @@ import time
 import traceback
 from typing import List, Dict, Set, Tuple, Union
 
+import websockets
 import yaml
 
 from tapflow.lib.backend_apis.task import TaskApi
@@ -115,8 +116,6 @@ class ProjectScheduler:
         ast = parser.parse()
         variables = parser.variables
         variable_values = {var: var in self._occurred_events for var in variables}
-        print(f"condition: {condition}, ast: {ast}, variables: {variables}, variable_values: {variable_values}")
-        print(f"if condition met: {parser.evaluate(ast, variable_values)}")
         return parser.evaluate(ast, variable_values)
     
     def _check_depends_on_condition(self, condition: Set[str]) -> bool:
@@ -141,7 +140,6 @@ class ProjectScheduler:
         self._lock_waiting_events()
         waiting_events = copy.deepcopy(self._waiting_events)
         for flow_name, condition_dict in waiting_events.items():
-            print(f"waiting_events: {waiting_events}")
             if "if" in condition_dict and self._check_if_condition_met(condition_dict["if"]):
                 self._operate_flow(flow_name)
             elif "depends_on" in condition_dict and self._check_depends_on_condition(condition_dict["depends_on"]):
@@ -181,7 +179,14 @@ class ProjectScheduler:
         """
         if load_schema:
             logger.info("Loading schema for flow {}...", flow.name)
-            flow.target.load_schema()
+            for i in range(3):
+                try:
+                    flow.target.load_schema()
+                    break
+                except websockets.exceptions.ConnectionClosed:
+                    if i == 2:
+                        logger.warn("Flow {} schema load failed, please check", flow.name)
+                    time.sleep(1)
         
         logger.info("Running flow {}...", flow.name)
         if flow.job is None or flow.job.id is None:
