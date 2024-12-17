@@ -70,7 +70,7 @@ class ConfigParser:
         """
         def select_version():
             """select op or cloud version"""
-            print("""Tap Flow requires TapData Live Data Platform(LDP) cluster to run. 
+            print("""TapFlow requires TapData Live Data Platform(LDP) cluster to run. 
 If you would like to use with TapData Enterprise or TapData Community, type L to continue. 
 If you would like to use TapData Cloud, or you are new to TapData, type C or press ENTER to continue.""")
             prompt_message = "Please type L or C (L/[C]): "
@@ -91,6 +91,8 @@ If you would like to use TapData Cloud, or you are new to TapData, type C or pre
             ak = getpass.getpass("Enter AK: ")
             sk = getpass.getpass("Enter SK: ")
             return ak, sk
+        
+        print("\n--- Please configure TapData cluster ---\n")
 
         select_option = select_version()
 
