@@ -367,7 +367,7 @@ class ShowCommand(Magics):
                 x += 1
                 if x > limit:
                     break
-                print(i)
+                print(json.dumps(i, indent=2))
         except Exception as e:
             pass
 
