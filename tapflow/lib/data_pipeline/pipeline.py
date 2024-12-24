@@ -70,6 +70,10 @@ class SourceNotExistError(Exception):
     pass
 
 
+class SinkModeError(Exception):
+    pass
+
+
 @help_decorate("use to define a stream pipeline", "p = new Pipeline($name).readFrom($source).writeTo($sink)")
 class Pipeline:
     @help_decorate("__init__ method", args="p = Pipeline($name)")
@@ -318,7 +322,10 @@ class Pipeline:
                 sink = Sink(db, table)
             else:
                 sink = Sink(sink)
-            sink.mode = self.dag.jobType
+        if sink.mode != self.dag.jobType and self.dag.jobType == JobType.migrate:
+            raise SinkModeError("Migrate job not support sync sink, please use sink node like this: sink = Sink($Datasource) or write_to(Datasource)")
+        elif sink.mode != self.dag.jobType and self.dag.jobType == JobType.sync:
+            raise SinkModeError("Sync job not support migrate sink, please use sink node like this: sink = Sink($Datasource, $table) or write_to(Datasource.table)")
         sink.mode = self.dag.jobType
         if self.dag.jobType == JobType.sync:
             if pk is None:
