@@ -70,7 +70,7 @@ class SourceNotExistError(Exception):
     pass
 
 
-class SinkModeError(Exception):
+class SinkTableNumberError(Exception):
     pass
 
 
@@ -323,9 +323,11 @@ class Pipeline:
             else:
                 sink = Sink(sink)
         if sink.mode != self.dag.jobType and self.dag.jobType == JobType.migrate:
-            raise SinkModeError("Migrate job not support sync sink, please use sink node like this: sink = Sink($Datasource) or write_to(Datasource)")
+            # 提示Sink表数量不正确
+            raise SinkTableNumberError("Sink table number is not correct, please use sink node like this: sink = Sink($Datasource) or write_to(Datasource)")
         elif sink.mode != self.dag.jobType and self.dag.jobType == JobType.sync:
-            raise SinkModeError("Sync job not support migrate sink, please use sink node like this: sink = Sink($Datasource, $table) or write_to(Datasource.table)")
+            # 提示Sink表数量不正确
+            raise SinkTableNumberError("Sink table number is not correct, please use sink node like this: sink = Sink($Datasource, $table) or write_to(Datasource.table)")
         sink.mode = self.dag.jobType
         if self.dag.jobType == JobType.sync:
             if pk is None:
