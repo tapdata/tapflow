@@ -39,7 +39,7 @@ class Source(BaseNode):
             raise ValueError(f"Invalid node_dict, {e}")
 
     def __init__(self, connection, table=None, table_re=None):
-        if table_re or isinstance(table, list) or isinstance(table, tuple):
+        if table_re or isinstance(table, list) or isinstance(table, tuple) or table is None:
             mode = "migrate"
         else:
             mode = "sync"
