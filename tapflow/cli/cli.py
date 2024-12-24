@@ -51,11 +51,15 @@ def get_default_sink():
             logger.fwarn("{}", "Failed to create default sink")
             return
         show_connections(quiet=True)
-    default_connection_name = client_cache["connections"]["id_index"][connection_id]["name"]
-    global DEFAULT_SINK
-    DEFAULT_SINK = QuickDataSourceMigrateJob()
-    DEFAULT_SINK.__db__ = default_connection_name
-    client_cache["default_sink"] = DEFAULT_SINK
+    try:
+        default_connection_name = client_cache["connections"]["id_index"][connection_id]["name"]
+        global DEFAULT_SINK
+        DEFAULT_SINK = QuickDataSourceMigrateJob()
+        DEFAULT_SINK.__db__ = default_connection_name
+        client_cache["default_sink"] = DEFAULT_SINK
+    except KeyError:
+        # logger.fwarn("{}", "Failed to get default connection name")
+        pass
 
 
 def init(config_path=None):

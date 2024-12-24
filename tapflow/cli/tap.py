@@ -4,6 +4,8 @@ import sys
 import subprocess
 from IPython import start_ipython
 import importlib
+from IPython import start_ipython
+import importlib.util
 
 # 添加项目根目录到 Python 路径
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -186,15 +188,20 @@ def command_mode(basepath, source_path):
         parser.print_help()
 
 def main():
-    # 获取当前脚本所在的目录
     basepath = os.path.dirname(os.path.abspath(__file__))
-
-    # 安装后的环境，动态获取安装路径
-    source_path = subprocess.check_output(
-        f"{sys.executable} -c \"import os, tapflow; print(os.path.dirname(tapflow.__file__))\"",
-        shell=True
-    ).decode().strip()
-
+    
+    # 使用 importlib.util 专门获取 tapflow 包的路径
+    try:
+        spec = importlib.util.find_spec('tapflow')
+        if spec is not None:
+            source_path = os.path.dirname(spec.origin)
+        else:
+            # 如果找不到包，使用相对路径
+            source_path = os.path.dirname(os.path.dirname(basepath))
+    except Exception:
+        # 如果出错，使用相对路径
+        source_path = os.path.dirname(os.path.dirname(basepath))
+    
     # 设置环境变量, 兼容 Windows
     os.environ["LC_ALL"] = "en_US.utf8"
 
