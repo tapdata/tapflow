@@ -4,7 +4,7 @@ TapFlow is a newly launched programming API framework for the TapData Live Data 
 
 This release includes a Python SDK. TapFlow requires a connection to a TapData Cluster, which can be either the enterprise, cloud, or community version, to operate.
 
-![Tapdata Live Data Platform](tapdata_live_data_platform.png)
+![Tapdata Live Data Platform](docs/images/tapdata_live_data_platform.png)
 
 ## Why is a Programmatic Approach Needed ?
 
@@ -30,7 +30,7 @@ Providing tools designed for developers aligns more closely with their workflows
 
 Let's assume we have a CRM application running on a MySQL database. Below is the schema for this MySQL database:
 
-![Mysql Schema](mysql_schema.png)
+![Mysql Schema](docs/images/mysql_schema.png)
 
 Due to performance considerations and specific requirements for wide tables, we need to replicate order data from MySQL to MongoDB in order to publish an order query API. We will use TapFlow to copy the data from MySQL to MongoDB, while performing some data transformations and merging operations along the way.
 
