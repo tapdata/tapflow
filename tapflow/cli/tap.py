@@ -4,8 +4,33 @@ import sys
 import subprocess
 from IPython import start_ipython
 import importlib
-from IPython import start_ipython
 import importlib.util
+
+def get_tapflow_version():
+    try:
+        # 尝试从 setup.py 获取版本号
+        setup_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'setup.py')
+        if os.path.exists(setup_path):
+            with open(setup_path, 'r') as f:
+                content = f.read()
+                import re
+                # 改进的正则表达式，支持更多版本字符串格式
+                version_patterns = [
+                    r"version\s*=\s*['\"]([^'\"]+)['\"]",  # 标准格式：version = '1.0.0' 或 version="1.0.0"
+                    r"version\s*=\s*([0-9][^,\s]*)",      # 无引号格式：version = 1.0.0
+                    r"__version__\s*=\s*['\"]([^'\"]+)['\"]",  # __version__ 格式
+                ]
+                
+                for pattern in version_patterns:
+                    version_match = re.search(pattern, content)
+                    if version_match:
+                        return version_match.group(1)
+        
+        # 如果找不到 setup.py，尝试从已安装的包中获取版本
+        import pkg_resources
+        return pkg_resources.get_distribution('tapflow').version
+    except Exception:
+        return "unknown"
 
 # 添加项目根目录到 Python 路径
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -56,6 +81,7 @@ def command_mode(basepath, source_path):
     # 添加全局帮助选项
     help_group = parser.add_argument_group('Help Options')
     help_group.add_argument('-h', '--help', action='store_true', help="Show this help message and exit")
+    help_group.add_argument('-v', '--version', action='store_true', help="Show version number and exit")
 
     # 配置文件选项
     parser.add_argument("-c", "--config", help="Specify the configuration file path", metavar="CONFIG")
@@ -80,6 +106,12 @@ def command_mode(basepath, source_path):
         parser.print_help()
         sys.exit(1)
     
+    # 处理版本信息
+    if args.version:
+        version = get_tapflow_version()
+        print(f"tapflow version {version}")
+        sys.exit(0)
+
     # 处理帮助信息
     if args.help:
         if args.d is not None:  # 如果是 -d 相关的帮助
