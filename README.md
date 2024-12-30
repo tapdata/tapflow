@@ -1,5 +1,13 @@
+<div align="center">
+<a href="https://tapdata.io/">
+<img src="./assets/tapdata-banner.jpg" width="900px"/>
+</a>
+<br/><br/>
+
 [![Release](https://img.shields.io/github/v/tag/tapdata/tapflow.svg?sort=semver)](https://github.com/tapdata/tapflow/releases)
 [![PyPI Downloads](https://static.pepy.tech/badge/tapflow)](https://pepy.tech/projects/tapflow)
+
+</div>
 
 ## What is TapFlow
 
