@@ -5,7 +5,24 @@
 
 </div>
 
-[toc]
+## Table of Contents
+- [What is TapFlow](#what-is-tapflow)
+- [Why is a Programmatic Approach Needed ?](#why-is-a-programmatic-approach-needed-)
+- [TapFlow Usage Example](#tapflow-usage-example)
+  - [Installing TapFlow](#installing-tapflow)
+  - [Create Source and Target Database Connections](#create-source-and-target-database-connections)
+  - [Create a Simple Order Table Replication Task (Data Flow)](#create-a-simple-order-table-replication-task-data-flow)
+  - [Exclude Fields](#exclude-fields)
+  - [Field Rename](#field-rename)
+  - [Perform Complex Custom Processing with Python Script](#perform-complex-custom-processing-with-python-script)
+  - [Use Lookup to Enrich Customer Information in the Order Table](#use-lookup-to-enrich-customer-information-in-the-order-table)
+  - [Final Result In Monogdb](#final-result-in-monogdb)
+  - [Run Python Code using TapFlow command](#run-python-code-using-tapflow-command)
+- [Known Issue](#known-issue)
+- [TapFlow Roadmap](#tapflow-roadmap)
+- [About TapData Live Data Platform](#about-tapdata-live-data-platform)
+- [Common Use Cases of TapData](#common-use-cases-of-tapdata)
+- [Join Our Community](#join-our-community)
 
 ## What is TapFlow
 
