@@ -4,7 +4,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='tapflow',
-    version='0.2.46',
+    version='0.2.52',
     packages=find_packages(),
     install_requires=required,
     include_package_data=True,
@@ -22,4 +22,6 @@ setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.6',
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
 )
