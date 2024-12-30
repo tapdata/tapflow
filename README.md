@@ -1,3 +1,4 @@
+[![Release](https://img.shields.io/github/v/tag/tapdata/tapflow.svg?sort=semver)](https://github.com/tapdata/tapflow/releases)
 [![PyPI Downloads](https://static.pepy.tech/badge/tapflow)](https://pepy.tech/projects/tapflow)
 
 ## What is TapFlow
