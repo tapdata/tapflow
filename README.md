@@ -5,6 +5,8 @@
 
 </div>
 
+[toc]
+
 ## What is TapFlow
 
 TapFlow is a newly launched programming API framework for the TapData Live Data Platform. It allows developers and data engineers to build data pipelines and models using a simple powerful programming language.
