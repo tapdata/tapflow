@@ -24,7 +24,7 @@ setup(
     python_requires='>=3.6',
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://tapdata.io/",
+    url="https://tapdata.net/",
     project_urls={
         "Documentation": "https://docs.tapdata.net/tapflow/introduction",
         "Source": "https://github.com/tapdata/tapflow",
