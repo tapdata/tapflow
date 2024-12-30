@@ -4,7 +4,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='tapflow',
-    version='0.2.52',
+    version='0.2.53',
     packages=find_packages(),
     install_requires=required,
     include_package_data=True,
@@ -24,4 +24,10 @@ setup(
     python_requires='>=3.6',
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
+    url="https://tapdata.io/",
+    project_urls={
+        "Documentation": "https://docs.tapdata.net/tapflow/introduction",
+        "Source": "https://github.com/tapdata/tapflow",
+        "Tracker": "https://github.com/tapdata/tapdata/issues",
+    },
 )
