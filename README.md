@@ -1,3 +1,5 @@
+[![PyPI Downloads](https://static.pepy.tech/badge/tapflow)](https://pepy.tech/projects/tapflow)
+
 ## What is TapFlow
 
 TapFlow is a newly launched programming API framework for the TapData Live Data Platform. It allows developers and data engineers to build data pipelines and models using a simple powerful programming language.
@@ -327,3 +329,6 @@ We welcome you to join our community and interact with us. You can:
 
 - Star us on [GitHub](https://github.com/tapdata/tapdata)
 - Join our [discord](https://discord.gg/xj79hnEB) community or [whatsApp group](https://chat.whatsapp.com/LeY1lVE5GPkEc3TZeEZgDF)
+
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/tapdata/tapflow.svg?variant=adaptive)](https://starchart.cc/tapdata/tapflow)
