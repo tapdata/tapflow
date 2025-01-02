@@ -699,6 +699,8 @@ class Project(ProjectInterface):
         """默认为当前目录名.project"""
         if not self.path:
             raise ValueError("Project path cannot be empty")
+        if self.path.endswith("/"):
+            return f"{os.path.basename(self.path[:-1])}.project"
         return f"{os.path.basename(self.path)}.project"
 
     def save(self, quiet=False):
