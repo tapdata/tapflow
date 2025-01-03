@@ -392,7 +392,7 @@ class Project(ProjectInterface):
 
             self.origin_check_source_exists = Flow._check_source_exists
 
-            self.origin_config = BaseNode.config
+            # self.origin_config = BaseNode.config
 
             Flow.save = lambda *args, **kwargs: None
             Flow.start = lambda *args, **kwargs: None
@@ -402,7 +402,7 @@ class Project(ProjectInterface):
             Pipeline.start = lambda *args, **kwargs: None
             Pipeline._check_source_exists = lambda *args, **kwargs: True
 
-            BaseNode.config = lambda *args, **kwargs: True
+            # BaseNode.config = lambda *args, **kwargs: True
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             Flow.save = self.origin_save
@@ -413,7 +413,7 @@ class Project(ProjectInterface):
             Pipeline.start = self.origin_start
             Pipeline._check_source_exists = self.origin_check_source_exists
 
-            BaseNode.config = self.origin_config
+            # BaseNode.config = self.origin_config
 
     class AddPythonPath:
         """
