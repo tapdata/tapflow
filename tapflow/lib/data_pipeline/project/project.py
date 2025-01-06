@@ -195,9 +195,9 @@ class ProjectScheduler:
             flow = Flow(flow.name)
             flow.start()
 
-        edit_times, edit_times_limit = 0, 10
+        edit_times, edit_times_limit = 0, 60
 
-        key_error_times, key_error_times_limit = 0, 10
+        key_error_times, key_error_times_limit = 0, 60
 
         while True:
 
