@@ -1,12 +1,14 @@
-name: Publish to PyPI
+name: Publish Package and Binaries
 
 on:
   push:
     tags:
       - 'v*'  # 当推送版本标签时触发
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
-  deploy:
+  # PyPI 发布任务
+  deploy-pypi:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -36,4 +38,129 @@ jobs:
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: twine upload dist/* 
+      run: twine upload dist/*
+
+  # 二进制文件构建任务
+  build-binaries:
+    strategy:
+      matrix:
+        include:
+          # Linux builds
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+          - os: ubuntu-latest
+            platform: linux
+            arch: aarch64
+            
+          # macOS builds
+          - os: macos-latest
+            platform: darwin
+            arch: x86_64
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            
+          # Windows builds
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+          - os: windows-latest
+            platform: windows
+            arch: arm64
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          architecture: ${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Create config directory
+        run: mkdir -p ~/.tapflow
+
+      - name: Build binary
+        run: |
+          python -m PyInstaller \
+            --clean \
+            --name tapflow-0.2.54-${{ matrix.platform }}-${{ matrix.arch }} \
+            --add-data "requirements.txt:." \
+            --add-data "README.md:." \
+            --add-data "tapflow/cli/cli.py:tapflow/cli" \
+            --add-data "etc:etc" \
+            --add-data "tapflow:tapflow" \
+            --hidden-import tapflow \
+            --hidden-import tapflow.cli \
+            --hidden-import tapflow.cli.cli \
+            --hidden-import tapflow.cli.tap \
+            --hidden-import tapflow.lib \
+            --hidden-import tapflow.lib.configuration \
+            --hidden-import tapflow.lib.configuration.config \
+            --hidden-import tapflow.lib.backend_apis \
+            --hidden-import tapflow.lib.data_pipeline \
+            --hidden-import tapflow.lib.connections \
+            --hidden-import IPython \
+            --hidden-import yaml \
+            --hidden-import requests \
+            --hidden-import websockets \
+            --hidden-import bson \
+            --log-level ERROR \
+            --onefile \
+            tapflow/cli/tap.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: binary-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/*
+          retention-days: 1
+
+  # 发布二进制文件到服务器任务
+  publish-binaries:
+    needs: [build-binaries]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: dist
+
+      - name: Install rsync
+        run: sudo apt-get install -y rsync
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare artifacts for upload
+        run: |
+          mkdir -p upload
+          cp -r dist/*/* upload/
+          cd upload
+          # 为每个文件添加 SHA256 校验和
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Upload to server via rsync
+        env:
+          RSYNC_PASSWORD: ${{ secrets.RSYNC_PASSWORD }}
+          RSYNC_HOST: ${{ secrets.RSYNC_HOST }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          rsync -avz --progress upload/ "rsync://${RSYNC_HOST}/data/enterprise-artifact/gz/tapflow/${VERSION}/" 
