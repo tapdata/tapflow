@@ -99,16 +99,16 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" = "linux-centos7" ]; then
             # CentOS 7 兼容版本使用 manylinux2014 镜像构建
-            docker run --rm -v $(pwd):/src -w /src quay.io/pypa/manylinux2014_x86_64 bash -c "\
-              /opt/python/cp39-cp39/bin/pip install -r requirements.txt pyinstaller && \
+            docker run --rm -v $(pwd):/src -w /src quay.io/pypa/manylinux2014_x86_64 /bin/bash -c '
+              /opt/python/cp39-cp39/bin/pip install -r requirements.txt pyinstaller &&
               /opt/python/cp39-cp39/bin/python -m PyInstaller \
                 --clean \
                 --name tapflow-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }} \
-                --add-data 'requirements.txt:.' \
-                --add-data 'README.md:.' \
-                --add-data 'tapflow/cli/cli.py:tapflow/cli' \
-                --add-data 'etc:etc' \
-                --add-data 'tapflow:tapflow' \
+                --add-data "requirements.txt:." \
+                --add-data "README.md:." \
+                --add-data "tapflow/cli/cli.py:tapflow/cli" \
+                --add-data "etc:etc" \
+                --add-data "tapflow:tapflow" \
                 --hidden-import tapflow \
                 --hidden-import tapflow.cli \
                 --hidden-import tapflow.cli.cli \
@@ -154,7 +154,8 @@ jobs:
                 --hidden-import charset_normalizer \
                 --log-level ERROR \
                 --onefile \
-                tapflow/cli/tap.py"
+                tapflow/cli/tap.py
+            '
           else
             # 普通 Linux 和 macOS 版本使用当前环境构建
             python -m PyInstaller \
@@ -211,6 +212,7 @@ jobs:
               --log-level ERROR \
               --onefile \
               tapflow/cli/tap.py
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
