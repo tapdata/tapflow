@@ -202,4 +202,5 @@ jobs:
           RSYNC_HOST: ${{ secrets.RSYNC_HOST }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          rsync -avz --progress upload/ "rsync://${RSYNC_HOST}/data/enterprise-artifact/gz/tapflow/${VERSION}/"
+          echo "${{ env.RSYNC_PASSWORD }}" > /tmp/rsync_password && chmod 600 /tmp/rsync_password
+          rsync --password-file=/tmp/rsync_password -avz --progress upload/ "rsync://${RSYNC_HOST}/data/enterprise-artifact/gz/tapflow/${VERSION}/"
