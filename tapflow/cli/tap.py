@@ -219,6 +219,55 @@ def command_mode(basepath, source_path):
     else:
         parser.print_help()
 
+def parse_application_yml():
+    """
+    解析application.yml文件并生成tapflow配置
+    
+    从.workDir文件或当前目录下查找application.yml文件，
+    解析其中的tapdata.cloud.accessCode和tapdata.conf.backendUrl，
+    并生成~/.tapflow/config.ini配置文件
+    """
+    # 检查.workDir文件和application.yml
+    work_dir = None
+    if os.path.exists('.workDir'):
+        with open('.workDir', 'r') as f:
+            work_dir = f.read().strip()
+    
+    application_yml_path = None
+    if work_dir:
+        application_yml_path = os.path.join(work_dir, 'application.yml')
+    elif os.path.exists('application.yml'):
+        application_yml_path = 'application.yml'
+
+    if application_yml_path and os.path.exists(application_yml_path):
+        try:
+            import yaml
+            with open(application_yml_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            # 解析配置
+            access_code = config.get('tapdata', {}).get('cloud', {}).get('accessCode', '')
+            backend_url = config.get('tapdata', {}).get('conf', {}).get('backendUrl', '')
+            
+            # 从backendUrl提取server
+            if backend_url:
+                server = backend_url.replace('http://', '').replace('/api/', '').replace('https://', '')
+                # 创建配置目录
+                config_dir = os.path.expanduser('~/.tapflow')
+                os.makedirs(config_dir, exist_ok=True)
+                
+                # 写入配置文件
+                config_path = os.path.join(config_dir, 'config.ini')
+                with open(config_path, 'w') as f:
+                    f.write(f'''[backend]
+server = {server}
+access_code = {access_code}
+''')
+                    return True
+        except Exception as e:
+            print(f"Error parsing application.yml: {e}")
+    return False
+
 def main():
     basepath = os.path.dirname(os.path.abspath(__file__))
     
@@ -239,10 +288,13 @@ def main():
 
     # 获取真实的命令行参数（排除脚本路径）
     args = sys.argv[1:]  # 去掉脚本路径
+    
     # 如果有命令行参数，则进入命令行模式
     if args:
         command_mode(basepath, source_path)
     else:
+        # 尝试解析application.yml
+        parse_application_yml()
         interactive_mode(basepath, source_path)
 
 if __name__ == "__main__":
