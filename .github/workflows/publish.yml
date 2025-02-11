@@ -98,63 +98,65 @@ jobs:
       - name: Build binary
         run: |
           if [ "${{ matrix.platform }}" = "linux-centos7" ]; then
-            docker run --rm -v $(pwd):/src -w /src quay.io/pypa/manylinux2014_x86_64 \
+            # CentOS 7 兼容版本使用 manylinux2014 镜像构建
+            docker run --rm -v $(pwd):/src -w /src quay.io/pypa/manylinux2014_x86_64 bash -c "\
               /opt/python/cp39-cp39/bin/pip install -r requirements.txt pyinstaller && \
               /opt/python/cp39-cp39/bin/python -m PyInstaller \
-              --clean \
-              --name tapflow-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }} \
-              --add-data "requirements.txt:." \
-              --add-data "README.md:." \
-              --add-data "tapflow/cli/cli.py:tapflow/cli" \
-              --add-data "etc:etc" \
-              --add-data "tapflow:tapflow" \
-              --hidden-import tapflow \
-              --hidden-import tapflow.cli \
-              --hidden-import tapflow.cli.cli \
-              --hidden-import tapflow.cli.tap \
-              --hidden-import tapflow.lib \
-              --hidden-import tapflow.lib.configuration \
-              --hidden-import tapflow.lib.configuration.config \
-              --hidden-import tapflow.lib.backend_apis \
-              --hidden-import tapflow.lib.data_pipeline \
-              --hidden-import tapflow.lib.connections \
-              --hidden-import tapflow.lib.utils \
-              --hidden-import tapflow.lib.params \
-              --hidden-import tapflow.lib.data_pipeline.validation \
-              --hidden-import tapflow.lib.data_services \
-              --hidden-import tapflow.lib.system \
-              --hidden-import tapflow.lib.cache \
-              --hidden-import tapflow.lib.backend_apis.common \
-              --hidden-import tapflow.lib.backend_apis.connections \
-              --hidden-import tapflow.lib.backend_apis.task \
-              --hidden-import tapflow.lib.backend_apis.dataVerify \
-              --hidden-import tapflow.lib.backend_apis.metadataInstance \
-              --hidden-import tapflow.lib.backend_apis.apiServers \
-              --hidden-import IPython \
-              --hidden-import yaml \
-              --hidden-import requests \
-              --hidden-import websockets \
-              --hidden-import bson \
-              --hidden-import urllib \
-              --hidden-import traitlets \
-              --hidden-import importlib.metadata \
-              --hidden-import logging \
-              --hidden-import email \
-              --hidden-import xml \
-              --hidden-import http \
-              --hidden-import ctypes \
-              --hidden-import multiprocessing \
-              --hidden-import dateutil \
-              --hidden-import json \
-              --hidden-import asyncio \
-              --hidden-import concurrent.futures \
-              --hidden-import idna \
-              --hidden-import urllib3 \
-              --hidden-import charset_normalizer \
-              --log-level ERROR \
-              --onefile \
-              tapflow/cli/tap.py
+                --clean \
+                --name tapflow-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }} \
+                --add-data 'requirements.txt:.' \
+                --add-data 'README.md:.' \
+                --add-data 'tapflow/cli/cli.py:tapflow/cli' \
+                --add-data 'etc:etc' \
+                --add-data 'tapflow:tapflow' \
+                --hidden-import tapflow \
+                --hidden-import tapflow.cli \
+                --hidden-import tapflow.cli.cli \
+                --hidden-import tapflow.cli.tap \
+                --hidden-import tapflow.lib \
+                --hidden-import tapflow.lib.configuration \
+                --hidden-import tapflow.lib.configuration.config \
+                --hidden-import tapflow.lib.backend_apis \
+                --hidden-import tapflow.lib.data_pipeline \
+                --hidden-import tapflow.lib.connections \
+                --hidden-import tapflow.lib.utils \
+                --hidden-import tapflow.lib.params \
+                --hidden-import tapflow.lib.data_pipeline.validation \
+                --hidden-import tapflow.lib.data_services \
+                --hidden-import tapflow.lib.system \
+                --hidden-import tapflow.lib.cache \
+                --hidden-import tapflow.lib.backend_apis.common \
+                --hidden-import tapflow.lib.backend_apis.connections \
+                --hidden-import tapflow.lib.backend_apis.task \
+                --hidden-import tapflow.lib.backend_apis.dataVerify \
+                --hidden-import tapflow.lib.backend_apis.metadataInstance \
+                --hidden-import tapflow.lib.backend_apis.apiServers \
+                --hidden-import IPython \
+                --hidden-import yaml \
+                --hidden-import requests \
+                --hidden-import websockets \
+                --hidden-import bson \
+                --hidden-import urllib \
+                --hidden-import traitlets \
+                --hidden-import importlib.metadata \
+                --hidden-import logging \
+                --hidden-import email \
+                --hidden-import xml \
+                --hidden-import http \
+                --hidden-import ctypes \
+                --hidden-import multiprocessing \
+                --hidden-import dateutil \
+                --hidden-import json \
+                --hidden-import asyncio \
+                --hidden-import concurrent.futures \
+                --hidden-import idna \
+                --hidden-import urllib3 \
+                --hidden-import charset_normalizer \
+                --log-level ERROR \
+                --onefile \
+                tapflow/cli/tap.py"
           else
+            # 普通 Linux 和 macOS 版本使用当前环境构建
             python -m PyInstaller \
               --clean \
               --name tapflow-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }} \
