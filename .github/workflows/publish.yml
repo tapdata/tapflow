@@ -45,20 +45,21 @@ jobs:
     strategy:
       matrix:
         include:
-          # Linux builds
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
-            
-          # macOS builds
+            ext: ""
+            shell: bash
           - os: macos-latest
             platform: darwin
             arch: x86_64
-            
-          # Windows builds
+            ext: ""
+            shell: bash
           - os: windows-latest
             platform: windows
             arch: x86_64
+            ext: ".exe"
+            shell: pwsh
 
     runs-on: ${{ matrix.os }}
     
@@ -70,7 +71,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          architecture: ${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}
+          architecture: x64
 
       - name: Install dependencies
         run: |
@@ -79,42 +80,80 @@ jobs:
           pip install pyinstaller
 
       - name: Create config directory
-        run: mkdir -p ~/.tapflow
+        shell: ${{ matrix.shell }}
+        run: |
+          if ("${{ matrix.platform }}" -eq "windows") {
+            mkdir -Force "$env:USERPROFILE\.tapflow"
+          } else {
+            mkdir -p ~/.tapflow
+          }
 
       - name: Build binary
+        shell: ${{ matrix.shell }}
         run: |
-          python -m PyInstaller \
-            --clean \
-            --name tapflow-0.2.54-${{ matrix.platform }}-${{ matrix.arch }} \
-            --add-data "requirements.txt:." \
-            --add-data "README.md:." \
-            --add-data "tapflow/cli/cli.py:tapflow/cli" \
-            --add-data "etc:etc" \
-            --add-data "tapflow:tapflow" \
-            --hidden-import tapflow \
-            --hidden-import tapflow.cli \
-            --hidden-import tapflow.cli.cli \
-            --hidden-import tapflow.cli.tap \
-            --hidden-import tapflow.lib \
-            --hidden-import tapflow.lib.configuration \
-            --hidden-import tapflow.lib.configuration.config \
-            --hidden-import tapflow.lib.backend_apis \
-            --hidden-import tapflow.lib.data_pipeline \
-            --hidden-import tapflow.lib.connections \
-            --hidden-import IPython \
-            --hidden-import yaml \
-            --hidden-import requests \
-            --hidden-import websockets \
-            --hidden-import bson \
-            --log-level ERROR \
-            --onefile \
-            tapflow/cli/tap.py
+          if ("${{ matrix.platform }}" -eq "windows") {
+            $pyinstallerArgs = @(
+              "--clean",
+              "--name", "tapflow-0.2.54-${{ matrix.platform }}-${{ matrix.arch }}",
+              "--add-data", "requirements.txt;.",
+              "--add-data", "README.md;.",
+              "--add-data", "tapflow/cli/cli.py;tapflow/cli",
+              "--add-data", "etc;etc",
+              "--add-data", "tapflow;tapflow",
+              "--hidden-import", "tapflow",
+              "--hidden-import", "tapflow.cli",
+              "--hidden-import", "tapflow.cli.cli",
+              "--hidden-import", "tapflow.cli.tap",
+              "--hidden-import", "tapflow.lib",
+              "--hidden-import", "tapflow.lib.configuration",
+              "--hidden-import", "tapflow.lib.configuration.config",
+              "--hidden-import", "tapflow.lib.backend_apis",
+              "--hidden-import", "tapflow.lib.data_pipeline",
+              "--hidden-import", "tapflow.lib.connections",
+              "--hidden-import", "IPython",
+              "--hidden-import", "yaml",
+              "--hidden-import", "requests",
+              "--hidden-import", "websockets",
+              "--hidden-import", "bson",
+              "--log-level", "ERROR",
+              "--onefile",
+              "tapflow/cli/tap.py"
+            )
+            python -m PyInstaller $pyinstallerArgs
+          } else {
+            python -m PyInstaller \
+              --clean \
+              --name tapflow-0.2.54-${{ matrix.platform }}-${{ matrix.arch }} \
+              --add-data "requirements.txt:." \
+              --add-data "README.md:." \
+              --add-data "tapflow/cli/cli.py:tapflow/cli" \
+              --add-data "etc:etc" \
+              --add-data "tapflow:tapflow" \
+              --hidden-import tapflow \
+              --hidden-import tapflow.cli \
+              --hidden-import tapflow.cli.cli \
+              --hidden-import tapflow.cli.tap \
+              --hidden-import tapflow.lib \
+              --hidden-import tapflow.lib.configuration \
+              --hidden-import tapflow.lib.configuration.config \
+              --hidden-import tapflow.lib.backend_apis \
+              --hidden-import tapflow.lib.data_pipeline \
+              --hidden-import tapflow.lib.connections \
+              --hidden-import IPython \
+              --hidden-import yaml \
+              --hidden-import requests \
+              --hidden-import websockets \
+              --hidden-import bson \
+              --log-level ERROR \
+              --onefile \
+              tapflow/cli/tap.py
+          }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.platform }}-${{ matrix.arch }}
-          path: dist/*
+          path: dist/*${{ matrix.ext }}
           retention-days: 1
 
   # 发布二进制文件到服务器任务
@@ -155,4 +194,4 @@ jobs:
           RSYNC_HOST: ${{ secrets.RSYNC_HOST }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          rsync -avz --progress upload/ "rsync://${RSYNC_HOST}/data/enterprise-artifact/gz/tapflow/${VERSION}/" 
+          rsync -avz --progress upload/ "rsync://${RSYNC_HOST}/data/enterprise-artifact/gz/tapflow/${VERSION}/"
