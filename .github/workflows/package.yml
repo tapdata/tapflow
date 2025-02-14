@@ -163,4 +163,4 @@ jobs:
         run: |
           echo '${{ secrets.RSYNC_PASSWORD }}' > /tmp/rsync_password && chmod 600 /tmp/rsync_password
           mkdir -p /tmp/rsync_temp
-          rsync --password-file=/tmp/rsync_password -vzrt --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r --temp-dir=/tmp/rsync_temp --progress upload/ "rsync://${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" 
+          rsync --password-file=/tmp/rsync_password -vzrt --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r --temp-dir=/tmp/rsync_temp --progress upload/ "rsync://${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || [[ $? -eq 23 ]] || exit $? 
