@@ -44,7 +44,12 @@ jobs:
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
           else
-            echo "VERSION=latest" >> $GITHUB_ENV
+            if [[ "$RUNNER_OS" == "Windows" ]]; then
+              VERSION=$(powershell -Command "$$tag = git describe --tags; if ($$tag -match '^v\d+\.\d+\.\d+') { $$matches[0].substring(1) } else { '0.0.0' }")
+            else
+              VERSION=$(git describe --tags | grep -o '^v[0-9]\+\.[0-9]\+\.[0-9]\+' | sed 's/^v//' || echo '0.0.0')
+            fi
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
 
       - name: Install make (Windows)
