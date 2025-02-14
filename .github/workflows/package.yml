@@ -86,6 +86,6 @@ jobs:
           switches: -tvzr --delete
           path: dist/
           remote_path: /data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/
-          remote_host: ${{ secrets.RSYNC_HOST }}
+          remote_host: rsync://${{ secrets.RSYNC_HOST }}
           remote_user: ${{ secrets.RSYNC_USER }}
           remote_key: ${{ secrets.RSYNC_PASSWORD }} 
