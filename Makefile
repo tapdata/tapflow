@@ -6,10 +6,24 @@ DIST_DIR = dist
 BUILD_DIR = build
 CONFIG_DIR = $(HOME)/.tapflow
 
+# 检测操作系统
+ifeq ($(OS),Windows_NT)
+    PLATFORM = windows
+    ARCH = $(shell echo %PROCESSOR_ARCHITECTURE%)
+    PYTHON = $(VENV)\Scripts\python
+    PIP = $(VENV)\Scripts\pip
+    CONFIG_DIR = $(USERPROFILE)\.tapflow
+    SEP = \\
+else
+    PLATFORM = $(shell uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH = $(shell uname -m)
+    PYTHON = $(VENV)/bin/python
+    PIP = $(VENV)/bin/pip
+    SEP = /
+endif
+
 # Python 虚拟环境
 VENV = .venv
-PYTHON = $(VENV)/bin/python
-PIP = $(VENV)/bin/pip
 
 # 默认目标
 .PHONY: all
@@ -32,19 +46,28 @@ clean:
 # 初始化配置文件
 .PHONY: init-config
 init-config:
+ifeq ($(OS),Windows_NT)
+	if not exist "$(CONFIG_DIR)" mkdir "$(CONFIG_DIR)"
+	if not exist "$(CONFIG_DIR)\config.ini" (
+		echo [backend] > "$(CONFIG_DIR)\config.ini"
+		echo server = localhost >> "$(CONFIG_DIR)\config.ini"
+		echo access_code = >> "$(CONFIG_DIR)\config.ini"
+	)
+else
 	mkdir -p $(CONFIG_DIR)
 	@if [ ! -f "$(CONFIG_DIR)/config.ini" ]; then \
 		echo "[backend]" > $(CONFIG_DIR)/config.ini; \
 		echo "server = localhost" >> $(CONFIG_DIR)/config.ini; \
 		echo "access_code = " >> $(CONFIG_DIR)/config.ini; \
 	fi
+endif
 
 # 构建当前平台版本
 .PHONY: current
 current: init-config
 	PYTHONPATH=$(PWD) $(PYTHON) -m PyInstaller \
 		--clean \
-		--name $(PACKAGE_NAME)-$(VERSION)-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(shell uname -m) \
+		--name $(PACKAGE_NAME)-$(VERSION)-$(PLATFORM)-$(ARCH) \
 		--add-data "requirements.txt:." \
 		--add-data "README.md:." \
 		--add-data "tapflow/cli/cli.py:tapflow/cli" \
@@ -60,11 +83,39 @@ current: init-config
 		--hidden-import tapflow.lib.backend_apis \
 		--hidden-import tapflow.lib.data_pipeline \
 		--hidden-import tapflow.lib.connections \
+		--hidden-import tapflow.lib.utils \
+		--hidden-import tapflow.lib.params \
+		--hidden-import tapflow.lib.data_pipeline.validation \
+		--hidden-import tapflow.lib.data_services \
+		--hidden-import tapflow.lib.system \
+		--hidden-import tapflow.lib.cache \
+		--hidden-import tapflow.lib.backend_apis.common \
+		--hidden-import tapflow.lib.backend_apis.connections \
+		--hidden-import tapflow.lib.backend_apis.task \
+		--hidden-import tapflow.lib.backend_apis.dataVerify \
+		--hidden-import tapflow.lib.backend_apis.metadataInstance \
+		--hidden-import tapflow.lib.backend_apis.apiServers \
 		--hidden-import IPython \
 		--hidden-import yaml \
 		--hidden-import requests \
 		--hidden-import websockets \
 		--hidden-import bson \
+		--hidden-import urllib \
+		--hidden-import traitlets \
+		--hidden-import importlib.metadata \
+		--hidden-import logging \
+		--hidden-import email \
+		--hidden-import xml \
+		--hidden-import http \
+		--hidden-import ctypes \
+		--hidden-import multiprocessing \
+		--hidden-import dateutil \
+		--hidden-import json \
+		--hidden-import asyncio \
+		--hidden-import concurrent.futures \
+		--hidden-import idna \
+		--hidden-import urllib3 \
+		--hidden-import charset_normalizer \
 		--log-level ERROR \
 		--onefile \
 		$(MAIN_ENTRY) 

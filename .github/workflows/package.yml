@@ -159,9 +159,7 @@ jobs:
 
       - name: Upload to server via rsync
         env:
-          RSYNC_PASSWORD: ${{ secrets.RSYNC_PASSWORD }}
-          RSYNC_HOST: ${{ secrets.RSYNC_HOST }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          echo "${{ env.RSYNC_PASSWORD }}" > /tmp/rsync_password && chmod 600 /tmp/rsync_password
-          rsync --password-file=/tmp/rsync_password -avz --progress upload/ "rsync://${RSYNC_HOST}/data/enterprise-artifact/gz/tapflow/${VERSION}/" 
+          echo '${{ secrets.RSYNC_PASSWORD }}' > /tmp/rsync_password && chmod 600 /tmp/rsync_password
+          rsync --password-file=/tmp/rsync_password -avz --progress upload/ "rsync://${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" 
