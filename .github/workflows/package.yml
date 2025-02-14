@@ -76,7 +76,11 @@ jobs:
         shell: bash
         run: |
           cd dist
-          shasum -a 256 * > SHA256SUMS.darwin.txt
+          for file in *; do
+            if [ -f "$file" ] && [ "$file" != "SHA256SUMS.darwin.txt" ]; then
+              shasum -a 256 "$file" >> SHA256SUMS.darwin.txt
+            fi
+          done
 
       - name: Generate checksum (Windows)
         if: runner.os == 'Windows'
