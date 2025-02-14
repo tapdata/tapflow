@@ -7,8 +7,30 @@ on:
   workflow_dispatch:  # 允许手动触发
 
 jobs:
+  # 获取版本号
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(git describe --tags | grep -o '^v[0-9]\+\.[0-9]\+\.[0-9]\+' | sed 's/^v//' || echo '0.0.0')
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
   # 二进制文件构建任务
   build-and-publish:
+    needs: get-version
     strategy:
       fail-fast: false
       matrix:
@@ -29,28 +51,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取完整的历史记录，包括所有标签
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           architecture: x64
-
-      - name: Extract version from tag
-        id: get_version
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-          else
-            if [[ "$RUNNER_OS" == "Windows" ]]; then
-              powershell -Command "Write-Output ('VERSION=' + (git describe --tags | Select-String -Pattern '^v\d+\.\d+\.\d+' | ForEach-Object { `$_.Matches[0].Value.Substring(1) } ))" >> $GITHUB_ENV
-            else
-              VERSION=$(git describe --tags | grep -o '^v[0-9]\+\.[0-9]\+\.[0-9]\+' | sed 's/^v//' || echo '0.0.0')
-              echo "VERSION=$VERSION" >> $GITHUB_ENV
-            fi
-          fi
-        shell: bash
 
       - name: Install make (Windows)
         if: runner.os == 'Windows'
@@ -61,8 +68,9 @@ jobs:
         shell: bash
         env:
           PYTHONPATH: ${{ github.workspace }}
+          VERSION: ${{ needs.get-version.outputs.version }}
         run: |
-          make clean setup current
+          make clean setup current VERSION=$VERSION
 
       - name: Generate checksum (Linux)
         if: runner.os == 'Linux'
@@ -109,17 +117,17 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         env:
-          VERSION: ${{ env.VERSION }}
+          VERSION: ${{ needs.get-version.outputs.version }}
         run: |
           echo '${{ secrets.RSYNC_PASSWORD }}' > /tmp/rsync.passwd && chmod 600 /tmp/rsync.passwd
-          rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || true
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/$VERSION/" || true
 
       - name: Deploy to rsync server (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         env:
-          VERSION: ${{ env.VERSION }}
+          VERSION: ${{ needs.get-version.outputs.version }}
           RSYNC_PASSWORD: ${{ secrets.RSYNC_PASSWORD }}
         run: |
           $env:RSYNC_PASSWORD | Out-File -FilePath "$env:TEMP\rsync.passwd" -Encoding ASCII
-          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || exit 0 
+          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/$VERSION/" || exit 0 
