@@ -10,6 +10,7 @@ jobs:
   # 二进制文件构建任务
   build-and-publish:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -56,12 +57,19 @@ jobs:
         run: |
           make clean setup current
 
-      - name: Generate checksum (Unix)
-        if: runner.os != 'Windows'
+      - name: Generate checksum (Linux)
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           cd dist
           sha256sum * > SHA256SUMS.txt
+
+      - name: Generate checksum (macOS)
+        if: runner.os == 'Darwin'
+        shell: bash
+        run: |
+          cd dist
+          shasum -a 256 * > SHA256SUMS.txt
 
       - name: Generate checksum (Windows)
         if: runner.os == 'Windows'
