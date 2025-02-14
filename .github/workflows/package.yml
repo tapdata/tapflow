@@ -50,14 +50,35 @@ jobs:
           choco install make
           
       - name: Build binary
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           make clean setup current
 
-      - name: Generate checksum
+      - name: Generate checksum (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           cd dist
           sha256sum * > SHA256SUMS.txt
+
+      - name: Generate checksum (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd dist
+          Get-ChildItem -File | ForEach-Object {
+            $hash = (Get-FileHash -Algorithm SHA256 $_.Name).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -Append -Encoding utf8 SHA256SUMS.txt
+          }
+
+      - name: Fix line endings (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd dist
+          (Get-Content SHA256SUMS.txt) | Set-Content -Encoding utf8 SHA256SUMS.txt
 
       - name: Deploy to rsync server
         uses: Burnett01/rsync-deployments@6.0.0
