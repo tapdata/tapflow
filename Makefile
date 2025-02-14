@@ -2,7 +2,7 @@
 PACKAGE_NAME = tapflow
 
 ifeq ($(OS),Windows_NT)
-    VERSION = $(shell powershell -Command "$tag = git describe --tags; if ($tag -match '^v\d+\.\d+\.\d+') { $matches[0] } else { 'v0.0.0' }")
+    VERSION = v$(shell powershell -Command "(git describe --tags | Select-String -Pattern '^v\d+\.\d+\.\d+' | ForEach-Object { $$_.Matches[0].Value.Substring(1) } ) -replace '^\s*|\s*$$',''")
 else
     VERSION = $(shell git describe --tags | grep -o '^v[0-9]\+\.[0-9]\+\.[0-9]\+' || echo v0.0.0)
 endif
