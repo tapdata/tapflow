@@ -88,12 +88,27 @@ jobs:
           cd dist
           (Get-Content SHA256SUMS.txt) | Set-Content -Encoding utf8 SHA256SUMS.txt
 
-      - name: Deploy to rsync server
-        uses: Burnett01/rsync-deployments@6.0.0
-        with:
-          switches: -tvzr --delete
-          path: dist/
-          remote_path: /data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/
-          remote_host: rsync://${{ secrets.RSYNC_HOST }}
-          remote_user: ${{ secrets.RSYNC_USER }}
-          remote_key: ${{ secrets.RSYNC_PASSWORD }} 
+      - name: Install rsync (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install rsync
+
+      - name: Deploy to rsync server (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          echo '${{ secrets.RSYNC_PASSWORD }}' > /tmp/rsync.passwd && chmod 600 /tmp/rsync.passwd
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || true
+
+      - name: Deploy to rsync server (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ env.VERSION }}
+          RSYNC_PASSWORD: ${{ secrets.RSYNC_PASSWORD }}
+        run: |
+          $env:RSYNC_PASSWORD | Out-File -FilePath "$env:TEMP\rsync.passwd" -Encoding ASCII
+          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || exit 0 
