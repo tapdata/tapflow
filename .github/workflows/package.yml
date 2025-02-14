@@ -80,7 +80,7 @@ jobs:
           sha256sum * > SHA256SUMS.linux.txt
 
       - name: Generate checksum (macOS)
-        if: runner.os == 'Darwin'
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           cd dist
