@@ -4,22 +4,32 @@ VERSION = 0.2.54
 MAIN_ENTRY = tapflow/cli/tap.py
 DIST_DIR = dist
 BUILD_DIR = build
-CONFIG_DIR = $(HOME)/.tapflow
 
 # 检测操作系统
 ifeq ($(OS),Windows_NT)
     PLATFORM = windows
-    ARCH = $(shell echo %PROCESSOR_ARCHITECTURE%)
-    PYTHON = $(VENV)\Scripts\python
-    PIP = $(VENV)\Scripts\pip
-    CONFIG_DIR = $(USERPROFILE)\.tapflow
-    SEP = \\
+    ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+        ARCH = x86_64
+    else ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+        ARCH = x86
+    else
+        ARCH = $(PROCESSOR_ARCHITECTURE)
+    endif
+    PYTHON = python
+    PIP = pip
+    CONFIG_DIR = $(subst \,/,$(USERPROFILE))/.tapflow
+    MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
+    RMRF = powershell -Command "Remove-Item -Recurse -Force"
+    COPY = powershell -Command "Copy-Item"
 else
     PLATFORM = $(shell uname -s | tr '[:upper:]' '[:lower:]')
     ARCH = $(shell uname -m)
-    PYTHON = $(VENV)/bin/python
-    PIP = $(VENV)/bin/pip
-    SEP = /
+    PYTHON = python3
+    PIP = pip3
+    CONFIG_DIR = $(HOME)/.tapflow
+    MKDIR = mkdir -p
+    RMRF = rm -rf
+    COPY = cp
 endif
 
 # Python 虚拟环境
@@ -32,7 +42,7 @@ all: clean setup current
 # 设置虚拟环境
 .PHONY: setup
 setup:
-	python3 -m venv $(VENV)
+	$(PYTHON) -m venv $(VENV)
 	$(PIP) install --upgrade pip
 	$(PIP) install -r requirements.txt
 	$(PIP) install pyinstaller
@@ -40,32 +50,26 @@ setup:
 # 清理构建文件
 .PHONY: clean
 clean:
-	rm -rf $(DIST_DIR) $(BUILD_DIR)
-	rm -rf *.spec
+	$(RMRF) "$(DIST_DIR)" "$(BUILD_DIR)" *.spec
 
 # 初始化配置文件
 .PHONY: init-config
 init-config:
+	$(MKDIR) "$(CONFIG_DIR)"
 ifeq ($(OS),Windows_NT)
-	if not exist "$(CONFIG_DIR)" mkdir "$(CONFIG_DIR)"
-	if not exist "$(CONFIG_DIR)\config.ini" (
-		echo [backend] > "$(CONFIG_DIR)\config.ini"
-		echo server = localhost >> "$(CONFIG_DIR)\config.ini"
-		echo access_code = >> "$(CONFIG_DIR)\config.ini"
-	)
+	powershell -Command "if (-not (Test-Path '$(CONFIG_DIR)/config.ini')) { @('[backend]', 'server = localhost', 'access_code = ') | Set-Content '$(CONFIG_DIR)/config.ini' -Encoding UTF8 }"
 else
-	mkdir -p $(CONFIG_DIR)
 	@if [ ! -f "$(CONFIG_DIR)/config.ini" ]; then \
-		echo "[backend]" > $(CONFIG_DIR)/config.ini; \
-		echo "server = localhost" >> $(CONFIG_DIR)/config.ini; \
-		echo "access_code = " >> $(CONFIG_DIR)/config.ini; \
+		echo "[backend]" > "$(CONFIG_DIR)/config.ini"; \
+		echo "server = localhost" >> "$(CONFIG_DIR)/config.ini"; \
+		echo "access_code = " >> "$(CONFIG_DIR)/config.ini"; \
 	fi
 endif
 
 # 构建当前平台版本
 .PHONY: current
 current: init-config
-	PYTHONPATH=$(PWD) $(PYTHON) -m PyInstaller \
+	$(PYTHON) -m PyInstaller \
 		--clean \
 		--name $(PACKAGE_NAME)-$(VERSION)-$(PLATFORM)-$(ARCH) \
 		--add-data "requirements.txt:." \
