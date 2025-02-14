@@ -39,18 +39,18 @@ jobs:
 
       - name: Extract version from tag
         id: get_version
-        shell: bash
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
           else
             if [[ "$RUNNER_OS" == "Windows" ]]; then
-              VERSION=$(powershell -Command "$$tag = git describe --tags; if ($$tag -match '^v\d+\.\d+\.\d+') { $$matches[0].substring(1) } else { '0.0.0' }")
+              powershell -Command "Write-Output \"VERSION=$((git describe --tags | Select-String -Pattern '^v\d+\.\d+\.\d+' | ForEach-Object { $_.Matches[0].Value.Substring(1) }) ?? '0.0.0')\"" >> $GITHUB_ENV
             else
               VERSION=$(git describe --tags | grep -o '^v[0-9]\+\.[0-9]\+\.[0-9]\+' | sed 's/^v//' || echo '0.0.0')
+              echo "VERSION=$VERSION" >> $GITHUB_ENV
             fi
-            echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
+        shell: bash
 
       - name: Install make (Windows)
         if: runner.os == 'Windows'
