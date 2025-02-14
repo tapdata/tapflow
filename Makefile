@@ -1,6 +1,12 @@
 # 定义变量
 PACKAGE_NAME = tapflow
-VERSION = 0.2.54
+
+ifeq ($(OS),Windows_NT)
+    VERSION = $(shell powershell -Command "$$tag = git describe --tags; if ($$tag -match '^v\d+\.\d+\.\d+') { $$matches[0] } else { 'v0.0.0' }")
+else
+    VERSION = $(shell git describe --tags | grep -o '^v[0-9]\+\.[0-9]\+\.[0-9]\+' || echo v0.0.0)
+endif
+
 MAIN_ENTRY = tapflow/cli/tap.py
 DIST_DIR = dist
 BUILD_DIR = build

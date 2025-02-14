@@ -62,14 +62,14 @@ jobs:
         shell: bash
         run: |
           cd dist
-          sha256sum * > SHA256SUMS.txt
+          sha256sum * > SHA256SUMS.linux.txt
 
       - name: Generate checksum (macOS)
         if: runner.os == 'Darwin'
         shell: bash
         run: |
           cd dist
-          shasum -a 256 * > SHA256SUMS.txt
+          shasum -a 256 * > SHA256SUMS.darwin.txt
 
       - name: Generate checksum (Windows)
         if: runner.os == 'Windows'
@@ -78,7 +78,7 @@ jobs:
           cd dist
           Get-ChildItem -File | ForEach-Object {
             $hash = (Get-FileHash -Algorithm SHA256 $_.Name).Hash.ToLower()
-            "$hash  $($_.Name)" | Out-File -Append -Encoding utf8 SHA256SUMS.txt
+            "$hash  $($_.Name)" | Out-File -Append -Encoding utf8 SHA256SUMS.windows.txt
           }
 
       - name: Fix line endings (Windows)
@@ -86,7 +86,7 @@ jobs:
         shell: pwsh
         run: |
           cd dist
-          (Get-Content SHA256SUMS.txt) | Set-Content -Encoding utf8 SHA256SUMS.txt
+          (Get-Content SHA256SUMS.windows.txt) | Set-Content -Encoding utf8 SHA256SUMS.windows.txt
 
       - name: Install rsync (Windows)
         if: runner.os == 'Windows'
