@@ -19,7 +19,7 @@ ifeq ($(OS),Windows_NT)
     PIP = pip
     CONFIG_DIR = $(subst \,/,$(USERPROFILE))/.tapflow
     MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
-    RMRF = powershell -Command "Remove-Item -Recurse -Force"
+    RMRF = powershell -Command "if (Test-Path '$(1)') { Remove-Item -Recurse -Force '$(1)' }"
     COPY = powershell -Command "Copy-Item"
 else
     PLATFORM = $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -50,7 +50,13 @@ setup:
 # 清理构建文件
 .PHONY: clean
 clean:
+ifeq ($(OS),Windows_NT)
+	$(call RMRF,$(DIST_DIR))
+	$(call RMRF,$(BUILD_DIR))
+	$(call RMRF,*.spec)
+else
 	$(RMRF) "$(DIST_DIR)" "$(BUILD_DIR)" *.spec
+endif
 
 # 初始化配置文件
 .PHONY: init-config
