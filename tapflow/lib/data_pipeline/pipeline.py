@@ -77,7 +77,8 @@ class SinkTableNumberError(Exception):
 @help_decorate("use to define a stream pipeline", "p = new Pipeline($name).readFrom($source).writeTo($sink)")
 class Pipeline:
     @help_decorate("__init__ method", args="p = Pipeline($name)")
-    def __init__(self, name=None, mode="migrate", id=None):
+    def __init__(self, name=None, mode="migrate", id=None, context={}):
+        self.context = context
         if name is None:
             name = str(uuid.uuid4())
         self._dag = {}
@@ -135,7 +136,6 @@ class Pipeline:
         return self
 
     def lookup(self, source, path="", type="object", arrayKeys=[], relation=None, query=None, **kwargs):
-
         if isinstance(source, str):
             if "." in source:
                 db, table = source.split(".")
@@ -573,12 +573,19 @@ class Pipeline:
             source_code = inspect.getsource(script)
             codes = source_code.split("\n")[1:-1]
             codes = "\n".join([i[4:] for i in codes])
-            print(codes)
-            f = Py(codes, declareScript)
+            f = Py(codes, declareScript, self.context)
         else:
             if script.endswith(".js"):
                 js_script = open(script, "r").read()
                 script = js_script
+            if (self.context != None and len(self.context) > 0):
+                context_str = ""
+                for k, v in self.context.items():
+                    if type(v) in [type(1), type(0.1)]:
+                        context_str += "context."+str(k)+"="+str(v)+"\n"
+                    else:
+                        context_str += "context."+str(k)+"=\""+str(v)+"\"\n"
+                script = context_str + "\n" + script
             f = Js(script, declareScript, language=language, name=name)
         self.lines.append(f)
         if is_tapcli():
@@ -1084,6 +1091,7 @@ class Pipeline:
 
     def _clone(self, stage):
         p = Pipeline()
+        p.context = self.context
         p.dag = self.dag
         self.stage = stage
         p.stage = self.stage
@@ -1159,8 +1167,27 @@ class Pipeline:
         """
         return self.config_cdc_start_time(start_time, tz)
 
+    def _add_context_to_js(self, context):
+        nodes = self.dag.dag["nodes"]
+        for i in range(len(nodes)):
+            node = nodes[i]
+            origin_node = self.dag.get_node(nodes[i].get("id"))
+            origin_script = origin_node.origin_script
+
+            if node.get("type") == "python_processor":
+                new_node = Py(origin_node.origin_script, origin_node.declareScript, context)
+                origin_node.update_script(new_node.script)
+                continue
+
+            if node.get("type") == "js_processor":
+                new_node = Js(origin_node.origin_script, origin_node.declareScript, language=origin_node.language, name=origin_node.name, context=context)
+                origin_node.update_script(new_node.script)
+                continue
+
     @help_decorate("start this pipeline as a running job", args="p.start()")
-    def start(self):
+    def start(self, context={}):
+        if (context != None and len(context) > 0):
+            self._add_context_to_js(context)
         if self.job is not None:
             self.job.config(self.dag.setting)
             self.job.start()
@@ -1440,7 +1467,7 @@ class MView(Pipeline):
         super().__init__(name=name, mode=mode, id=id)
 
 class Flow(Pipeline):
-    def __init__(self, name=None, mode=mview, id=None):
-        super().__init__(name=name, mode=mode, id=id)
+    def __init__(self, name=None, mode=mview, id=None, context={}):
+        super().__init__(name=name, mode=mode, id=id, context=context)
         global _flows
         _flows[name] = self

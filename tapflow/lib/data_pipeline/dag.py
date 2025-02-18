@@ -26,6 +26,9 @@ class Dag:
         self.graph = {}
         self.node_map = {}
 
+    def _get_origin_dag(self):
+        return self.dag
+
     def add_node(self, node):
         """
         add node to graph, and if node in node_map, update it
