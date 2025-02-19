@@ -4,6 +4,7 @@ VERSION ?= 0.0.0
 MAIN_ENTRY = tapflow/cli/tap.py
 DIST_DIR = dist
 BUILD_DIR = build
+DOCKER_CENTOS7_CMD = docker run --rm -v $(shell pwd):/workspace -w /workspace centos:7 /bin/bash -c
 
 # 检测操作系统
 ifeq ($(OS),Windows_NT)
@@ -129,3 +130,30 @@ current: init-config
 		--log-level ERROR \
 		--onefile \
 		$(MAIN_ENTRY) 
+
+# CentOS 7构建目标
+.PHONY: centos7
+centos7:
+	$(DOCKER_CENTOS7_CMD) '\
+		curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo && \
+		yum makecache && \
+		yum install -y make gcc openssl-devel bzip2-devel libffi-devel wget sqlite-devel && \
+		wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz && \
+		tar xzf Python-3.8.12.tgz && \
+		cd Python-3.8.12 && \
+		./configure --enable-optimizations --enable-loadable-sqlite-extensions --enable-shared && \
+		make altinstall && \
+		cd .. && \
+		rm -rf Python-3.8.12* && \
+		echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
+		ldconfig && \
+		ln -sf /usr/local/bin/python3.8 /usr/local/bin/python3 && \
+		ln -sf /usr/local/bin/pip3.8 /usr/local/bin/pip3 && \
+		python3 -m pip install --upgrade pip && \
+		python3 -m pip install "urllib3<2.0.0" && \
+		python3 -m pip install importlib-metadata pyinstaller==4.10 && \
+		PLATFORM=centos ARCH=x86_64 PYTHON=python3.8 make clean setup current VERSION=$(VERSION) && \
+		cd dist && \
+		sha256sum * > SHA256SUMS.centos.txt && \
+		cd .. && \
+		chown -R $(shell id -u):$(shell id -g) dist' 
