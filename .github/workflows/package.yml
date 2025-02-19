@@ -81,6 +81,7 @@ jobs:
               curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo && \
               yum makecache && \
               yum install -y make python3 python3-pip && \
+              pip3 install importlib-metadata && \
               PLATFORM=${{ matrix.platform }} ARCH=${{ matrix.arch }} make clean setup current VERSION=${{ needs.get-version.outputs.version }}'
           else
             make clean setup current VERSION=$VERSION
@@ -91,7 +92,7 @@ jobs:
         shell: bash
         run: |
           cd dist
-          sha256sum * > SHA256SUMS.linux.txt
+          sha256sum * > SHA256SUMS.${{ matrix.platform }}.txt
 
       - name: Generate checksum (macOS)
         if: runner.os == 'macOS'
