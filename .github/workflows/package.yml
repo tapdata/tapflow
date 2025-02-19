@@ -93,6 +93,7 @@ jobs:
               ln -sf /usr/local/bin/python3.8 /usr/local/bin/python3 && \
               ln -sf /usr/local/bin/pip3.8 /usr/local/bin/pip3 && \
               python3 -m pip install --upgrade pip && \
+              python3 -m pip install "urllib3<2.0.0" && \
               python3 -m pip install importlib-metadata pyinstaller==4.10 && \
               PLATFORM=${{ matrix.platform }} ARCH=${{ matrix.arch }} PYTHON=python3.8 make clean setup current VERSION=${{ needs.get-version.outputs.version }} && \
               cd dist && \
