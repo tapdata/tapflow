@@ -22,8 +22,8 @@ ifeq ($(OS),Windows_NT)
     RMRF = powershell -Command "if (Test-Path '$(1)') { Remove-Item -Recurse -Force '$(1)' }"
     COPY = powershell -Command "Copy-Item"
 else
-    PLATFORM = $(shell uname -s | tr '[:upper:]' '[:lower:]')
-    ARCH = $(shell uname -m)
+    PLATFORM ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH ?= $(shell uname -m)
     PYTHON = python3
     PIP = pip3
     CONFIG_DIR = $(HOME)/.tapflow

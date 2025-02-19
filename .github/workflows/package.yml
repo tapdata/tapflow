@@ -36,8 +36,12 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            platform: linux
+            platform: ubuntu
             arch: x86_64
+          - os: ubuntu-22.04
+            platform: centos
+            arch: x86_64
+            is_centos7: true
           - os: macos-latest
             platform: darwin
             arch: x86_64
@@ -69,8 +73,18 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
           VERSION: ${{ needs.get-version.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          make clean setup current VERSION=$VERSION
+          if [ "${{ matrix.is_centos7 }}" = "true" ]; then
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace centos:7 /bin/bash -c '
+              curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo && \
+              yum makecache && \
+              yum install -y make python3 python3-pip && \
+              PLATFORM=${{ matrix.platform }} ARCH=${{ matrix.arch }} make clean setup current VERSION=${{ needs.get-version.outputs.version }}'
+          else
+            make clean setup current VERSION=$VERSION
+          fi
 
       - name: Generate checksum (Linux)
         if: runner.os == 'Linux'
