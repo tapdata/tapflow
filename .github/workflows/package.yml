@@ -80,9 +80,17 @@ jobs:
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace centos:7 /bin/bash -c '
               curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo && \
               yum makecache && \
-              yum install -y make python3 python3-pip && \
-              pip3 install importlib-metadata && \
-              PLATFORM=${{ matrix.platform }} ARCH=${{ matrix.arch }} make clean setup current VERSION=${{ needs.get-version.outputs.version }}'
+              yum install -y make gcc openssl-devel bzip2-devel libffi-devel wget && \
+              wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz && \
+              tar xzf Python-3.8.12.tgz && \
+              cd Python-3.8.12 && \
+              ./configure --enable-optimizations && \
+              make altinstall && \
+              cd .. && \
+              rm -rf Python-3.8.12* && \
+              python3.8 -m pip install --upgrade pip && \
+              python3.8 -m pip install importlib-metadata pyinstaller==4.10 && \
+              PLATFORM=${{ matrix.platform }} ARCH=${{ matrix.arch }} PYTHON=python3.8 make clean setup current VERSION=${{ needs.get-version.outputs.version }}'
           else
             make clean setup current VERSION=$VERSION
           fi
