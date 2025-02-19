@@ -80,11 +80,11 @@ jobs:
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace centos:7 /bin/bash -c '
               curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo && \
               yum makecache && \
-              yum install -y make gcc openssl-devel bzip2-devel libffi-devel wget && \
+              yum install -y make gcc openssl-devel bzip2-devel libffi-devel wget sqlite-devel && \
               wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz && \
               tar xzf Python-3.8.12.tgz && \
               cd Python-3.8.12 && \
-              ./configure --enable-optimizations && \
+              ./configure --enable-optimizations --enable-loadable-sqlite-extensions && \
               make altinstall && \
               cd .. && \
               rm -rf Python-3.8.12* && \
