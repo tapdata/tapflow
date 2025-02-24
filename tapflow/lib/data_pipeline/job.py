@@ -78,6 +78,7 @@ class Job:
         self.id = None
         self.setting = {}
         self.job = {}
+        self.env = {}
         self.dag = None
         self.validateConfig = None
         self.id = None
@@ -253,6 +254,7 @@ class Job:
                 "syncType": self.dag.jobType,
                 "name": self.name,
                 "status": JobStatus.edit,
+                "env": self.env,
                 "dag": self.dag.dag,
                 "user_id": system_server_conf["user_id"],
                 "customId": system_server_conf["user_id"],
@@ -267,6 +269,7 @@ class Job:
                 "editVersion": int(time.time() * 1000),
                 "name": self.name,
                 "dag": self.dag.dag,
+                "env": self.env,
                 "user_id": system_server_conf["user_id"],
                 "customId": system_server_conf["user_id"],
                 "createUser": system_server_conf["username"],
@@ -311,6 +314,7 @@ class Job:
                 "edges": self.dag.dag["edges"],
             },
             "editVersion": int(time.time() * 1000),
+            "env": self.env,
             "id": self.id,
         }
         res, ok = self.task_api.update_task(body)
@@ -385,6 +389,7 @@ class Job:
     def start(self, quiet=True):
         try:
             status = self.status()
+            resp = self.save()
         except (KeyError, TypeError) as e:
             resp = self.save()
             if not resp:

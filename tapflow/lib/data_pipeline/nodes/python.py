@@ -2,18 +2,10 @@ from tapflow.lib.data_pipeline.base_obj import BaseObj
 
 class Python(BaseObj):
     node_type = "python_processor"
-    def __init__(self, script, declareScript, language="py", id=None, name="Python", context={}):
+    def __init__(self, script, declareScript, language="py", id=None, name="Python"):
         self.origin_script = script
         super().__init__()
         self.language = language
-        context_str = ""
-        if (context != None and len(context) > 0):
-            for k, v in self.context.items():
-                if type(v) in [type(1), type(0.1)]:
-                    context_str += "context[\""+str(k)+"\"]="+str(v)+"\n"
-                else:
-                    context_str += "context[\""+str(k)+"\"]=\""+str(v)+"\"\n"
-        self.script = context_str + script
         self.declareScript = declareScript
         if id is not None:
             self.id = id

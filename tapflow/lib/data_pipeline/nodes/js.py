@@ -3,7 +3,7 @@ from tapflow.lib.data_pipeline.base_obj import BaseObj
 
 class Js(BaseObj):
     node_type = "js_processor"
-    def __init__(self, script, declareScript, func_header=True, language="js", id=None, name="JS", context={}):
+    def __init__(self, script, declareScript, func_header=True, language="js", id=None, name="JS"):
         super().__init__()
         self.language = language
         self.origin_script = script
@@ -13,16 +13,6 @@ class Js(BaseObj):
         if id is not None:
             self.id = id
         self.name = name
-        self.context = context
-        if (self.context != None and len(self.context) > 0):
-            context_str = ""
-            for k, v in self.context.items():
-                if type(v) in [type(1), type(0.1)]:
-                    context_str += "context."+str(k)+"="+str(v)+"\n"
-                else:
-                    context_str += "context."+str(k)+"=\""+str(v)+"\"\n"
-            script = context_str + "\n" + script
-            self.script = script
 
     def update_script(self, script):
         self.script = script
