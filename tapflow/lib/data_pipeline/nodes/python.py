@@ -15,7 +15,7 @@ class Python(BaseObj):
         self.script = script
 
     def to_python(self):
-        if self.func_header:
+        if self.func_header and "def process(record, context)" not in self.script:
             return "import json, random, time, datetime, uuid, types, yaml\nimport urllib, urllib2, requests\nimport math, hashlib, base64\ndef process(record, context):%s" % self.script
         else:
             return self.script

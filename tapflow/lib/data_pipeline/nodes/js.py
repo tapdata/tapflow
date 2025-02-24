@@ -18,7 +18,7 @@ class Js(BaseObj):
         self.script = script
 
     def to_js(self):
-        if self.func_header:
+        if self.func_header and "function process(record)" not in self.script:
             return "function process(record){\n\n\t// Enter you code at here\n%s}" % self.script
         else:
             return self.script

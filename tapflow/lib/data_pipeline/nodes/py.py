@@ -13,8 +13,12 @@ class Py(BaseObj):
 
 
     def to_dict(self):
+        final_script = self.script
+        if "def process(record, context)" not in self.script:
+            final_script = self.python_header + self.script
+
         return {
-            "script": self.python_header + self.script,
+            "script": final_script,
             "declareScript": self.declareScript,
             "concurrentNum": 1,
             "type": "python_processor",
