@@ -7,25 +7,55 @@ on:
   workflow_dispatch:  # 允许手动触发
 
 jobs:
+  # 获取版本号
+  get-version:
+    runs-on: ubuntu-20.04
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(git describe --tags | grep -o '^v[0-9]\+\.[0-9]\+\.[0-9]\+' | sed 's/^v//' || echo '0.0.0')
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
   # 二进制文件构建任务
-  build-binaries:
+  build-and-publish:
+    needs: get-version
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            platform: linux
+          - os: ubuntu-20.04
+            platform: ubuntu
             arch: x86_64
-            ext: ""
+          - os: ubuntu-22.04
+            platform: centos
+            arch: x86_64
+            is_centos7: true
           - os: macos-latest
             platform: darwin
             arch: x86_64
-            ext: ""
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
 
     runs-on: ${{ matrix.os }}
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,135 +63,81 @@ jobs:
           python-version: '3.11'
           architecture: x64
 
-      - name: Extract version from tag
-        id: get_version
+      - name: Install make (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install make
+          
+      - name: Build binary
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          VERSION: ${{ needs.get-version.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          if [ "${{ matrix.is_centos7 }}" = "true" ]; then
+            make centos7 VERSION=$VERSION
+          else
+            make clean setup current VERSION=$VERSION
+          fi
+
+      - name: Generate checksum (Linux)
+        if: runner.os == 'Linux' && !matrix.is_centos7
         shell: bash
         run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-          else
-            echo "VERSION=latest" >> $GITHUB_ENV
-          fi
+          cd dist
+          sha256sum * > SHA256SUMS.${{ matrix.platform }}.txt
 
-      - name: Install dependencies
+      - name: Generate checksum (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
+          cd dist
+          for file in *; do
+            if [ -f "$file" ] && [ "$file" != "SHA256SUMS.darwin.txt" ]; then
+              shasum -a 256 "$file" >> SHA256SUMS.darwin.txt
+            fi
+          done
 
-      - name: Create config directory (Unix)
-        run: mkdir -p ~/.tapflow
-
-      - name: Build binary
+      - name: Generate checksum (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          python -m PyInstaller \
-            --clean \
-            --name tapflow-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }} \
-            --add-data "requirements.txt:." \
-            --add-data "README.md:." \
-            --add-data "tapflow/cli/cli.py:tapflow/cli" \
-            --add-data "etc:etc" \
-            --add-data "tapflow:tapflow" \
-            --hidden-import tapflow \
-            --hidden-import tapflow.cli \
-            --hidden-import tapflow.cli.cli \
-            --hidden-import tapflow.cli.tap \
-            --hidden-import tapflow.lib \
-            --hidden-import tapflow.lib.configuration \
-            --hidden-import tapflow.lib.configuration.config \
-            --hidden-import tapflow.lib.backend_apis \
-            --hidden-import tapflow.lib.data_pipeline \
-            --hidden-import tapflow.lib.connections \
-            --hidden-import tapflow.lib.utils \
-            --hidden-import tapflow.lib.params \
-            --hidden-import tapflow.lib.data_pipeline.validation \
-            --hidden-import tapflow.lib.data_services \
-            --hidden-import tapflow.lib.system \
-            --hidden-import tapflow.lib.cache \
-            --hidden-import tapflow.lib.backend_apis.common \
-            --hidden-import tapflow.lib.backend_apis.connections \
-            --hidden-import tapflow.lib.backend_apis.task \
-            --hidden-import tapflow.lib.backend_apis.dataVerify \
-            --hidden-import tapflow.lib.backend_apis.metadataInstance \
-            --hidden-import tapflow.lib.backend_apis.apiServers \
-            --hidden-import IPython \
-            --hidden-import yaml \
-            --hidden-import requests \
-            --hidden-import websockets \
-            --hidden-import bson \
-            --hidden-import urllib \
-            --hidden-import traitlets \
-            --hidden-import importlib.metadata \
-            --hidden-import logging \
-            --hidden-import email \
-            --hidden-import xml \
-            --hidden-import http \
-            --hidden-import ctypes \
-            --hidden-import multiprocessing \
-            --hidden-import dateutil \
-            --hidden-import json \
-            --hidden-import asyncio \
-            --hidden-import concurrent.futures \
-            --hidden-import idna \
-            --hidden-import urllib3 \
-            --hidden-import charset_normalizer \
-            --log-level ERROR \
-            --onefile \
-            tapflow/cli/tap.py
+          cd dist
+          Get-ChildItem -File | ForEach-Object {
+            $hash = (Get-FileHash -Algorithm SHA256 $_.Name).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -Append -Encoding utf8 SHA256SUMS.windows.txt
+          }
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-${{ matrix.platform }}-${{ matrix.arch }}
-          path: dist/*${{ matrix.ext }}
-          retention-days: 1
-
-  # 发布二进制文件到服务器任务
-  publish-binaries:
-    needs: [build-binaries]
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: Install rsync
-        run: sudo apt-get install -y rsync
-
-      - name: Get version from tag
-        id: get_version
+      - name: Fix line endings (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=latest" >> $GITHUB_OUTPUT
-          fi
+          cd dist
+          (Get-Content SHA256SUMS.windows.txt) | Set-Content -Encoding utf8 SHA256SUMS.windows.txt
 
-      - name: Prepare artifacts for upload
+      - name: Install rsync (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          mkdir -p upload
-          # 显示当前目录结构以便调试
-          echo "Current directory structure:"
-          ls -R dist/
-          # 直接复制 dist 目录下的所有文件
-          cp -r dist/*/* upload/ || cp -r dist/* upload/
-          cd upload
-          # 确保目录不为空再生成校验和
-          if [ "$(ls -A)" ]; then
-            sha256sum * > SHA256SUMS.txt
-          else
-            echo "Error: No files found to generate checksums"
-            exit 1
-          fi
+          choco install rsync
 
-      - name: Upload to server via rsync
+      - name: Deploy to rsync server (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
         env:
-          RSYNC_PASSWORD: ${{ secrets.RSYNC_PASSWORD }}
-          RSYNC_HOST: ${{ secrets.RSYNC_HOST }}
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          VERSION: ${{ needs.get-version.outputs.version }}
         run: |
-          echo "${{ env.RSYNC_PASSWORD }}" > /tmp/rsync_password && chmod 600 /tmp/rsync_password
-          rsync --password-file=/tmp/rsync_password -avz --progress upload/ "rsync://${RSYNC_HOST}/data/enterprise-artifact/gz/tapflow/${VERSION}/" 
+          echo '${{ secrets.RSYNC_PASSWORD }}' > /tmp/rsync.passwd && chmod 600 /tmp/rsync.passwd
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/$VERSION/" || true
+
+      - name: Deploy to rsync server (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
+          RSYNC_PASSWORD: ${{ secrets.RSYNC_PASSWORD }}
+        run: |
+          $env:RSYNC_PASSWORD | Out-File -FilePath "$env:TEMP\rsync.passwd" -Encoding ASCII
+          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || exit 0 
