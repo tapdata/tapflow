@@ -1158,15 +1158,15 @@ class Pipeline:
         return self.config_cdc_start_time(start_time, tz)
 
     @help_decorate("start this pipeline as a running job", args="p.start()")
-    def start(self, context={}):
-        if context is not None:
-            format_context = {}
-            for k, v in context.items():
-                format_context[k] = str(v)
-            context = format_context
+    def start(self, env={}):
+        if env is not None:
+            format_env = {}
+            for k, v in env.items():
+                format_env[k] = str(v)
+            env = format_env
         if self.job is not None:
-            if (context != None and len(context) > 0):
-                self.job.env = context
+            if (env != None and len(env) > 0):
+                self.job.env = env
             self.job.config(self.dag.setting)
             self.job.start()
             return self
@@ -1175,8 +1175,8 @@ class Pipeline:
         self.job = job
         self.config({})
         job.config(self.dag.setting)
-        if (context != None and len(context) > 0):
-            job.env = context
+        if (env != None and len(env) > 0):
+            job.env = env
         if job.start():
             pass
         else:
