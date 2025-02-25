@@ -7,39 +7,111 @@ from tapflow.lib.op_object import op_object_command_class, get_obj, Job
 from tapflow.lib.data_pipeline.pipeline import Pipeline
 from tapflow.lib.utils.log import logger
 
+
+import ast
+
+def parse_string_to_tuple(input_str):
+    # 初始化返回值
+    leading_array = []
+    result_dict = {}
+    
+    # 按空格分割字符串
+    parts = input_str.split()
+    
+    # 当前的键名和值，用于字典部分
+    current_key = None
+    current_value = ""
+    
+    # 标志位，表示是否已经进入键值对部分
+    in_dict_mode = False
+    
+    for part in parts:
+        # 如果还没有进入键值对模式，且当前部分不含等号，认为是数组元素
+        if not in_dict_mode and '=' not in part:
+            try:
+                parsed_value = ast.literal_eval(part)
+                leading_array.append(parsed_value)
+            except (ValueError, SyntaxError):
+                leading_array.append(part)
+        # 遇到等号，切换到字典模式
+        elif '=' in part and not (part.startswith('{') or part.startswith('[')):
+            in_dict_mode = True
+            key, value = part.split('=', 1)  # 只分割第一个等号
+            current_key = key
+            current_value = value
+        # 处理字典值的后续部分
+        elif in_dict_mode:
+            current_value += " " + part
+        
+        # 如果值已经完整（字典部分），解析它
+        if in_dict_mode and current_key and (current_value.endswith('}') or current_value.endswith(']') or not (current_value.count('{') > current_value.count('}') or current_value.count('[') > current_value.count(']'))):
+            value_str = current_value.strip()
+            try:
+                # 尝试直接解析
+                parsed_value = ast.literal_eval(value_str)
+                result_dict[current_key] = parsed_value
+            except (ValueError, SyntaxError):
+                # 如果直接解析失败，尝试修复无引号的键或值
+                try:
+                    # 假设是字典或列表，手动加引号并重试
+                    fixed_value = fix_unquoted_string(value_str)
+                    parsed_value = ast.literal_eval(fixed_value)
+                    result_dict[current_key] = parsed_value
+                except (ValueError, SyntaxError):
+                    # 如果仍然失败，作为字符串保留
+                    result_dict[current_key] = value_str
+            # 重置当前键和值
+            current_key = None
+            current_value = ""
+    
+    return leading_array, result_dict
+
+def fix_unquoted_string(value_str):
+    """
+    修复无引号的键或值，例如 {"x": y} -> {"x": "y"}
+    """
+    if value_str.startswith('{') and value_str.endswith('}'):
+        # 处理字典
+        content = value_str[1:-1]  # 去掉外层大括号
+        pairs = []
+        for pair in content.split(','):
+            if ':' in pair:
+                key, val = pair.split(':', 1)
+                key = key.strip()
+                val = val.strip()
+                # 如果键或值不是字符串包裹且不是数字/列表/字典，添加引号
+                if not (key.startswith('"') or key.startswith("'")) and not key.isdigit():
+                    key = f'"{key}"'
+                if not (val.startswith('"') or val.startswith("'") or val.startswith('{') or val.startswith('[')) and not val.isdigit():
+                    val = f'"{val}"'
+                pairs.append(f"{key}: {val}")
+            else:
+                pairs.append(pair)
+        return '{' + ', '.join(pairs) + '}'
+    return value_str  # 如果不是字典，直接返回原字符串
+
+
 @magics_class
 # global command for object
 class OpObjectCommand(Magics):
     types = op_object_command_class.keys()
     def __common_op(self, op, line):
+        args_i = 2
         try:
             object_type, signature = shlex.split(line)[0], shlex.split(line)[1]
             if object_type not in self.types:
                 object_type = "job"
                 signature = shlex.split(line)[0]
+                args_i = 1
 
         except Exception as e:
             object_type = "job"
             signature = shlex.split(line)[0]
         args = []
         kwargs = {}
-        if len(shlex.split(line)) > 2:
-            for kv in shlex.split(line)[2:]:
-                if "=" not in kv:
-                    args.append(kv)
-                else:
-                    v = kv.split("=")[1]
-                    try:
-                        v = int(v)
-                        kwargs[kv.split("=")[0]] = v
-                    except Exception as e:
-                        if v.lower() == "true":
-                            kwargs[kv.split("=")[0]] = True
-                            continue
-                        if v.lower() == "false":
-                            kwargs[kv.split("=")[0]] = False
-                            continue
-                        kwargs[kv.split("=")[0]] = v
+        if len(shlex.split(line)) > args_i:
+            args, kwargs = parse_string_to_tuple(" ".join(shlex.split(line)[args_i:]))
+
         if object_type == "project":
             obj = Project(signature)
         else:

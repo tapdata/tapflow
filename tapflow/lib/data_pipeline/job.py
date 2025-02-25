@@ -248,6 +248,18 @@ class Job:
         return None
 
     def save(self):
+        final_dag = None
+        try:
+            final_dag = self.dag.dag
+        except Exception as e:
+            final_dag = self.dag
+        if final_dag is None:
+            raise Exception("dag is empty")
+        syncPoints = []
+        try:
+            syncPoints = self.dag.setting.get("syncPoints", [])
+        except Exception as e:
+            pass
         if self.id is None:
             self.job = {
                 "editVersion": int(time.time() * 1000),
@@ -255,11 +267,11 @@ class Job:
                 "name": self.name,
                 "status": JobStatus.edit,
                 "env": self.env,
-                "dag": self.dag.dag,
+                "dag": final_dag,
                 "user_id": system_server_conf["user_id"],
                 "customId": system_server_conf["user_id"],
                 "createUser": system_server_conf["username"],
-                "syncPoints": self.dag.setting.get("syncPoints", []),
+                "syncPoints": syncPoints,
                 "dynamicAdjustMemoryUsage": True,
                 "crontabExpressionFlag": False
             }
@@ -268,12 +280,12 @@ class Job:
             self.job.update({
                 "editVersion": int(time.time() * 1000),
                 "name": self.name,
-                "dag": self.dag.dag,
+                "dag": final_dag,
                 "env": self.env,
                 "user_id": system_server_conf["user_id"],
                 "customId": system_server_conf["user_id"],
                 "createUser": system_server_conf["username"],
-                "syncPoints": self.dag.setting.get("syncPoints", []),
+                "syncPoints": syncPoints,
                 "dynamicAdjustMemoryUsage": True,
                 "crontabExpressionFlag": False
             })
@@ -302,16 +314,22 @@ class Job:
 
         job = self.job
         job.update(self.setting)
-        job.update(self.dag.to_dict())
+        try:
+            job.update(self.dag.to_dict())
+        except Exception as e:
+            pass
         # load schema
-        if self.pipeline.target is not None:
-            MetadataInstanceApi(req).load_schema(self.pipeline.target.id)
+        try:
+            if self.pipeline.target is not None:
+                MetadataInstanceApi(req).load_schema(self.pipeline.target.id)
+        except Exception as e:
+            pass
         if self.id is None:
             self._get()
         body = {
             "dag": {
-                "nodes": self.dag.dag["nodes"],
-                "edges": self.dag.dag["edges"],
+                "nodes": final_dag["nodes"],
+                "edges": final_dag["edges"],
             },
             "editVersion": int(time.time() * 1000),
             "env": self.env,
@@ -321,63 +339,66 @@ class Job:
         if not ok:
             logger.fwarn("start failed {}", res)
         # 如果源有文件类型, 调用下推演
-        for s in self.pipeline.sources:
-            if str(s.databaseType).lower() in ["csv"]:
-                for i in range(10):
-                    nodeConfig = s.setting["nodeConfig"]
-                    nodeConfig["nodeId"] = s.id
-                    self.task_api.model_deduction(s.id, s.connectionId, nodeConfig)
-                    new_dag = self.job["dag"]
-                    for node in new_dag["nodes"]:
-                        if node["id"] == s.id:
-                            old_table_name = node["tableName"]
+        try:
+            for s in self.pipeline.sources:
+                if str(s.databaseType).lower() in ["csv"]:
+                    for i in range(10):
+                        nodeConfig = s.setting["nodeConfig"]
+                        nodeConfig["nodeId"] = s.id
+                        self.task_api.model_deduction(s.id, s.connectionId, nodeConfig)
+                        new_dag = self.job["dag"]
+                        for node in new_dag["nodes"]:
+                            if node["id"] == s.id:
+                                old_table_name = node["tableName"]
 
-                            node["tableName"] = "tapdata"
+                                node["tableName"] = "tapdata"
 
+                                payload = {
+                                    "editVersion": int(time.time() * 1000),
+                                    "id": self.id,
+                                    "dag": new_dag
+                                }
+
+                                task, ok = self.task_api.update_task(payload)
+
+                                time.sleep(10)
+
+                                node["tableName"] = old_table_name
+
+                                task, ok = self.task_api.update_task(payload)
+                                time.sleep(10)
+                                break
+                        schema = MetadataInstanceApi(req).load_schema(s.id)
+                        node_schema = []
+                        if len(schema) > 0:
+                            fields = schema[0]["fields"]
+                            for field in fields:
+                                node_schema.append({
+                                    "indicesUnique": field["unique"],
+                                    "isPrimaryKey": field["primaryKey"],
+                                    "label": field["field_name"],
+                                    "tapType": field["tapType"],
+                                    "type": field["data_type"],
+                                    "value": field["field_name"],
+                                })
+                                dag = self.job["dag"]
+                                for node in dag["nodes"]:
+                                    if node["id"] == s.id:
+                                        node["schema"] = node_schema
+                                        break
                             payload = {
                                 "editVersion": int(time.time() * 1000),
                                 "id": self.id,
-                                "dag": new_dag
+                                "dag": self.job["dag"]
                             }
-
                             task, ok = self.task_api.update_task(payload)
-
-                            time.sleep(10)
-
-                            node["tableName"] = old_table_name
-
-                            task, ok = self.task_api.update_task(payload)
-                            time.sleep(10)
+                        res = MetadataInstanceApi(req).schema_page(s.id)
+                        if res["total"] == 1:
                             break
-                    schema = MetadataInstanceApi(req).load_schema(s.id)
-                    node_schema = []
-                    if len(schema) > 0:
-                        fields = schema[0]["fields"]
-                        for field in fields:
-                            node_schema.append({
-                                "indicesUnique": field["unique"],
-                                "isPrimaryKey": field["primaryKey"],
-                                "label": field["field_name"],
-                                "tapType": field["tapType"],
-                                "type": field["data_type"],
-                                "value": field["field_name"],
-                            })
-                            dag = self.job["dag"]
-                            for node in dag["nodes"]:
-                                if node["id"] == s.id:
-                                    node["schema"] = node_schema
-                                    break
-                        payload = {
-                            "editVersion": int(time.time() * 1000),
-                            "id": self.id,
-                            "dag": self.job["dag"]
-                        }
-                        task, ok = self.task_api.update_task(payload)
-                    res = MetadataInstanceApi(req).schema_page(s.id)
-                    if res["total"] == 1:
-                        break
-                    else:
-                        logger.fwarn("discover schema failed for {} times, retrying, most 10 times", i)
+                        else:
+                            logger.fwarn("discover schema failed for {} times, retrying, most 10 times", i)
+        except Exception as e:
+            pass
         data, ok = self.task_api.confirm_task(self.id, self.job)
         if not ok:
             logger.warn("save failed {}", data)
@@ -386,7 +407,9 @@ class Job:
         self.setting = data
         return True
 
-    def start(self, quiet=True):
+    def start(self, quiet=True, env={}):
+        if env is not None and len(env) > 0:
+            self.env = env
         try:
             status = self.status()
             resp = self.save()
