@@ -106,15 +106,24 @@ class Logger:
                     pass
             pass
     def _format(self, *args, color=32):
-        import inspect
-        stack = inspect.stack()
-        caller_filename = "run.py"
-        for i in range(0, len(stack)):
-            fname = stack[i][0].f_code.co_filename.split("/")[-1]
-            if fname.startswith("item_"):
-                caller_filename = fname
-                break
         try:
+            import inspect
+            import sys
+            
+            # 获取调用者信息的安全方式
+            caller_filename = "run.py"
+            try:
+                frame = sys._getframe(2)  # 获取调用者的帧
+                if frame:
+                    # 尝试获取代码对象的文件名
+                    if hasattr(frame.f_code, 'co_filename'):
+                        fname = frame.f_code.co_filename.split("/")[-1]
+                        if fname.startswith("item_"):
+                            caller_filename = fname
+            except Exception:
+                pass  # 如果获取调用者信息失败，使用默认值
+                
+            # 格式化消息
             if "{}" not in args[0]:
                 msg = str(args)
                 msg_no_color = "file: " + str(args)
@@ -129,12 +138,16 @@ class Logger:
                 if len(extra_msg) > 0:
                     msg += " " + str(extra_msg)
                     msg_no_color += " " + str(extra_msg)
+                    
+            # 写入无颜色日志
             if self.fname_no_color_fd is not None:
                 self.fname_no_color_fd.write(msg_no_color + "\n")
                 self.fname_no_color_fd.flush()
+                
             return msg
         except Exception as e:
-            return str(args)
+            # 如果发生任何错误，返回原始消息
+            return str(args[0]).format(*args[1:]) if len(args) > 1 else str(args)
 
     def info(self, *args, **kargs):
         msg = self._format(*args, color=32)
