@@ -67,13 +67,43 @@ c.TerminalInteractiveShell.prompts_class = NoPrompt
 
     start_ipython(argv=['--no-banner', '--profile-dir=' + profile_dir, '-i', os.path.join(source_path, 'cli', 'cli.py')])
 
-def execute_file(file_path):
-    module_name = os.path.splitext(os.path.basename(file_path))[0]  # 从文件路径中提取模块名称
+def load_module(file_path):
+    """加载Python模块并返回模块对象"""
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
+def execute_file(file_path):
+    """执行Python文件，预先导入常用模块"""
+    # 预先导入常用模块到全局命名空间
+    import builtins
+    global_dict = {
+        'DataSource': None,
+        'Flow': None,
+        '__builtins__': builtins,
+        '__file__': file_path,
+        '__name__': '__main__',
+    }
+    
+    try:
+        # 预加载常用模块
+        from tapflow.lib.data_pipeline.data_source import DataSource
+        from tapflow.lib.data_pipeline.pipeline import Flow
+        global_dict.update({
+            'DataSource': DataSource,
+            'Flow': Flow,
+        })
+    except ImportError as e:
+        print(f"Warning: Unable to import some modules: {e}")
+    
+    # 执行文件
+    with open(file_path, 'r') as f:
+        code = compile(f.read(), file_path, 'exec')
+        exec(code, global_dict)
+    
+    return global_dict
 
 # 命令行模式
 def command_mode(basepath, source_path):
@@ -145,18 +175,17 @@ def command_mode(basepath, source_path):
     
     # 动态导入并初始化命令行环境
     try:
-        # 使用相对导入
-        from ..cli import cli as cli_module
-        cli_module.init(config_path)
-    except ImportError:
-        try:
-            # 备选方案：直接导入本地模块
-            import cli
-            cli.init(config_path)
-        except Exception as e:
-            print(f"Error initializing command line mode: {e}")
-            import traceback
-            traceback.print_exc()
+        # 使用基于文件路径的导入
+        cli_path = os.path.join(source_path, 'cli', 'cli.py')
+        if os.path.exists(cli_path):
+            cli_module = load_module(cli_path)  # 使用 load_module 而不是 execute_file
+            cli_module.init(config_path)
+        else:
+            raise ImportError(f"Cannot find cli module at {cli_path}")
+    except Exception as e:
+        print(f"Error initializing command line mode: {e}")
+        import traceback
+        traceback.print_exc()
 
     # 处理 -f 参数
     if args.file:
