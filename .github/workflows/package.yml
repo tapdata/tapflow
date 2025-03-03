@@ -130,16 +130,22 @@ jobs:
           VERSION: ${{ needs.get-version.outputs.version }}
         run: |
           echo '${{ secrets.RSYNC_PASSWORD }}' > /tmp/rsync.passwd && chmod 600 /tmp/rsync.passwd
-          rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/$VERSION/" || true
+          
+          # First rsync for version directory
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress ./dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/$VERSION/"
+          
           # Rename files for latest directory
-          cd dist
+          pushd dist
           for file in tapflow-$VERSION-*; do
             if [ -f "$file" ]; then
               new_name=$(echo "$file" | sed "s/$VERSION/latest/")
               cp "$file" "$new_name"
             fi
           done
-          rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || true
+          popd
+          
+          # Second rsync for latest directory
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress ./dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || true
 
       - name: Deploy to rsync server (Windows)
         if: runner.os == 'Windows'
