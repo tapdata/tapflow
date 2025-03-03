@@ -142,10 +142,10 @@ jobs:
               cp "$file" "$new_name"
             fi
           done
-          popd
           
-          # Second rsync for latest directory
-          rsync --password-file=/tmp/rsync.passwd -vzrt --progress ./dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || true
+          # Second rsync for latest directory - only sync latest files
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress --include="tapflow-latest-*" --include="SHA256SUMS.*" --exclude="*" ./ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || true
+          popd
 
       - name: Deploy to rsync server (Windows)
         if: runner.os == 'Windows'
@@ -163,13 +163,14 @@ jobs:
           # Rename files for latest directory
           Push-Location dist
           Get-ChildItem -Filter "tapflow-${{ env.VERSION }}-*" | ForEach-Object {
-            $newName = $_.Name -replace [regex]::Escape(${{ env.VERSION }}), "latest"
+            $pattern = [regex]::Escape("tapflow-${{ env.VERSION }}-")
+            $newName = $_.Name -replace $pattern, "tapflow-latest-"
             Copy-Item -Path $_.Name -Destination $newName -Force
           }
-          Pop-Location
           
-          # Second rsync for latest directory
-          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress ./dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/"
+          # Second rsync for latest directory - only sync latest files
+          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress --include="tapflow-latest-*" --include="SHA256SUMS.*" --exclude="*" ./ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/"
+          Pop-Location
           
           if ($LASTEXITCODE -ne 0) {
             Write-Warning "Rsync completed with exit code $LASTEXITCODE"
