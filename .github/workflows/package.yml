@@ -131,6 +131,7 @@ jobs:
         run: |
           echo '${{ secrets.RSYNC_PASSWORD }}' > /tmp/rsync.passwd && chmod 600 /tmp/rsync.passwd
           rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/$VERSION/" || true
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || true
 
       - name: Deploy to rsync server (Windows)
         if: runner.os == 'Windows'
@@ -140,4 +141,5 @@ jobs:
           RSYNC_PASSWORD: ${{ secrets.RSYNC_PASSWORD }}
         run: |
           $env:RSYNC_PASSWORD | Out-File -FilePath "$env:TEMP\rsync.passwd" -Encoding ASCII
-          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || exit 0 
+          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/${{ env.VERSION }}/" || exit 0
+          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress dist/ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || exit 0 
