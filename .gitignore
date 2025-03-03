@@ -10,3 +10,9 @@ etc/config.ini
 dist/
 tapflow.egg-info/
 .coverage
+tapflow-*-darwin-arm64.spec
+tapflow-*-darwin-x86_64.spec
+tapflow-*-linux-arm64.spec
+tapflow-*-linux-x86_64.spec
+tapflow-*-win-arm64.spec
+tapflow-*-win-x86_64.spec
