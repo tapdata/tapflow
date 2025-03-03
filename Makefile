@@ -47,6 +47,7 @@ setup:
 	$(PIP) install --upgrade pip
 	$(PIP) install -r requirements.txt
 	$(PIP) install pyinstaller
+	$(PIP) install -e .
 
 # 清理构建文件
 .PHONY: clean
@@ -86,8 +87,6 @@ current: init-config
 		--add-data "tapflow/cli/cli.py:tapflow/cli" \
 		--add-data "etc:etc" \
 		--add-data "tapflow:tapflow" \
-		--collect-all tapflow \
-		--collect-submodules tapflow \
 		--hidden-import tapflow \
 		--hidden-import tapflow.cli \
 		--hidden-import tapflow.cli.cli \
