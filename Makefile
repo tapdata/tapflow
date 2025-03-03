@@ -76,19 +76,24 @@ endif
 # 构建当前平台版本
 .PHONY: current
 current: init-config
+	@echo 'VERSION = "$(VERSION)"' > tapflow/version.py
 	$(PYTHON) -m PyInstaller \
 		--clean \
 		--name $(PACKAGE_NAME)-$(VERSION)-$(PLATFORM)-$(ARCH) \
 		--add-data "requirements.txt:." \
 		--add-data "README.md:." \
+		--add-data "setup.py:." \
 		--add-data "tapflow/cli/cli.py:tapflow/cli" \
 		--add-data "etc:etc" \
 		--add-data "tapflow:tapflow" \
+		--collect-all tapflow \
+		--collect-submodules tapflow \
 		--hidden-import tapflow \
 		--hidden-import tapflow.cli \
 		--hidden-import tapflow.cli.cli \
 		--hidden-import tapflow.cli.tap \
 		--hidden-import tapflow.lib \
+		--hidden-import tapflow.lib.op_object \
 		--hidden-import tapflow.lib.configuration \
 		--hidden-import tapflow.lib.configuration.config \
 		--hidden-import tapflow.lib.backend_apis \
@@ -127,9 +132,10 @@ current: init-config
 		--hidden-import idna \
 		--hidden-import urllib3 \
 		--hidden-import charset_normalizer \
+		--hidden-import inspect \
 		--log-level ERROR \
 		--onefile \
-		$(MAIN_ENTRY) 
+		$(MAIN_ENTRY)
 
 # CentOS 7构建目标
 .PHONY: centos7
