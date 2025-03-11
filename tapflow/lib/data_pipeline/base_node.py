@@ -155,7 +155,26 @@ class BaseNode:
         if "nodeConfig" not in self.setting:
             self.setting["nodeConfig"] = {}
         self.setting["nodeConfig"].update(config)
+        
+    def check_database_type(self, spec_database_type):
+        """检查数据库类型是否匹配,主要用来检测专属数据库方法
 
+        Args:
+            spec_database_type (str, list): 指定数据库类型
+
+        Returns:
+            bool: 是否匹配
+        """
+        database_type = self.setting.get("databaseType").upper()
+        spec_database_type = spec_database_type.upper()
+        if isinstance(spec_database_type, list):
+            if database_type in spec_database_type:
+                return True
+            return False
+        if database_type == spec_database_type:
+            return True
+        return False
+    
     def test(self):
         self.connection.test()
 

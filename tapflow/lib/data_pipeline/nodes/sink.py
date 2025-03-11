@@ -2,6 +2,7 @@ from tapflow.lib.help_decorator import help_decorate
 from tapflow.lib.data_pipeline.nodes.source import Source
 from tapflow.lib.data_pipeline.base_node import node_config_sync
 from tapflow.lib.data_pipeline.job import JobType
+from tapflow.lib.utils.log import logger
 
 
 @help_decorate("sink is end of a pipeline", "sink = Sink($Datasource, $table)")
@@ -118,8 +119,14 @@ class Sink(Source):
         注意: 专属于 Kafka 数据源, 用于自定义消息体格式
         :param js: javascript 代码
         """
+        if not self.check_database_type("kafka"):
+            logger.warn("This method is only supported for {} datasources", "Kafka")
+            return self
+        script = """function process(record, op, conditionKeys){
+    %s
+}""" % js
         self.update_node_config({
-            "script": js,
+            "script": script,
             "enableScript": True,
         })
         return self
