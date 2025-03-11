@@ -126,7 +126,7 @@ def get_obj(object_type, signature):
 
 def get_signature_v(object_type, signature):
     cache_map_index = op_object_command_class[object_type]["cache"]
-    if client_cache.get(cache_map_index) is None or object_type == "api":
+    if client_cache.get(cache_map_index) is None or object_type == "api" or object_type == "job":
         exec("show_" + cache_map_index + "(quiet=True)")
     index_type = get_index_type(signature)
     if index_type == "short_id_index":
