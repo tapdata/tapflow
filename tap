@@ -4,9 +4,9 @@
 basepath=$(cd `dirname $0`; pwd)
 
 # 检查是否在源代码环境中
-if [[ -d "$basepath/tapflow" ]]; then
+if [[ -d "$basepath/tapsh" ]]; then
     # 源代码环境
-    source_path="$basepath/tapflow"
+    source_path="$basepath/tapsh"
     # 检查并创建虚拟环境
     if [[ ! -d ".venv" ]]; then
         python3 -m venv .venv
@@ -16,11 +16,11 @@ if [[ -d "$basepath/tapflow" ]]; then
     source .venv/bin/activate
 else
     # 安装后的环境，动态获取安装路径
-    source_path=$(python3 -c "import os, tapflow; print(os.path.dirname(tapflow.__file__))")
+    source_path=$(python3 -c "import os, tapsh; print(os.path.dirname(tapsh.__file__))")
 fi
 
 # 设置环境变量, 兼容 macos 和 linux
 export LC_ALL="en_US.utf8" 2>/dev/null
 
 # 运行 tap.py 脚本
-python3 tapflow/cli/tap.py "$@"
+python3 tapsh/cli/tap.py "$@"

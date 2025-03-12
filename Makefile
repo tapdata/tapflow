@@ -1,7 +1,7 @@
 # 定义变量
-PACKAGE_NAME = tapflow
+PACKAGE_NAME = tapsh
 VERSION ?= 0.0.0
-MAIN_ENTRY = tapflow/cli/tap.py
+MAIN_ENTRY = tapsh/cli/tap.py
 DIST_DIR = dist
 BUILD_DIR = build
 DOCKER_CENTOS7_CMD = docker run --rm -v $(shell pwd):/workspace -w /workspace centos:7 /bin/bash -c
@@ -18,7 +18,7 @@ ifeq ($(OS),Windows_NT)
     endif
     PYTHON = python
     PIP = pip
-    CONFIG_DIR = $(subst \,/,$(USERPROFILE))/.tapflow
+    CONFIG_DIR = $(subst \,/,$(USERPROFILE))/.tapsh
     MKDIR = powershell -Command "New-Item -ItemType Directory -Force -Path"
     RMRF = powershell -Command "if (Test-Path '$(1)') { Remove-Item -Recurse -Force '$(1)' }"
     COPY = powershell -Command "Copy-Item"
@@ -27,7 +27,7 @@ else
     ARCH ?= $(shell uname -m)
     PYTHON = python3
     PIP = pip3
-    CONFIG_DIR = $(HOME)/.tapflow
+    CONFIG_DIR = $(HOME)/.tapsh
     MKDIR = mkdir -p
     RMRF = rm -rf
     COPY = cp
@@ -77,39 +77,40 @@ endif
 # 构建当前平台版本
 .PHONY: current
 current: init-config
-	@echo 'VERSION = "$(VERSION)"' > tapflow/version.py
+	@echo 'VERSION = "$(VERSION)"' > tapsh/version.py
 	$(PYTHON) -m PyInstaller \
 		--clean \
 		--name $(PACKAGE_NAME)-$(VERSION)-$(PLATFORM)-$(ARCH) \
 		--add-data "requirements.txt:." \
 		--add-data "README.md:." \
 		--add-data "setup.py:." \
-		--add-data "tapflow/cli/cli.py:tapflow/cli" \
+		--add-data "tapsh/cli/cli.py:tapsh/cli" \
 		--add-data "etc:etc" \
-		--add-data "tapflow:tapflow" \
+		--add-data "tapsh:tapsh" \
+		--hidden-import tapsh \
 		--hidden-import tapflow \
-		--hidden-import tapflow.cli \
-		--hidden-import tapflow.cli.cli \
-		--hidden-import tapflow.cli.tap \
-		--hidden-import tapflow.lib \
-		--hidden-import tapflow.lib.op_object \
-		--hidden-import tapflow.lib.configuration \
-		--hidden-import tapflow.lib.configuration.config \
-		--hidden-import tapflow.lib.backend_apis \
-		--hidden-import tapflow.lib.data_pipeline \
-		--hidden-import tapflow.lib.connections \
-		--hidden-import tapflow.lib.utils \
-		--hidden-import tapflow.lib.params \
-		--hidden-import tapflow.lib.data_pipeline.validation \
-		--hidden-import tapflow.lib.data_services \
-		--hidden-import tapflow.lib.system \
-		--hidden-import tapflow.lib.cache \
-		--hidden-import tapflow.lib.backend_apis.common \
-		--hidden-import tapflow.lib.backend_apis.connections \
-		--hidden-import tapflow.lib.backend_apis.task \
-		--hidden-import tapflow.lib.backend_apis.dataVerify \
-		--hidden-import tapflow.lib.backend_apis.metadataInstance \
-		--hidden-import tapflow.lib.backend_apis.apiServers \
+		--hidden-import tapsh.cli \
+		--hidden-import tapsh.cli.cli \
+		--hidden-import tapsh.cli.tap \
+		--hidden-import tapsh.lib \
+		--hidden-import tapsh.lib.op_object \
+		--hidden-import tapsh.lib.configuration \
+		--hidden-import tapsh.lib.configuration.config \
+		--hidden-import tapsh.lib.backend_apis \
+		--hidden-import tapsh.lib.data_pipeline \
+		--hidden-import tapsh.lib.connections \
+		--hidden-import tapsh.lib.utils \
+		--hidden-import tapsh.lib.params \
+		--hidden-import tapsh.lib.data_pipeline.validation \
+		--hidden-import tapsh.lib.data_services \
+		--hidden-import tapsh.lib.system \
+		--hidden-import tapsh.lib.cache \
+		--hidden-import tapsh.lib.backend_apis.common \
+		--hidden-import tapsh.lib.backend_apis.connections \
+		--hidden-import tapsh.lib.backend_apis.task \
+		--hidden-import tapsh.lib.backend_apis.dataVerify \
+		--hidden-import tapsh.lib.backend_apis.metadataInstance \
+		--hidden-import tapsh.lib.backend_apis.apiServers \
 		--hidden-import IPython \
 		--hidden-import yaml \
 		--hidden-import requests \

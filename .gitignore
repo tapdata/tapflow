@@ -8,8 +8,15 @@ tapcli.egg-info/
 .DS_Store
 etc/config.ini
 dist/
+tapsh.egg-info/
 tapflow.egg-info/
 .coverage
+tapsh-*-darwin-arm64.spec
+tapsh-*-darwin-x86_64.spec
+tapsh-*-linux-arm64.spec
+tapsh-*-linux-x86_64.spec
+tapsh-*-win-arm64.spec
+tapsh-*-win-x86_64.spec
 tapflow-*-darwin-arm64.spec
 tapflow-*-darwin-x86_64.spec
 tapflow-*-linux-arm64.spec

@@ -13,7 +13,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'tap=tapflow.cli.tap:main',
+            'tap=tapsh.cli.tap:main',
         ],
     },
     classifiers=[

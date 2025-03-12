@@ -136,7 +136,7 @@ jobs:
           
           # Rename files for latest directory
           pushd dist
-          for file in tapflow-$VERSION-*; do
+          for file in tapsh-$VERSION-*; do
             if [ -f "$file" ]; then
               new_name=$(echo "$file" | sed "s/$VERSION/latest/")
               cp "$file" "$new_name"
@@ -144,7 +144,7 @@ jobs:
           done
           
           # Second rsync for latest directory - only sync latest files
-          rsync --password-file=/tmp/rsync.passwd -vzrt --progress --include="tapflow-latest-*" --include="SHA256SUMS.*" --exclude="*" ./ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || true
+          rsync --password-file=/tmp/rsync.passwd -vzrt --progress --include="tapsh-latest-*" --include="SHA256SUMS.*" --exclude="*" ./ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/" || true
           popd
 
       - name: Deploy to rsync server (Windows)
@@ -162,14 +162,14 @@ jobs:
           
           # Rename files for latest directory
           Push-Location dist
-          Get-ChildItem -Filter "tapflow-${{ env.VERSION }}-*" | ForEach-Object {
-            $pattern = [regex]::Escape("tapflow-${{ env.VERSION }}-")
-            $newName = $_.Name -replace $pattern, "tapflow-latest-"
+          Get-ChildItem -Filter "tapsh-${{ env.VERSION }}-*" | ForEach-Object {
+            $pattern = [regex]::Escape("tapsh-${{ env.VERSION }}-")
+            $newName = $_.Name -replace $pattern, "tapsh-latest-"
             Copy-Item -Path $_.Name -Destination $newName -Force
           }
           
           # Second rsync for latest directory - only sync latest files
-          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress --include="tapflow-latest-*" --include="SHA256SUMS.*" --exclude="*" ./ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/"
+          rsync --password-file="$env:TEMP\rsync.passwd" -vzrt --progress --include="tapsh-latest-*" --include="SHA256SUMS.*" --exclude="*" ./ "rsync://${{ secrets.RSYNC_USER }}@${{ secrets.RSYNC_HOST }}/data/enterprise-artifact/gz/tapflow/latest/"
           Pop-Location
           
           if ($LASTEXITCODE -ne 0) {

@@ -1,15 +1,15 @@
 <div align="center">
 
-[![Release](https://img.shields.io/github/v/tag/tapdata/tapflow.svg?sort=semver)](https://github.com/tapdata/tapflow/releases)
-[![PyPI Downloads](https://static.pepy.tech/badge/tapflow)](https://pepy.tech/projects/tapflow)
+[![Release](https://img.shields.io/github/v/tag/tapdata/tapsh.svg?sort=semver)](https://github.com/tapdata/tapsh/releases)
+[![PyPI Downloads](https://static.pepy.tech/badge/tapsh)](https://pepy.tech/projects/tapsh)
 
 </div>
 
 ## Table of Contents
-- [What is TapFlow](#what-is-tapflow)
+- [What is tapsh](#what-is-tapsh)
 - [Why is a Programmatic Approach Needed ?](#why-is-a-programmatic-approach-needed-)
-- [TapFlow Usage Example](#tapflow-usage-example)
-  - [Installing TapFlow](#installing-tapflow)
+- [tapsh Usage Example](#tapsh-usage-example)
+  - [Installing tapsh](#installing-tapsh)
   - [Create Source and Target Database Connections](#create-source-and-target-database-connections)
   - [Create a Simple Order Table Replication Task (Data Flow)](#create-a-simple-order-table-replication-task-data-flow)
   - [Exclude Fields](#exclude-fields)
@@ -17,24 +17,24 @@
   - [Perform Complex Custom Processing with Python Script](#perform-complex-custom-processing-with-python-script)
   - [Use Lookup to Enrich Customer Information in the Order Table](#use-lookup-to-enrich-customer-information-in-the-order-table)
   - [Final Result In Monogdb](#final-result-in-monogdb)
-  - [Run Python Code using TapFlow command](#run-python-code-using-tapflow-command)
+  - [Run Python Code using tapsh command](#run-python-code-using-tapsh-command)
 - [Known Issue](#known-issue)
-- [TapFlow Roadmap](#tapflow-roadmap)
+- [tapsh Roadmap](#tapsh-roadmap)
 - [About TapData Live Data Platform](#about-tapdata-live-data-platform)
 - [Common Use Cases of TapData](#common-use-cases-of-tapdata)
 - [Join Our Community](#join-our-community)
 
-## What is TapFlow
+## What is tapsh
 
-TapFlow is a newly launched programming API framework for the TapData Live Data Platform. It allows developers and data engineers to build data pipelines and models using a simple powerful programming language.
+tapsh is a newly launched programming API framework for the TapData Live Data Platform. It allows developers and data engineers to build data pipelines and models using a simple powerful programming language.
 
-This release includes a Python SDK. TapFlow requires a connection to a TapData Cluster, which can be either the enterprise, cloud, or community version, to operate.
+This release includes a Python SDK. tapsh requires a connection to a TapData Cluster, which can be either the enterprise, cloud, or community version, to operate.
 
 ![Tapdata Live Data Platform](docs/images/tapdata_live_data_platform.png)
 
 ## Why is a Programmatic Approach Needed ?
 
-TapData currently provides a visual drag-and-drop UI for building data pipelines and workflows. This interface offers significant advantages in terms of ease of use and maintenance, but it also has limitations in certain areas. TapFlow aims to effectively address these limitations by offering a programmatic approach as a valuable complement.
+TapData currently provides a visual drag-and-drop UI for building data pipelines and workflows. This interface offers significant advantages in terms of ease of use and maintenance, but it also has limitations in certain areas. tapsh aims to effectively address these limitations by offering a programmatic approach as a valuable complement.
 
 1. Supporting Developers with Custom Logic: When Complex Processing Needs Code
 
@@ -52,21 +52,21 @@ Users often need to synchronize 100+ database tables, each with different field 
 
 Providing tools designed for developers aligns more closely with their workflows, making it easier to integrate with other business modules. Open source code capabilities also make the product more extensible, allowing for the addition of reusable internal components and other custom features.
 
-## TapFlow Usage Example
+## tapsh Usage Example
 
 Let's assume we have a CRM application running on a MySQL database. Below is the schema for this MySQL database:
 
 ![Mysql Schema](docs/images/mysql_schema.png)
 
-Due to performance considerations and specific requirements for wide tables, we need to replicate order data from MySQL to MongoDB in order to publish an order query API. We will use TapFlow to copy the data from MySQL to MongoDB, while performing some data transformations and merging operations along the way.
+Due to performance considerations and specific requirements for wide tables, we need to replicate order data from MySQL to MongoDB in order to publish an order query API. We will use tapsh to copy the data from MySQL to MongoDB, while performing some data transformations and merging operations along the way.
 
-### Installing TapFlow
+### Installing tapsh
 
 ```
-# pip3 install tapflow
+# pip3 install tapsh
 ```
 
-The TapFlow Python SDK supports two modes: programmatic execution or interactive mode. In the following example, we'll demonstrate how to use the TapFlow API in interactive mode.
+The tapsh Python SDK supports two modes: programmatic execution or interactive mode. In the following example, we'll demonstrate how to use the tapsh API in interactive mode.
 
 ```
 # tap
@@ -79,9 +79,9 @@ If you would like to use TapData Cloud, or you are new to TapData, type C or pre
 Please type L or C (L/[C]):
 ```
 
-Once you enter the relevant TapData connection information or keys, you can start using TapFlow in interactive mode.
+Once you enter the relevant TapData connection information or keys, you can start using tapsh in interactive mode.
 
-For more installation details, please refer to the Quick Start documentation: https://docs.tapdata.net/tapflow/quick-start
+For more installation details, please refer to the Quick Start documentation: https://docs.tapdata.net/tapsh/quick-start
 
 ### Create Source and Target Database Connections
 
@@ -248,14 +248,14 @@ table wide_orders_collection has 12641 records
 }
 ```
 
-For more commands references, please refer to this documentation:  https://docs.tapdata.net/tapflow/tapcli-reference
+For more commands references, please refer to this documentation:  https://docs.tapdata.net/tapsh/tapcli-reference
 
-### Run Python Code using TapFlow command
+### Run Python Code using tapsh command
 
 ```
 # cat order_mview.py
-from tapflow.lib import *
-from tapflow.cli.cli import init
+from tapsh.lib import *
+from tapsh.cli.cli import init
                     
 mysql_conn = DataSource('mysql', 'MySQL_ECommerce', 
                     {
@@ -300,9 +300,9 @@ myflow.start() # Start the flow
 
 - Currently, Lookup can only be used with MongoDB as the target.
 
-## TapFlow Roadmap
+## tapsh Roadmap
 
-We will continue to enhance TapFlow's capabilities. Here are some medium- to long-term features on the roadmap:
+We will continue to enhance tapsh's capabilities. Here are some medium- to long-term features on the roadmap:
 
 - Lookup support for more target databases beyond MongoDB
 - Support for Project management
@@ -329,23 +329,23 @@ If you're not yet familiar, TapData is a real-time data platform designed specif
 
 1. **Real-Time Database Synchronization (Replacing Oracle GoldenGate)**
 
-Traditional database replication tools are often expensive and complex. TapFlow offers a lightweight, easy-to-use alternative that efficiently syncs data across different databases, supporting everything from MySQL to PostgreSQL and even NoSQL databases.
+Traditional database replication tools are often expensive and complex. tapsh offers a lightweight, easy-to-use alternative that efficiently syncs data across different databases, supporting everything from MySQL to PostgreSQL and even NoSQL databases.
 
 2. **Real-Time Data Pipeline (Replacing Kafka)**
 
-For scenarios requiring real-time data transmission, TapFlow is a powerful alternative to Kafka. It doesn't require the deployment of complex Kafka clusters, but instead provides an equally or even more efficient data pipeline construction in a lightweight manner.
+For scenarios requiring real-time data transmission, tapsh is a powerful alternative to Kafka. It doesn't require the deployment of complex Kafka clusters, but instead provides an equally or even more efficient data pipeline construction in a lightweight manner.
 
 3. **Creating Continuously Refreshed Materialized Views for Query Acceleration and Read-Write Separation**
 
-When real-time query results are needed, materialized views offer an efficient solution. TapFlow can continuously refresh materialized views (sub-second latency), ensuring data freshness and supporting real-time analysis and decision-making.
+When real-time query results are needed, materialized views offer an efficient solution. tapsh can continuously refresh materialized views (sub-second latency), ensuring data freshness and supporting real-time analysis and decision-making.
 
 4. **Real-Time Data Ingestion into Data Warehouses or Data Lakes**
 
-The trend in modern data analytics is real-time processing. TapFlow can write data in real-time into data warehouses or data lakes (e.g., Apache Doris, ClickHouse, or cloud data warehouses like Ali Cloud ADB, SelectDB, BigQuery).
+The trend in modern data analytics is real-time processing. tapsh can write data in real-time into data warehouses or data lakes (e.g., Apache Doris, ClickHouse, or cloud data warehouses like Ali Cloud ADB, SelectDB, BigQuery).
 
 5. **General-Purpose Streaming ETL Data Processing**
 
-TapFlow also supports complex ETL (Extract, Transform, Load) tasks. With the flexibility of Python and built-in processing capabilities, developers can easily handle complex data transformation needs.
+tapsh also supports complex ETL (Extract, Transform, Load) tasks. With the flexibility of Python and built-in processing capabilities, developers can easily handle complex data transformation needs.
 
 ## Join Our Community
 
@@ -355,4 +355,4 @@ We welcome you to join our community and interact with us. You can:
 - Join our [discord](https://discord.gg/xj79hnEB) community or [whatsApp group](https://chat.whatsapp.com/LeY1lVE5GPkEc3TZeEZgDF)
 
 ## Stargazers over time
-[![Stargazers over time](https://starchart.cc/tapdata/tapflow.svg?variant=adaptive)](https://starchart.cc/tapdata/tapflow)
+[![Stargazers over time](https://starchart.cc/tapdata/tapsh.svg?variant=adaptive)](https://starchart.cc/tapdata/tapsh)
